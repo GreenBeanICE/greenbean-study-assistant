@@ -1,0 +1,64 @@
+name: User Story
+description: 创建一个敏捷用户故事。
+title: "[US]: "
+labels: ["user-story"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## User Story 内容
+
+        请按照“作为……我希望……从而……”的格式描述用户需求。
+
+  - type: input
+    id: persona
+    attributes:
+      label: 作为……
+      description: 识别用户类型或 Persona。
+      placeholder: 例如：法国留学生 / 中文母语学生 / M1 MIAGE 学生
+    validations:
+      required: true
+
+  - type: textarea
+    id: feature
+    attributes:
+      label: 我希望……
+      description: 描述用户想要完成的事情或需要的功能。
+      placeholder: 例如：上传课程 PDF，并让系统自动提取课程重点。
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: 从而……
+      description: 描述这个需求带来的价值或目标。
+      placeholder: 例如：我可以更快理解法语课程资料，并知道哪些内容需要优先学习。
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: 验收标准
+      description: 满足哪些条件，这个 User Story 才算完成？
+      value: |
+        - [ ] 
+        - [ ] 
+        - [ ] 
+      placeholder: |
+        例如：
+        - [ ] 用户可以上传一个 PDF 文件
+        - [ ] 系统可以显示文件解析状态
+        - [ ] 系统可以生成课程资料摘要
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: to-test
+    attributes:
+      label: "注意：请为这个 User Story 添加对应的测试。"
+      options:
+        - label: 我已确认：没有测试或验收标准的 User Story 不能视为完成。
+          required: true
