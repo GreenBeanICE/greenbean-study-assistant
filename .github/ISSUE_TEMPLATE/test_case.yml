@@ -1,0 +1,87 @@
+name: 测试场景 Test Scenario
+description: 使用 GHERKIN 语言描述一个测试场景。这个模板通常作为某个 User Story 的子 Issue 使用。
+title: "[Test]: "
+labels: ["test"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请尽量遵守 GHERKIN 格式。
+
+        一个测试场景应该清晰、简洁。
+        如果场景太复杂，建议拆分成多个测试场景。
+        尽量避免使用过多技术语言，应从用户行为和系统反馈角度描述。
+
+        基本格式：
+
+        Given：在什么前提或上下文下  
+        When：当用户执行某个操作，或某个事件发生时  
+        Then：系统应该产生什么结果  
+
+        注意：根据场景不同，Given 和 When 不一定都必须同时使用。
+
+  - type: markdown
+    attributes:
+      value: "## GIVEN"
+
+  - type: textarea
+    id: given
+    attributes:
+      label: Given / 前提条件
+      description: 描述测试发生前的上下文或初始状态。
+      placeholder: "例如：Given 用户已经进入某一门课程的详情页面。"
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: "## WHEN"
+
+  - type: textarea
+    id: when
+    attributes:
+      label: When / 触发动作
+      description: 描述用户执行的操作，或触发系统行为的事件。
+      placeholder: "例如：When 用户上传一个 PDF 课程文件。"
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: "## THEN"
+
+  - type: textarea
+    id: then
+    attributes:
+      label: Then / 预期结果
+      description: 描述系统应该表现出的预期行为。
+      placeholder: "例如：Then 系统显示上传成功，并在文件列表中展示该课程文件。"
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: "## EXAMPLES"
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: 示例 Examples
+      description: "[可选] 用一个或多个具体例子说明这个测试场景。"
+      placeholder: |
+        例如：
+        - 文件名：cours_agile.pdf
+        - 文件类型：PDF
+        - 预期结果：系统显示“文件上传成功”
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 备注 Notes
+      description: "[可选] 记录测试环境、边界情况或相关 User Story。"
+      placeholder: "例如：Related to #12；测试环境：Chrome / 本地开发环境。"
+    validations:
+      required: false
