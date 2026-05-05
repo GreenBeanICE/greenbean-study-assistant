@@ -1,0 +1,38 @@
+name: 其他事项 Other
+description: 用于记录需要加入 Backlog 的事项，但不属于 User Story 或 Test，例如重构、文档、配置、代码评审后的修改等。
+title: "[Other]: "
+labels: ["other"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        这个模板用于记录其他需要加入 Backlog 的事项。
+
+        适合放在这里的内容包括：
+        - 重构代码
+        - 修改文档
+        - 调整项目配置
+        - 代码评审后的修改
+        - 临时发现但还未排期的问题
+
+        如果是用户需求，请使用 User Story。
+        如果是验收测试，请使用 Test Scenario。
+
+  - type: input
+    id: todo
+    attributes:
+      label: 要加入 Backlog 的事项
+      description: 简要描述这个事项。
+      placeholder: 例如：重构 document upload service 的错误处理逻辑。
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: 详细说明
+      description: 可以补充背景、原因、相关文件或后续处理方式。
+      placeholder: 例如：当前错误处理分散在 controller 中，后续应统一放到 service 层或 exception handler 中。
+    validations:
+      required: false
