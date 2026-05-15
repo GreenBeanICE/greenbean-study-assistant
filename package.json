@@ -6,21 +6,34 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "test": "vitest",
+    "test:frontend": "vitest run",
+    "test:frontend:coverage": "vitest run --coverage",
+    "test:rust": "cd src-tauri && cargo test",
+    "test:rust:coverage:lcov": "node -e \"require('fs').mkdirSync('coverage/rust', { recursive: true })\" && cd src-tauri && cargo llvm-cov --lcov --output-path ../coverage/rust/lcov.info",
+    "test:rust:coverage:html": "node -e \"require('fs').mkdirSync('coverage/rust/html', { recursive: true })\" && cd src-tauri && cargo llvm-cov --html --output-dir ../coverage/rust/html",
+    "test:rust:coverage": "node -e \"require('fs').mkdirSync('coverage/rust/html', { recursive: true })\" && cd src-tauri && cargo llvm-cov --lcov --output-path ../coverage/rust/lcov.info && cargo llvm-cov --html --output-dir ../coverage/rust/html",
     "preview": "vite preview",
     "tauri": "tauri"
   },
   "dependencies": {
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
     "@tauri-apps/api": "^2",
-    "@tauri-apps/plugin-opener": "^2"
+    "@tauri-apps/plugin-opener": "^2",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
-    "@vitejs/plugin-react": "^4.6.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "@vitest/coverage-v8": "^4.1.6",
+    "jsdom": "^29.1.1",
     "typescript": "~5.8.3",
     "vite": "^7.0.4",
-    "@tauri-apps/cli": "^2"
+    "vitest": "^4.1.6"
   }
 }
