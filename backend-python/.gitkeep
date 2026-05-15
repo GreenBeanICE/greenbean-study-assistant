@@ -1,1 +1,1 @@
-﻿# 预留的 Python 后端目录，用于后期 FastAPI、PDF 解析、OCR、LangChain、LlamaIndex 等能力。
+﻿# Python 后端目录，承载核心业务逻辑、文档解析、AI/RAG、聊天上下文和数据库访问。
