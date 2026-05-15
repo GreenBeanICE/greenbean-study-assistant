@@ -1,1 +1,0 @@
-﻿# 数据访问层，负责 SQLite / sqlite-vec 的读写操作。
