@@ -6,24 +6,20 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-
     "test": "vitest",
     "test:frontend": "vitest run",
     "test:frontend:coverage": "vitest run --coverage",
-
     "test:rust": "cd src-tauri && cargo test",
     "test:rust:coverage:lcov": "node -e \"require('fs').mkdirSync('coverage/rust', { recursive: true })\" && cd src-tauri && cargo llvm-cov --lcov --output-path ../coverage/rust/lcov.info",
     "test:rust:coverage:html": "node -e \"require('fs').mkdirSync('coverage/rust/html', { recursive: true })\" && cd src-tauri && cargo llvm-cov --html --output-dir ../coverage/rust/html",
     "test:rust:coverage": "node -e \"require('fs').mkdirSync('coverage/rust/html', { recursive: true })\" && cd src-tauri && cargo llvm-cov --lcov --output-path ../coverage/rust/lcov.info && cargo llvm-cov --html --output-dir ../coverage/rust/html",
-    
     "test:python": "cd backend-python && pytest",
     "test:python:coverage:xml": "node -e \"require('fs').mkdirSync('coverage/python', { recursive: true })\" && cd backend-python && pytest --cov=app --cov-report=term-missing --cov-report=xml:../coverage/python/coverage.xml",
     "test:python:coverage:html": "node -e \"require('fs').mkdirSync('coverage/python/html', { recursive: true })\" && cd backend-python && pytest --cov=app --cov-report=html:../coverage/python/html",
     "test:python:coverage": "node -e \"require('fs').mkdirSync('coverage/python/html', { recursive: true })\" && cd backend-python && pytest --cov=app --cov-report=term-missing --cov-report=xml:../coverage/python/coverage.xml --cov-report=html:../coverage/python/html",
-    
     "test:all": "npm run test:frontend && npm run test:rust && npm run test:python",
     "test:coverage:sonar": "npm run test:frontend:coverage && npm run test:rust:coverage:lcov && npm run test:python:coverage:xml",
-    
+    "test:coverage:html": "npm run test:frontend:coverage && npm run test:rust:coverage:html && npm run test:python:coverage:html",
     "preview": "vite preview",
     "tauri": "tauri"
   },
