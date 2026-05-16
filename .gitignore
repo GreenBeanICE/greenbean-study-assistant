@@ -44,3 +44,12 @@ htmlcov/
 venv/
 env/
 ENV/
+
+# Local development database
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# User uploaded files
+data/uploads/*
+!data/uploads/.gitkeep
