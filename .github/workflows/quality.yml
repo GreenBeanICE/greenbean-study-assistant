@@ -65,6 +65,7 @@ jobs:
           cargo llvm-cov --lcov --output-path ../coverage/rust/lcov.info
 
       - name: SonarQube Cloud Scan
+        if: github.actor != 'dependabot[bot]'
         uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
