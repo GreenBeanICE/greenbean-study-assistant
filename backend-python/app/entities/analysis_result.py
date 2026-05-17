@@ -23,7 +23,7 @@ class AnalysisResult(BaseModel):
     @model_validator(mode="after")
     def validate_analysis_scope(self) -> "AnalysisResult":
         if self.analysis_type == AnalysisType.SECTION and not self.section_id:
-            raise ValueError("section analysis requires section_id")
+            raise ValueError("小节解析必须提供 section_id")
         if self.analysis_type == AnalysisType.FULL_DOCUMENT and self.section_id is not None:
-            raise ValueError("full document analysis must not set section_id")
+            raise ValueError("全文解析不能设置 section_id")
         return self
