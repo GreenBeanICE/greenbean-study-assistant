@@ -1,4 +1,2 @@
 pytest
 pytest-cov
-
-pydantic>=2,<3
