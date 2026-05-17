@@ -6,9 +6,12 @@ from pydantic import BaseModel, Field
 
 
 class DocumentUnit(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid4()), description="内容单元唯一 ID，使用 UUID 字符串。")
+    id: str = Field(default_factory=lambda: str(uuid4()), description="内容单元唯一 ID。")
     document_id: str = Field(..., description="所属文档 ID。")
-    sequence_index: int = Field(..., description="内容单元在文档中的全局顺序。")
+    sequence_index: int = Field(
+        ...,
+        description="同一文档内的内容单元顺序；持久化层应保证同一文档内唯一。",
+    )
     text_content: str = Field(..., description="统一正文内容，用于展示、检索和 AI 分析。")
     page_number: int | None = Field(default=None, description="来源页码。")
     start_char: int | None = Field(default=None, description="在原始文本流中的起始字符位置。")

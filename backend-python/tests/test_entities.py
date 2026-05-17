@@ -1,6 +1,9 @@
 from datetime import datetime
 from uuid import UUID
 
+import pytest
+from pydantic import ValidationError
+
 from app.entities import (
     AnalysisResult,
     ChatMessage,
@@ -82,6 +85,9 @@ def test_document_unit_supports_rag_metadata_and_parser_provenance():
 
 
 def test_document_unit_field_descriptions_are_available():
+    assert DocumentUnit.model_fields["sequence_index"].description == (
+        "同一文档内的内容单元顺序；持久化层应保证同一文档内唯一。"
+    )
     assert DocumentUnit.model_fields["text_content"].description == "统一正文内容，用于展示、检索和 AI 分析。"
     assert DocumentUnit.model_fields["metadata_json"].description == "用于检索、过滤和展示的元数据。"
     assert DocumentUnit.model_fields["raw_content_json"].description == "解析器输出的原始布局或 OCR 信息。"
@@ -122,6 +128,15 @@ def test_section_unit_link_models_many_to_many_relationship():
     assert unit_2_sections == ["section_1", "section_2"]
 
 
+def test_section_unit_link_documents_persistence_uniqueness_rules():
+    assert SectionUnitLink.model_fields["document_unit_id"].description == (
+        "关联的内容单元 ID；持久化层应保证同一小节内不重复关联。"
+    )
+    assert SectionUnitLink.model_fields["order_index"].description == (
+        "内容单元在该小节中的顺序；持久化层应保证同一小节内唯一。"
+    )
+
+
 def test_embedding_vector_keeps_logical_float_vector():
     vector = EmbeddingVector(
         document_unit_id="unit_1",
@@ -131,6 +146,25 @@ def test_embedding_vector_keeps_logical_float_vector():
     )
 
     assert vector.vector == [0.1, 0.2, 0.3]
+
+
+def test_embedding_vector_rejects_vector_dimension_mismatch():
+    with pytest.raises(ValidationError, match="vector length must match vector_dimension"):
+        EmbeddingVector(
+            document_unit_id="unit_1",
+            embedding_model="local-embedding-model",
+            vector_dimension=3,
+            vector=[0.1, 0.2],
+        )
+
+
+def test_embedding_vector_requires_positive_dimension():
+    with pytest.raises(ValidationError):
+        EmbeddingVector(
+            document_unit_id="unit_1",
+            embedding_model="local-embedding-model",
+            vector_dimension=0,
+        )
 
 
 def test_analysis_result_supports_full_document_and_section_analysis():
@@ -154,6 +188,27 @@ def test_analysis_result_supports_full_document_and_section_analysis():
     assert full_document.section_id is None
     assert section.section_id == "section_1"
     assert section.content_json["key_points"] == ["deadline"]
+
+
+def test_analysis_result_requires_section_id_for_section_analysis():
+    with pytest.raises(ValidationError, match="section analysis requires section_id"):
+        AnalysisResult(
+            document_id="document_1",
+            analysis_type=AnalysisType.SECTION,
+            language="zh",
+            content_markdown="section summary",
+        )
+
+
+def test_analysis_result_rejects_section_id_for_full_document_analysis():
+    with pytest.raises(ValidationError, match="full document analysis must not set section_id"):
+        AnalysisResult(
+            document_id="document_1",
+            section_id="section_1",
+            analysis_type=AnalysisType.FULL_DOCUMENT,
+            language="zh",
+            content_markdown="full document summary",
+        )
 
 
 def test_chat_session_scopes_to_workspace_or_document_only():

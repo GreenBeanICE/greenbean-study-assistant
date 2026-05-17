@@ -1,20 +1,19 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class EmbeddingVector(BaseModel):
-    id: str = Field(
-        default_factory=lambda: str(uuid4()),
-        description="向量记录唯一 ID，使用 UUID 字符串。",
-    )
-    document_unit_id: str = Field(..., description="对应的内容单元 ID。")
-    embedding_model: str = Field(..., description="生成向量的模型名称。")
-    vector_dimension: int = Field(..., description="向量维度。")
-    vector: list[float] | None = Field(
-        default=None, description="逻辑向量值，持久化格式由后续数据库层决定。"
-    )
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc), description="创建时间。"
-    )
+    id: str = Field(default_factory=lambda: str(uuid4()), description="向量记录唯一 ID。")
+    document_unit_id: str = Field(..., description="关联的内容单元 ID。")
+    embedding_model: str = Field(..., description="生成向量的 embedding 模型名称。")
+    vector_dimension: int = Field(..., gt=0, description="向量中应包含的浮点数数量。")
+    vector: list[float] | None = Field(default=None, description="逻辑向量值，具体持久化格式由数据库层决定。")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="创建时间。")
+
+    @model_validator(mode="after")
+    def validate_vector_dimension(self) -> "EmbeddingVector":
+        if self.vector is not None and len(self.vector) != self.vector_dimension:
+            raise ValueError("vector length must match vector_dimension")
+        return self
