@@ -1,1 +1,6 @@
-﻿# MessageRole 枚举占位文件，后续用于描述用户和 Agent 消息角色。
+from enum import Enum
+
+
+class MessageRole(str, Enum):
+    USER = "user"
+    AGENT = "agent"
