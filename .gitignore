@@ -17,6 +17,10 @@ src-tauri/target/
 
 # Local env
 *.local
+.env
+.env.*
+!.env.example
+!.env.*.example
 
 # Test coverage reports
 coverage/
@@ -27,6 +31,8 @@ coverage/
 !.vscode/extensions.json
 .idea/
 .DS_Store
+Thumbs.db
+Desktop.ini
 *.suo
 *.ntvs*
 *.njsproj
@@ -39,17 +45,37 @@ __pycache__/
 *$py.class
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
+.mypy_cache/
+.ruff_cache/
+.pyre/
 .venv/
 venv/
 env/
 ENV/
+pip-wheel-metadata/
 
 # Local development database
 data/*.db
 data/*.db-shm
 data/*.db-wal
+data/*.sqlite
+data/*.sqlite3
+data/*.sqlite-shm
+data/*.sqlite-wal
+data/*.sqlite3-shm
+data/*.sqlite3-wal
 
 # User uploaded files
 data/uploads/*
 !data/uploads/.gitkeep
+
+# Tauri and Vite caches
+.vite/
+src-tauri/gen/schemas/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

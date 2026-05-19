@@ -2,7 +2,9 @@
 
 from openai import OpenAI
 
-from app.agents.analysis_agent import RouterAgent  # 确保文件名和之前的路由 Agent 匹配
+from app.agents.classification_agent import (
+    RouterAgent,  # 确保文件名和之前的路由 Agent 匹配
+)
 from app.prompts.chat_prompts import CHAT_SYSTEM_PROMPT
 from app.schemas.chat_schema import ChatRequest, ChatResponse
 
