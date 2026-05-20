@@ -1,81 +1,147 @@
 import { motion } from "framer-motion";
+import Sidebar from "../components/ui/Sidebar";
 
 function HomePage() {
   return (
-    <div className="relative min-h-screen pt-24 overflow-hidden">
+    <div className="min-h-screen pt-16 bg-[#f5f5f7] dark:bg-[#0a0a0a] transition-colors duration-300">
 
-      <div className="absolute inset-0 bg-gradient-to-b from-white via-neutral-50 to-white dark:from-black dark:via-neutral-950 dark:to-black" />
+      {/* 主布局 */}
+      <div className="flex">
 
-      {/* 悬浮动效 */}
-      <motion.div
-        animate={{ y: [0, 30, 0] }}
-        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute top-[-200px] left-[-150px] w-[500px] h-[500px] bg-emerald-300/20 blur-[180px] rounded-full"
-      />
+        {/* 左侧 Sidebar */}
+        <Sidebar />
 
-      <motion.div
-        animate={{ y: [0, -40, 0] }}
-        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute bottom-[-200px] right-[-150px] w-[500px] h-[500px] bg-teal-300/10 blur-[180px] rounded-full"
-      />
+        {/* 主内容 */}
+        <main className="flex-1 px-4 md:px-10 py-8">
 
-      <div className="relative z-10 flex flex-col items-center px-6">
+          {/* 欢迎区域 */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <h1 className="text-3xl md:text-5xl font-semibold tracking-tight">
+              欢迎回来
+            </h1>
 
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="text-center max-w-3xl"
-        >
-          <h1 className="text-5xl md:text-6xl font-semibold tracking-tight">
-            GreenBean
-          </h1>
+            <p className="mt-4 text-neutral-500 dark:text-neutral-400 text-base md:text-lg leading-relaxed">
+              GreenBean 帮助你理解法国大学课程内容，
+              <br />
+              自动整理知识结构并提供 AI 深度解析。
+            </p>
+          </motion.div>
 
-          <p className="mt-6 text-lg text-neutral-500 dark:text-neutral-400 leading-relaxed">
-            面向法国留学生的 AI 学习助手<br />
-            理解课程 · 提取重点 · 智能问答
-          </p>
-        </motion.div>
+          {/* 上传卡片 */}
+          <motion.div
+            initial={{ opacity: 0, y: 25 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15, duration: 0.6 }}
+            className="mt-10"
+          >
+            <div className="rounded-[32px] bg-white dark:bg-white/5 border border-black/5 dark:border-white/10 p-6 md:p-8 shadow-sm backdrop-blur-xl">
 
-        <motion.div
-          initial={{ opacity: 0, y: 40, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ delay: 0.2, duration: 0.8 }}
-          className="mt-16 w-full max-w-2xl"
-        >
-          <div className="rounded-3xl border border-black/10 dark:border-white/10 bg-white/60 dark:bg-white/5 backdrop-blur-xl p-8 shadow-sm">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
 
-            {/* 上传部分 */}
-            <div className="h-64 rounded-2xl border border-dashed border-black/20 dark:border-white/10 flex items-center justify-center text-neutral-500 transition hover:scale-[1.01]">
-              拖拽上传 支持 PDF / PPT / Word / 图片 格式
+                {/* 左边 */}
+                <div>
+                  <h2 className="text-2xl font-semibold">
+                    上传课程资料
+                  </h2>
+
+                  <p className="mt-3 text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                    支持 PDF / PPT / Word / 图片
+                    <br />
+                    自动生成课程结构与 AI 解析
+                  </p>
+                </div>
+
+                {/* 右边按钮 */}
+                <div className="flex flex-col sm:flex-row gap-3">
+
+                  <button className="px-6 py-3 rounded-full bg-black text-white dark:bg-white dark:text-black hover:scale-[1.02] transition">
+                    选择文件
+                  </button>
+
+                  <button className="px-6 py-3 rounded-full border border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5 transition">
+                    开始解析
+                  </button>
+
+                </div>
+
+              </div>
+
+            </div>
+          </motion.div>
+
+          {/* Quick Actions */}
+          <section className="mt-12">
+
+            <h2 className="text-2xl font-semibold mb-5">
+              Quick Actions
+            </h2>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
+              {[
+                "📄 AI 总结",
+                "🧠 Quiz Generator",
+                "🇫🇷 法语术语",
+                "✨ 智能问答",
+              ].map((item) => (
+                <div
+                  key={item}
+                  className="rounded-3xl bg-white dark:bg-white/5 border border-black/5 dark:border-white/10 p-5 hover:scale-[1.02] transition cursor-pointer"
+                >
+                  <p className="font-medium">
+                    {item}
+                  </p>
+                </div>
+              ))}
+
+            </div>
+          </section>
+
+          {/* Recent Files */}
+          <section className="mt-12">
+
+            <h2 className="text-2xl font-semibold mb-5">
+              Recent Files
+            </h2>
+
+            <div className="space-y-4">
+
+              {[
+                "Macroéconomie Chapitre 2.pdf",
+                "Analyse Mathématique.pptx",
+                "Droit Civil Notes.docx",
+              ].map((file) => (
+                <div
+                  key={file}
+                  className="rounded-3xl bg-white dark:bg-white/5 border border-black/5 dark:border-white/10 p-5 flex items-center justify-between"
+                >
+
+                  <div>
+                    <p className="font-medium">
+                      {file}
+                    </p>
+
+                    <p className="text-sm text-neutral-500 mt-1">
+                      最近打开
+                    </p>
+                  </div>
+
+                  <button className="px-4 py-2 rounded-full text-sm bg-black text-white dark:bg-white dark:text-black">
+                    打开
+                  </button>
+
+                </div>
+              ))}
+
             </div>
 
-            {/* 按钮 */}
-            <div className="flex justify-center gap-4 mt-8">
-              <button className="px-6 py-2 rounded-full bg-black text-white dark:bg-white dark:text-black text-sm hover:scale-[1.03] transition">
-                选择文件
-              </button>
+          </section>
 
-              <button className="px-6 py-2 rounded-full border border-black/10 dark:border-white/10 text-sm hover:scale-[1.03] transition">
-                开始解析
-              </button>
-            </div>
-
-          </div>
-        </motion.div>
-
-        {/* 注释 */}
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 0.6 }}
-          className="text-center text-neutral-400 dark:text-neutral-500 text-xs mt-8 leading-relaxed max-w-md"
-        >
-          上传后系统会先生成课程结构索引
-          <br />
-          可按章节选择需要 AI 深度解析的内容
-        </motion.p>
-
+        </main>
       </div>
     </div>
   );

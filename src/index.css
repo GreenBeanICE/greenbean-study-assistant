@@ -1,8 +1,17 @@
 @import "tailwindcss";
 
+/* Apple 风字体 */
+
 body {
   margin: 0;
-  background: white;
-  color: black;
-  font-family: system-ui;
+
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Display",
+    "SF Pro Text",
+    system-ui,
+    sans-serif;
+
+  -webkit-font-smoothing: antialiased;
 }

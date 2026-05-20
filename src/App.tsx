@@ -3,24 +3,22 @@ import HomePage from "./pages/HomePage";
 import Navbar from "./components/ui/Navbar";
 
 function App() {
-  const [dark, setDark] = useState<boolean>(false);
+  // 深色模式状态
+  const [dark, setDark] = useState(false);
 
+  // 切换 dark class
   useEffect(() => {
-    if (dark) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    document.documentElement.classList.toggle("dark", dark);
   }, [dark]);
 
   return (
-    <>
+    <div className="min-h-screen text-black dark:text-white transition-colors duration-300">
+
       <Navbar dark={dark} setDark={setDark} />
 
-      <div className="min-h-screen bg-white text-black dark:bg-black dark:text-white transition-colors">
-        <HomePage />
-      </div>
-    </>
+      <HomePage />
+
+    </div>
   );
 }
 
