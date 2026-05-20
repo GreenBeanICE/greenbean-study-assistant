@@ -1,4 +1,5 @@
 import json
+import os
 
 from openai import OpenAI
 
@@ -12,9 +13,13 @@ class RouterAgent:
         """
         使用 DeepSeek 的 OpenAI 兼容接口初始化客户端。
         """
-        self.client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
-        # 使用 DeepSeek 的标准对话模型
-        self.model = "deepseek-chat"
+        # 从环境变量读取网址，如果不填，默认使用 DeepSeek 的网址
+        base_url = os.getenv("API_BASE_URL", "https://api.deepseek.com")
+
+        # 初始化 OpenAI 客户端，不再写死 URL
+        self.client = OpenAI(api_key=api_key, base_url=base_url)
+
+        self.model = os.getenv("API_MODEL", "deepseek-chat")
 
     async def route_question(self, user_question: str) -> RoutingDecision:
         """

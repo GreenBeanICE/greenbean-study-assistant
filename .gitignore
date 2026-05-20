@@ -79,3 +79,7 @@ src-tauri/gen/schemas/
 tmp/
 temp/
 *.tmp
+
+
+# 忽略后端目录下的机密文件
+backend-python/api_key.json

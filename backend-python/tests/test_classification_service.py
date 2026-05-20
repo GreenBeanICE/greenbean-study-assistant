@@ -1,21 +1,26 @@
 # test_router.py
-import asyncio
+import json
 
+import pytest
 from app.agents.classification_agent import RouterAgent
 
 
-async def run_debugging_tests():
+@pytest.mark.asyncio
+async def test_classification_tests():
     """
     执行一系列测试用例来验证 Agent 的路由准确率。
     """
 
-    YOUR_DEEPSEEK_API_KEY = "sk-d3549edfb48842d2ae9fc36a33595248"
-
-    if YOUR_DEEPSEEK_API_KEY.startswith("sk-xxxx"):
-        print("运行测试前，请先填入你真实的 DeepSeek API Key。")
+    # 从本地的 api_key.json 读取 API Key
+    try:
+        with open("api_key.json", "r") as f:
+            config = json.load(f)
+            YOUR_API_KEY = config.get("DEEPSEEK_API_KEY")
+    except FileNotFoundError:
+        print("请先在根目录创建 api_key.json 并配置 DEEPSEEK_API_KEY！")
         return
 
-    agent = RouterAgent(api_key=YOUR_DEEPSEEK_API_KEY)
+    agent = RouterAgent(api_key=YOUR_API_KEY)
 
     # 基于 US-09 需求的测试用例列表
     test_cases = [
@@ -37,8 +42,3 @@ async def run_debugging_tests():
         print(f"-> 路由方向 : {decision.route}")
         print(f"-> 判决理由 : {decision.reason}")
         print("-" * 40)
-
-
-if __name__ == "__main__":
-    # 启动异步事件循环来运行测试
-    asyncio.run(run_debugging_tests())

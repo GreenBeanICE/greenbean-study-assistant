@@ -1,5 +1,7 @@
 ﻿# 聊天 Agent 占位文件，后续用于编排继续追问和对话任务。
 
+import os
+
 from openai import OpenAI
 
 from app.agents.classification_agent import (
@@ -14,10 +16,13 @@ class ChatAgent:
         """
         初始化聊天 Agent 及其所需的依赖。
         """
-        # 初始化 DeepSeek 客户端
-        self.client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
-        self.model = "deepseek-chat"
-        # 引入路由 Agent，用于在回答前先判断用户的提问意图
+        # 从环境变量读取网址，如果不填，默认使用 DeepSeek 的网址
+        base_url = os.getenv("API_BASE_URL", "https://api.deepseek.com")
+
+        # 初始化 OpenAI 客户端，不再写死 URL
+        self.client = OpenAI(api_key=api_key, base_url=base_url)
+
+        self.model = os.getenv("API_MODEL", "deepseek-chat")
         self.router = RouterAgent(api_key=api_key)
 
     async def generate_response(self, request: ChatRequest) -> ChatResponse:
