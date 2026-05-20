@@ -79,3 +79,6 @@ src-tauri/gen/schemas/
 tmp/
 temp/
 *.tmp
+
+# Codex local UI assets
+.codex-pets/
