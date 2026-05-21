@@ -8,9 +8,9 @@ from app.entities import (
     AnalysisResult,
     ChatMessage,
     ChatSession,
+    Chunk,
     DocumentRecord,
     DocumentUnit,
-    EmbeddingVector,
     Section,
     SectionUnitLink,
     Workspace,
@@ -137,33 +137,41 @@ def test_section_unit_link_documents_persistence_uniqueness_rules():
     )
 
 
-def test_embedding_vector_keeps_logical_float_vector():
-    vector = EmbeddingVector(
+def test_chunk_traces_to_source_document_unit_and_embedding_metadata():
+    chunk = Chunk(
         document_unit_id="unit_1",
+        sequence_index=0,
+        text_content="This chunk is used for vector RAG.",
+        start_char=0,
+        end_char=34,
+        token_count=8,
         embedding_model="local-embedding-model",
-        vector_dimension=3,
-        vector=[0.1, 0.2, 0.3],
+        embedding_dimension=768,
     )
 
-    assert vector.vector == [0.1, 0.2, 0.3]
+    assert_uuid(chunk.id)
+    assert chunk.document_unit_id == "unit_1"
+    assert chunk.embedding_model == "local-embedding-model"
+    assert chunk.embedding_dimension == 768
 
 
-def test_embedding_vector_rejects_vector_dimension_mismatch():
-    with pytest.raises(ValidationError, match="向量长度必须等于 vector_dimension"):
-        EmbeddingVector(
+def test_chunk_rejects_empty_text_content():
+    with pytest.raises(ValidationError, match="text_content must not be empty"):
+        Chunk(
             document_unit_id="unit_1",
-            embedding_model="local-embedding-model",
-            vector_dimension=3,
-            vector=[0.1, 0.2],
+            sequence_index=0,
+            text_content="   ",
         )
 
 
-def test_embedding_vector_requires_positive_dimension():
-    with pytest.raises(ValidationError):
-        EmbeddingVector(
+def test_chunk_rejects_invalid_char_range():
+    with pytest.raises(ValidationError, match="end_char must be greater than or equal to start_char"):
+        Chunk(
             document_unit_id="unit_1",
-            embedding_model="local-embedding-model",
-            vector_dimension=0,
+            sequence_index=0,
+            text_content="A valid chunk.",
+            start_char=10,
+            end_char=5,
         )
 
 
