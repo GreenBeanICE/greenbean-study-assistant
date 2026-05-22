@@ -30,7 +30,7 @@ jobs:
         run: npm run test:frontend:coverage
 
       - name: Upload frontend coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-coverage
           path: coverage/frontend/lcov.info
@@ -65,7 +65,7 @@ jobs:
           python -m pytest --cov=app --cov-report=term-missing --cov-report=xml:../coverage/python/coverage.xml
 
       - name: Upload Python coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: python-coverage
           path: coverage/python/coverage.xml
@@ -102,7 +102,7 @@ jobs:
           cargo llvm-cov --lcov --output-path ../coverage/rust/lcov.info
 
       - name: Upload Rust coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rust-coverage
           path: coverage/rust/lcov.info
