@@ -1,6 +1,6 @@
 ﻿# 聊天服务测试占位文件，后续用于验证对话和上下文逻辑。
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from app.agents.chat_agent import ChatAgent
@@ -21,7 +21,7 @@ async def test_chat_agent_with_mock(MockRouterAgent, MockOpenAI):
     mock_router_decision = MagicMock()
     mock_router_decision.route = "CONCEPT"
     # 注意：如果 route_question 是同步函数，这里用 MagicMock 即可；如果是异步函数，则需要使用 AsyncMock
-    mock_router_instance.route_question.return_value = mock_router_decision
+    mock_router_instance.route_question = AsyncMock(return_value=mock_router_decision)
 
     # 2. 配置 OpenAI 客户端替身的假行为（大模型的“替身演员”）
     mock_openai_instance = MockOpenAI.return_value
@@ -39,7 +39,7 @@ async def test_chat_agent_with_mock(MockRouterAgent, MockOpenAI):
     # 将拼装好的假数据交还给大模型的 create() 方法
     mock_openai_instance.chat.completions.create.return_value = mock_completion
 
-    # 3. 使用假的 API Key 初始化 Agent（这一步绝对安全，没有任何密钥泄漏的风险）
+    # 3. 使用假的 API Key 初始化 Agent
     fake_api_key = "sk-fake-key-for-testing-only"
     agent = ChatAgent(api_key=fake_api_key)
 
