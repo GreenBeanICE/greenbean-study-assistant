@@ -82,3 +82,4 @@ temp/
 
 # Codex local UI assets
 .codex-pets/
+backend-python/api_key.json
