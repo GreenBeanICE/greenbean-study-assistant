@@ -4,6 +4,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 from app.parsers.pdf_parser import PDFParser
 
+@pytest.mark.us25
 def test_pdf_parser_extract_text_success():
     """
     测试 PDFParser 是否能正确循环读取页码并统计字符数

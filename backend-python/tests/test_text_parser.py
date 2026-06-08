@@ -8,6 +8,7 @@ from app.parsers.text_parser import TextParser
 class TestTextParser:
     """TextParser 解析器测试"""
 
+    @pytest.mark.us25
     def test_parse_utf8_text(self):
         """测试解析 UTF-8 编码的纯文本"""
         parser = TextParser()
@@ -22,6 +23,7 @@ class TestTextParser:
         assert result[0]["metadata"]["is_markdown"] is False
         assert result[0]["metadata"]["paragraphs_count"] == 2
 
+    @pytest.mark.us25
     def test_parse_gbk_text(self):
         """测试解析 GBK 编码的中文文本"""
         parser = TextParser()
@@ -32,6 +34,7 @@ class TestTextParser:
         assert "你好世界" in result[0]["content"]
         assert result[0]["metadata"]["source_type"] == "text"
 
+    @pytest.mark.us25
     def test_parse_markdown(self):
         """测试解析 Markdown 文件"""
         parser = TextParser()
@@ -54,6 +57,7 @@ print("hello")
         assert result[0]["metadata"]["headings"][0] == {"level": 1, "text": "第一章"}
         assert result[0]["metadata"]["headings"][1] == {"level": 2, "text": "1.1 背景"}
 
+    @pytest.mark.us25
     def test_parse_empty_text(self):
         """测试解析空文本"""
         parser = TextParser()
@@ -64,6 +68,7 @@ print("hello")
         assert result[0]["char_count"] == 0
         assert result[0]["metadata"]["paragraphs_count"] == 0
 
+    @pytest.mark.us25
     def test_parse_single_line(self):
         """测试解析单行文本"""
         parser = TextParser()

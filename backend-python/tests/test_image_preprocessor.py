@@ -15,6 +15,7 @@ def _create_test_image(mode: str = "RGB", size: tuple = (200, 100), color: tuple
 class TestImagePreprocessor:
     """ImagePreprocessor 全面测试"""
 
+    @pytest.mark.us25
     def test_preprocess_default(self):
         """测试默认预处理参数"""
         img = _create_test_image()
@@ -22,12 +23,14 @@ class TestImagePreprocessor:
         assert result.mode == "L"  # 默认灰度化
         assert result.size == (200, 100)
 
+    @pytest.mark.us25
     def test_preprocess_no_grayscale(self):
         """测试关闭灰度化"""
         img = _create_test_image()
         result = ImagePreprocessor.preprocess(img, apply_grayscale=False)
         assert result.mode == "RGB"
 
+    @pytest.mark.us25
     def test_preprocess_with_binarization(self):
         """测试二值化"""
         img = _create_test_image(mode="L", color=150)
@@ -40,6 +43,7 @@ class TestImagePreprocessor:
         )
         assert result.mode == "L"
 
+    @pytest.mark.us25
     def test_preprocess_with_denoise(self):
         """测试降噪"""
         img = _create_test_image()
@@ -52,6 +56,7 @@ class TestImagePreprocessor:
         )
         assert result.mode == "L"
 
+    @pytest.mark.us25
     def test_preprocess_with_contrast(self):
         """测试对比度增强"""
         img = _create_test_image(mode="L", color=128)
@@ -64,6 +69,7 @@ class TestImagePreprocessor:
         )
         assert result.mode == "L"
 
+    @pytest.mark.us25
     def test_preprocess_with_deskew(self):
         """测试倾斜校正（目前为占位，返回原图）"""
         img = _create_test_image()
@@ -78,12 +84,14 @@ class TestImagePreprocessor:
         # 倾斜校正目前是占位，返回原图
         assert result.size == (200, 100)
 
+    @pytest.mark.us25
     def test_preprocess_rgba_image(self):
         """测试 RGBA 模式图片"""
         img = _create_test_image(mode="RGBA", color=(200, 200, 200, 255))
         result = ImagePreprocessor.preprocess(img)
         assert result.mode == "L"
 
+    @pytest.mark.us25
     def test_preprocess_large_image_resize(self):
         """测试超大图片自动缩放"""
         img = _create_test_image(size=(5000, 3000))
@@ -92,6 +100,7 @@ class TestImagePreprocessor:
         assert result.size[0] <= ImagePreprocessor.MAX_WIDTH
         assert result.size[1] <= ImagePreprocessor.MAX_HEIGHT
 
+    @pytest.mark.us25
     def test_preprocess_very_large_image(self):
         """测试极大图片缩放"""
         img = _create_test_image(size=(8000, 6000))
@@ -99,12 +108,14 @@ class TestImagePreprocessor:
         assert result.size[0] <= ImagePreprocessor.MAX_WIDTH
         assert result.size[1] <= ImagePreprocessor.MAX_HEIGHT
 
+    @pytest.mark.us25
     def test_preprocess_small_image_no_resize(self):
         """测试小图片不缩放"""
         img = _create_test_image(size=(100, 50))
         result = ImagePreprocessor.preprocess(img)
         assert result.size == (100, 50)
 
+    @pytest.mark.us25
     def test_binarize_dark_image(self):
         """测试暗色图片二值化"""
         img = _create_test_image(mode="L", color=50)
@@ -117,6 +128,7 @@ class TestImagePreprocessor:
         )
         assert result.mode == "L"
 
+    @pytest.mark.us25
     def test_binarize_bright_image(self):
         """测试亮色图片二值化"""
         img = _create_test_image(mode="L", color=200)
@@ -129,6 +141,7 @@ class TestImagePreprocessor:
         )
         assert result.mode == "L"
 
+    @pytest.mark.us25
     def test_get_preprocessing_steps_all(self):
         """测试 get_preprocessing_steps 全部开启"""
         steps = ImagePreprocessor.get_preprocessing_steps({
@@ -144,6 +157,7 @@ class TestImagePreprocessor:
         assert "contrast_enhancement" in steps
         assert "deskew" in steps
 
+    @pytest.mark.us25
     def test_get_preprocessing_steps_none(self):
         """测试 get_preprocessing_steps 全部关闭"""
         steps = ImagePreprocessor.get_preprocessing_steps({
@@ -155,6 +169,7 @@ class TestImagePreprocessor:
         })
         assert steps == []
 
+    @pytest.mark.us25
     def test_get_preprocessing_steps_partial(self):
         """测试 get_preprocessing_steps 部分开启"""
         steps = ImagePreprocessor.get_preprocessing_steps({
@@ -166,6 +181,7 @@ class TestImagePreprocessor:
         })
         assert steps == ["grayscale", "denoise"]
 
+    @pytest.mark.us25
     def test_preprocess_preserves_aspect_ratio(self):
         """测试缩放保持宽高比"""
         img = _create_test_image(size=(8000, 4000))

@@ -19,6 +19,7 @@ def _create_test_file(content: bytes, filename: str, content_type: str = "applic
     return {"file": (filename, content, content_type)}
 
 
+@pytest.mark.us25
 def test_get_ingest_service():
     """测试 get_ingest_service 依赖注入函数（覆盖第 12 行）"""
     service = get_ingest_service()
@@ -42,6 +43,7 @@ class TestDocumentUpload:
         yield
         app.dependency_overrides.clear()
 
+    @pytest.mark.us25
     def test_upload_pdf_success(self):
         """测试上传 PDF 成功"""
         self.mock_service.ingest_document = AsyncMock(return_value={
@@ -60,6 +62,7 @@ class TestDocumentUpload:
         assert data["message"] == "文件上传并解析成功"
         assert data["data"]["filename"] == "test.pdf"
 
+    @pytest.mark.us25
     def test_upload_docx_success(self):
         """测试上传 Word 文档成功"""
         self.mock_service.ingest_document = AsyncMock(return_value={
@@ -76,6 +79,7 @@ class TestDocumentUpload:
         data = response.json()
         assert data["data"]["filename"] == "notes.docx"
 
+    @pytest.mark.us25
     def test_upload_image_success(self):
         """测试上传图片成功"""
         self.mock_service.ingest_document = AsyncMock(return_value={
@@ -90,6 +94,7 @@ class TestDocumentUpload:
         
         assert response.status_code == 200
 
+    @pytest.mark.us25
     def test_upload_unsupported_format(self):
         """测试上传不支持的文件格式"""
         files = _create_test_file(b"content", "file.ppt")
@@ -99,6 +104,7 @@ class TestDocumentUpload:
         data = response.json()
         assert "暂不支持" in data["detail"]
 
+    @pytest.mark.us25
     def test_upload_empty_filename(self):
         """测试上传文件名为空 - FastAPI 校验返回 422"""
         files = {"file": ("", b"content", "application/octet-stream")}
@@ -107,6 +113,7 @@ class TestDocumentUpload:
         # FastAPI 对空文件名校验返回 422 Unprocessable Entity
         assert response.status_code == 422
 
+    @pytest.mark.us25
     def test_upload_filename_none(self):
         """测试文件名为 None 时触发控制器内的空文件名检查"""
         from fastapi import UploadFile
@@ -125,6 +132,7 @@ class TestDocumentUpload:
         
         asyncio.run(_run())
 
+    @pytest.mark.us25
     def test_upload_empty_content(self):
         """测试上传空文件"""
         files = _create_test_file(b"", "empty.pdf")
@@ -134,6 +142,7 @@ class TestDocumentUpload:
         data = response.json()
         assert "文件内容为空" in data["detail"]
 
+    @pytest.mark.us25
     def test_upload_value_error(self):
         """测试 Service 抛出 ValueError"""
         self.mock_service.ingest_document = AsyncMock(side_effect=ValueError("业务异常"))
@@ -144,6 +153,7 @@ class TestDocumentUpload:
         assert response.status_code == 400
         assert "业务异常" in response.json()["detail"]
 
+    @pytest.mark.us25
     def test_upload_internal_error(self):
         """测试 Service 抛出未知异常"""
         self.mock_service.ingest_document = AsyncMock(side_effect=Exception("未知错误"))
@@ -154,6 +164,7 @@ class TestDocumentUpload:
         assert response.status_code == 500
         assert "文件处理失败" in response.json()["detail"]
 
+    @pytest.mark.us25
     def test_upload_jpg_supported(self):
         """测试上传 JPG 图片"""
         self.mock_service.ingest_document = AsyncMock(return_value={
@@ -168,6 +179,7 @@ class TestDocumentUpload:
         
         assert response.status_code == 200
 
+    @pytest.mark.us25
     def test_upload_jpeg_supported(self):
         """测试上传 JPEG 图片"""
         self.mock_service.ingest_document = AsyncMock(return_value={
@@ -182,6 +194,7 @@ class TestDocumentUpload:
         
         assert response.status_code == 200
 
+    @pytest.mark.us25
     def test_upload_webp_supported(self):
         """测试上传 WEBP 图片"""
         self.mock_service.ingest_document = AsyncMock(return_value={

@@ -20,6 +20,7 @@ def _create_test_image(format: str = "PNG", size: tuple = (100, 50)) -> bytes:
     return buf.getvalue()
 
 
+@pytest.mark.us25
 def test_ocr_parser_png():
     """
     测试 ImageOCRParser 解析 PNG 图片。
@@ -42,6 +43,7 @@ def test_ocr_parser_png():
         assert result[0]["metadata"]["ocr_lang"] == "chi_sim+eng+fra"
 
 
+@pytest.mark.us25
 def test_ocr_parser_jpg():
     """
     测试 ImageOCRParser 解析 JPG 图片。
@@ -57,6 +59,7 @@ def test_ocr_parser_jpg():
         assert "JPG test content" in result[0]["content"]
 
 
+@pytest.mark.us25
 def test_ocr_parser_webp():
     """
     测试 ImageOCRParser 解析 WEBP 图片。
@@ -72,6 +75,7 @@ def test_ocr_parser_webp():
         assert "WEBP test content" in result[0]["content"]
 
 
+@pytest.mark.us25
 def test_ocr_parser_image_metadata():
     """
     测试 ImageOCRParser 返回的图片元数据是否正确。
@@ -90,6 +94,7 @@ def test_ocr_parser_image_metadata():
         assert "contrast_enhancement" in metadata["preprocessing_applied"]
 
 
+@pytest.mark.us25
 def test_ocr_parser_ocr_failure():
     """
     测试 OCR 失败时的降级处理。
@@ -106,6 +111,7 @@ def test_ocr_parser_ocr_failure():
         assert "Tesseract not found" in result[0]["metadata"]["ocr_error"]
 
 
+@pytest.mark.us25
 def test_ocr_parser_invalid_image():
     """
     测试传入无效图片数据时的错误处理。
@@ -116,6 +122,7 @@ def test_ocr_parser_invalid_image():
         parser.parse(b"this is not an image file")
 
 
+@pytest.mark.us25
 def test_ocr_parser_custom_tesseract_path():
     """
     测试自定义 Tesseract 路径配置。
@@ -131,6 +138,7 @@ def test_ocr_parser_custom_tesseract_path():
             assert result[0]["char_count"] > 0
 
 
+@pytest.mark.us25
 def test_ocr_parser_get_tesseract_cache():
     """
     测试 _get_tesseract 的缓存分支（第 46 行）。

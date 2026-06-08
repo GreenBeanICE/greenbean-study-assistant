@@ -35,6 +35,7 @@ def create_test_pptx(slides_count: int = 2) -> bytes:
 class TestPptParser:
     """PptParser 解析器测试"""
 
+    @pytest.mark.us25
     def test_parse_pptx(self):
         """测试解析 .pptx 文件"""
         parser = PptParser()
@@ -49,6 +50,7 @@ class TestPptParser:
         assert result[0]["metadata"]["source_type"] == "ppt"
         assert result[1]["metadata"]["source_type"] == "ppt"
 
+    @pytest.mark.us25
     def test_parse_single_slide(self):
         """测试解析单页 PPT"""
         parser = PptParser()
@@ -60,6 +62,7 @@ class TestPptParser:
         assert result[0]["char_count"] > 0
         assert len(result[0]["metadata"]["headings"]) > 0
 
+    @pytest.mark.us25
     def test_parse_empty_pptx(self):
         """测试解析空 PPT（无幻灯片）"""
         parser = PptParser()
@@ -71,6 +74,7 @@ class TestPptParser:
         
         assert len(result) == 0
 
+    @pytest.mark.us25
     def test_parse_metadata_structure(self):
         """测试解析结果的元数据结构"""
         parser = PptParser()
@@ -84,6 +88,7 @@ class TestPptParser:
         assert "paragraphs_count" in metadata
         assert metadata["source_type"] == "ppt"
 
+    @pytest.mark.us25
     def test_parse_shape_without_text_frame(self):
         """测试包含无文本框架形状的 PPT（覆盖第 34 行 continue）"""
         import io
@@ -139,6 +144,7 @@ class TestPptParser:
             assert len(result) == 1
             assert "有效文本" in result[0]["content"]
 
+    @pytest.mark.us25
     def test_parse_empty_paragraph_skipped(self):
         """测试跳过空文本段落（覆盖第 39 行 continue）"""
         import io

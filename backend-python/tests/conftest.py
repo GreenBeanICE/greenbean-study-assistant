@@ -18,3 +18,6 @@ if str(BACKEND_ROOT) not in sys.path:
 def pytest_configure(config):
     if getattr(config.option, "basetemp", None) is None:
         config.option.basetemp = str(TEST_TEMP_ROOT)
+    
+    # 注册 US 标记
+    config.addinivalue_line("markers", "us25: 课程文档上传与 PageIndex 结构化解析")

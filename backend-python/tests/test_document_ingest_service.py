@@ -7,6 +7,7 @@ from app.services.document_ingest_service import DocumentIngestService
 
 
 @pytest.mark.asyncio
+@pytest.mark.us25
 async def test_ingest_pdf_document():
     """测试摄取 PDF 文档"""
     service = DocumentIngestService()
@@ -31,6 +32,7 @@ async def test_ingest_pdf_document():
 
 
 @pytest.mark.asyncio
+@pytest.mark.us25
 async def test_ingest_word_document():
     """测试摄取 Word 文档"""
     service = DocumentIngestService()
@@ -53,6 +55,7 @@ async def test_ingest_word_document():
 
 
 @pytest.mark.asyncio
+@pytest.mark.us25
 async def test_ingest_image_document():
     """测试摄取图片文档"""
     service = DocumentIngestService()
@@ -75,6 +78,7 @@ async def test_ingest_image_document():
 
 
 @pytest.mark.asyncio
+@pytest.mark.us25
 async def test_ingest_multiple_pages():
     """测试多页文档"""
     service = DocumentIngestService()
@@ -106,6 +110,7 @@ async def test_ingest_multiple_pages():
 
 
 @pytest.mark.asyncio
+@pytest.mark.us25
 async def test_ingest_unsupported_format():
     """测试不支持的文件格式"""
     service = DocumentIngestService()
@@ -118,6 +123,7 @@ async def test_ingest_unsupported_format():
 
 
 @pytest.mark.asyncio
+@pytest.mark.us25
 async def test_ingest_empty_content():
     """测试空内容文档"""
     service = DocumentIngestService()
@@ -139,6 +145,7 @@ async def test_ingest_empty_content():
 
 
 @pytest.mark.asyncio
+@pytest.mark.us25
 async def test_ingest_no_metadata():
     """测试解析结果没有 metadata 的情况"""
     service = DocumentIngestService()

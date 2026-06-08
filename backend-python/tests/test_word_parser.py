@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch, PropertyMock
 from app.parsers.word_parser import WordParser
 
 
+@pytest.mark.us25
 def test_word_parser_extract_paragraphs():
     """
     测试 WordParser 是否能正确提取段落文本。
@@ -42,6 +43,7 @@ def test_word_parser_extract_paragraphs():
         assert result[0]["metadata"]["tables_count"] == 0
 
 
+@pytest.mark.us25
 def test_word_parser_extract_tables():
     """
     测试 WordParser 是否能正确提取表格文本。
@@ -85,6 +87,7 @@ def test_word_parser_extract_tables():
         assert result[0]["metadata"]["tables_count"] == 1
 
 
+@pytest.mark.us25
 def test_word_parser_headings():
     """
     测试 WordParser 是否能正确识别标题层级。
@@ -123,6 +126,7 @@ def test_word_parser_headings():
         assert headings[1]["text"] == "1.1 研究背景"
 
 
+@pytest.mark.us25
 def test_word_parser_empty_document():
     """
     测试 WordParser 处理空文档的边界情况。
@@ -147,6 +151,7 @@ def test_word_parser_empty_document():
         assert result[0]["metadata"]["tables_count"] == 0
 
 
+@pytest.mark.us25
 def test_word_parser_skip_empty_paragraph():
     """
     测试 WordParser 跳过空文本段落（覆盖第 32 行 continue）。
