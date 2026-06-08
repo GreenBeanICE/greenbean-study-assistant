@@ -15,3 +15,17 @@ body {
 
   -webkit-font-smoothing: antialiased;
 }
+
+/* 隐藏滚动条但保持可滚动 */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* 平滑滚动 */
+html {
+  scroll-behavior: smooth;
+}
