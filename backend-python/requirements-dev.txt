@@ -7,3 +7,4 @@ python-pptx
 pytesseract
 Pillow
 httpx
+python-multipart
