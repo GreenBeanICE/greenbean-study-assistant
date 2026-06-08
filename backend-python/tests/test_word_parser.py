@@ -145,3 +145,34 @@ def test_word_parser_empty_document():
         assert result[0]["char_count"] == 0
         assert result[0]["metadata"]["paragraphs_count"] == 0
         assert result[0]["metadata"]["tables_count"] == 0
+
+
+def test_word_parser_skip_empty_paragraph():
+    """
+    测试 WordParser 跳过空文本段落（覆盖第 32 行 continue）。
+    """
+    parser = WordParser()
+    
+    with patch("app.parsers.word_parser.Document") as mock_document:
+        mock_doc = MagicMock()
+        mock_document.return_value = mock_doc
+        
+        # 模拟包含空文本的段落
+        mock_para_empty = MagicMock()
+        mock_para_empty.text = "   "  # 空白文本，应被跳过
+        mock_para_empty.style.name = "Normal"
+        
+        mock_para_valid = MagicMock()
+        mock_para_valid.text = "有效内容"
+        mock_para_valid.style.name = "Normal"
+        
+        mock_doc.paragraphs = [mock_para_empty, mock_para_valid]
+        mock_doc.tables = []
+        
+        # 执行解析
+        result = parser.parse(b"fake docx binary stream")
+        
+        # 断言校验
+        assert len(result) == 1
+        assert "有效内容" in result[0]["content"]
+        assert result[0]["metadata"]["paragraphs_count"] == 1

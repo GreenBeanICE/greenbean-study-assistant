@@ -129,3 +129,19 @@ def test_ocr_parser_custom_tesseract_path():
             # 验证路径被设置
             assert parser._tesseract_cmd == r"C:\custom\tesseract.exe"
             assert result[0]["char_count"] > 0
+
+
+def test_ocr_parser_get_tesseract_cache():
+    """
+    测试 _get_tesseract 的缓存分支（第 46 行）。
+    第二次调用应直接返回缓存的 pytesseract 实例。
+    """
+    parser = ImageOCRParser()
+    # 第一次调用会导入并缓存
+    with patch("pytesseract.image_to_string", return_value="first call"):
+        parser.parse(_create_test_image("PNG"))
+    
+    # 第二次调用应走缓存分支（self._pytesseract is not None）
+    with patch("pytesseract.image_to_string", return_value="second call"):
+        result = parser.parse(_create_test_image("PNG"))
+        assert "second call" in result[0]["content"]

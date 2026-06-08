@@ -2,18 +2,27 @@
 文档接口控制器测试，覆盖 document_controller.py 全部逻辑。
 使用 FastAPI TestClient 模拟 HTTP 请求。
 """
+import asyncio
 import pytest
 from unittest.mock import MagicMock, patch, AsyncMock
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from io import BytesIO
 
 from app.main import app
 from app.api.document_controller import get_ingest_service
+from app.services.document_ingest_service import DocumentIngestService
 
 
 def _create_test_file(content: bytes, filename: str, content_type: str = "application/octet-stream"):
     """创建测试用 UploadFile 模拟数据 - 使用 (filename, content, content_type) 元组格式"""
     return {"file": (filename, content, content_type)}
+
+
+def test_get_ingest_service():
+    """测试 get_ingest_service 依赖注入函数（覆盖第 12 行）"""
+    service = get_ingest_service()
+    assert isinstance(service, DocumentIngestService)
 
 
 class TestDocumentUpload:
@@ -97,6 +106,24 @@ class TestDocumentUpload:
         
         # FastAPI 对空文件名校验返回 422 Unprocessable Entity
         assert response.status_code == 422
+
+    def test_upload_filename_none(self):
+        """测试文件名为 None 时触发控制器内的空文件名检查"""
+        from fastapi import UploadFile
+        from app.api.document_controller import upload_document
+        
+        async def _run():
+            mock_file = MagicMock(spec=UploadFile)
+            mock_file.filename = None
+            mock_file.read = AsyncMock(return_value=b"content")
+            
+            with pytest.raises(HTTPException) as exc_info:
+                await upload_document(file=mock_file, ingest_service=self.mock_service)
+            
+            assert exc_info.value.status_code == 400
+            assert "文件名不能为空" in exc_info.value.detail
+        
+        asyncio.run(_run())
 
     def test_upload_empty_content(self):
         """测试上传空文件"""

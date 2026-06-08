@@ -82,3 +82,16 @@ print("hello")
         
         assert result[0]["metadata"]["is_markdown"] is False
         assert result[0]["metadata"]["headings"] == []
+
+    def test_parse_latin1_fallback(self):
+        """测试 UTF-8 和 GBK 都解码失败时 fallback 到 latin-1（覆盖第 28-30 行）"""
+        parser = TextParser()
+        # 构造一个既不是有效 UTF-8 也不是有效 GBK 的字节序列
+        # 0xFF 0xFE 在 UTF-8 和 GBK 中都无效
+        invalid_bytes = b"\xff\xfe\xff\xfd"
+        result = parser.parse(invalid_bytes)
+        
+        assert len(result) == 1
+        # latin-1 解码不会失败，会保留原始字节
+        assert result[0]["char_count"] > 0
+        assert result[0]["metadata"]["source_type"] == "text"
