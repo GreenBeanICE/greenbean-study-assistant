@@ -2,6 +2,9 @@ from sqlalchemy import ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
+DOCUMENT_RECORD_ID_FOREIGN_KEY = "document_records.id"
+
+
 class Base(DeclarativeBase):
     pass
 
@@ -27,7 +30,10 @@ class DocumentUnitModel(Base):
     __table_args__ = (UniqueConstraint("document_id", "sequence_index"),)
 
     id: Mapped[str] = mapped_column(Text, primary_key=True)
-    document_id: Mapped[str] = mapped_column(ForeignKey("document_records.id"), nullable=False)
+    document_id: Mapped[str] = mapped_column(
+        ForeignKey(DOCUMENT_RECORD_ID_FOREIGN_KEY),
+        nullable=False,
+    )
     sequence_index: Mapped[int] = mapped_column(Integer, nullable=False)
     text_content: Mapped[str] = mapped_column(Text, nullable=False)
     page_number: Mapped[int | None] = mapped_column(Integer)
@@ -46,7 +52,10 @@ class SectionModel(Base):
     __tablename__ = "sections"
 
     id: Mapped[str] = mapped_column(Text, primary_key=True)
-    document_id: Mapped[str] = mapped_column(ForeignKey("document_records.id"), nullable=False)
+    document_id: Mapped[str] = mapped_column(
+        ForeignKey(DOCUMENT_RECORD_ID_FOREIGN_KEY),
+        nullable=False,
+    )
     parent_section_id: Mapped[str | None] = mapped_column(ForeignKey("sections.id"))
     title: Mapped[str] = mapped_column(Text, nullable=False)
     level: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -85,7 +94,10 @@ class AnalysisResultModel(Base):
     __tablename__ = "analysis_results"
 
     id: Mapped[str] = mapped_column(Text, primary_key=True)
-    document_id: Mapped[str] = mapped_column(ForeignKey("document_records.id"), nullable=False)
+    document_id: Mapped[str] = mapped_column(
+        ForeignKey(DOCUMENT_RECORD_ID_FOREIGN_KEY),
+        nullable=False,
+    )
     section_id: Mapped[str | None] = mapped_column(ForeignKey("sections.id"))
     analysis_type: Mapped[str] = mapped_column(Text, nullable=False)
     language: Mapped[str] = mapped_column(Text, nullable=False)
@@ -102,7 +114,9 @@ class ChatSessionModel(Base):
 
     id: Mapped[str] = mapped_column(Text, primary_key=True)
     workspace_id: Mapped[str] = mapped_column(Text, nullable=False)
-    document_id: Mapped[str | None] = mapped_column(ForeignKey("document_records.id"))
+    document_id: Mapped[str | None] = mapped_column(
+        ForeignKey(DOCUMENT_RECORD_ID_FOREIGN_KEY)
+    )
     title: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[str] = mapped_column(Text, nullable=False)
     updated_at: Mapped[str] = mapped_column(Text, nullable=False)

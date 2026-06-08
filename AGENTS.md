@@ -104,3 +104,9 @@ python -m pip install -r requirements-dev.txt
 - `src-tauri/Cargo.lock` 已被跟踪；作为桌面应用，继续保留锁文件。
 - 新增 Tauri command 时要同步更新 `invoke_handler`、必要的 DTO、权限能力和前端调用封装。
 - 新增 Python 实体时优先使用 Pydantic v2、UUID 字符串 ID、UTC 时间戳，并把跨字段约束写成模型校验。
+
+## SonarQube 高质量
+
+- 完成代码改动前检查 SonarQube 问题，不能只验证测试和覆盖率。
+- 避免重复字面量和重复代码；同一语义且会同步变化的内容应提取常量或共享实现，但不要过度抽象。
+- SonarQube 新增问题应在交付前修复；确需保留时说明理由。
