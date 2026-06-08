@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 
 SQLiteVecLoader = Callable[[sqlite3.Connection], None]
-SessionFactory = sessionmaker[Session]
+SessionFactory = Callable[[], Session]
 
 
 def create_database_engine(
