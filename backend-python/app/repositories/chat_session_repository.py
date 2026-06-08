@@ -1,54 +1,37 @@
-import sqlite3
+from sqlalchemy.orm import Session
 
+from app.db.models import ChatSessionModel
 from app.entities import ChatSession
 from app.repositories.sqlite_helpers import datetime_value
 
 
 class ChatSessionRepository:
-    def __init__(self, connection: sqlite3.Connection) -> None:
-        self.connection = connection
+    def __init__(self, session: Session) -> None:
+        self.session = session
 
     def save(self, session: ChatSession) -> ChatSession:
-        self.connection.execute(
-            """
-            INSERT INTO chat_sessions (
-                id, workspace_id, document_id, title, created_at, updated_at
+        model = self.session.get(ChatSessionModel, session.id)
+        if model is None:
+            model = ChatSessionModel(
+                id=session.id,
+                created_at=datetime_value(session.created_at),
             )
-            VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                workspace_id = excluded.workspace_id,
-                document_id = excluded.document_id,
-                title = excluded.title,
-                updated_at = excluded.updated_at
-            """,
-            (
-                session.id,
-                session.workspace_id,
-                session.document_id,
-                session.title,
-                datetime_value(session.created_at),
-                datetime_value(session.updated_at),
-            ),
-        )
-        self.connection.commit()
+            self.session.add(model)
+        model.workspace_id = session.workspace_id
+        model.document_id = session.document_id
+        model.title = session.title
+        model.updated_at = datetime_value(session.updated_at)
         return session
 
     def get_by_id(self, session_id: str) -> ChatSession | None:
-        row = self.connection.execute(
-            """
-            SELECT id, workspace_id, document_id, title, created_at, updated_at
-            FROM chat_sessions
-            WHERE id = ?
-            """,
-            (session_id,),
-        ).fetchone()
-        if row is None:
+        model = self.session.get(ChatSessionModel, session_id)
+        if model is None:
             return None
         return ChatSession(
-            id=row[0],
-            workspace_id=row[1],
-            document_id=row[2],
-            title=row[3],
-            created_at=row[4],
-            updated_at=row[5],
+            id=model.id,
+            workspace_id=model.workspace_id,
+            document_id=model.document_id,
+            title=model.title,
+            created_at=model.created_at,
+            updated_at=model.updated_at,
         )

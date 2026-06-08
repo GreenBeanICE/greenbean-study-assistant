@@ -1,3 +1,4 @@
+from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
 import sqlite3
@@ -38,11 +39,12 @@ def initialize_database(
     database_path = data_path / database_name
 
     try:
-        with sqlite3.connect(database_path) as connection:
+        with closing(sqlite3.connect(database_path)) as connection:
             connection.execute("PRAGMA foreign_keys = ON")
             sqlite_vec_loader(connection)
             sqlite_vec_version = _check_sqlite_vec(connection)
             _create_schema(connection, embedding_dimension)
+            connection.commit()
     except SQLiteVecInitializationError:
         raise
     except Exception as exc:

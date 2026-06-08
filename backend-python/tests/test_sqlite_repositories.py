@@ -3,6 +3,7 @@ import sqlite3
 import pytest
 
 from app.db.init_db import initialize_database
+from app.db.orm import create_database_engine, create_session_factory
 from app.entities import (
     AnalysisResult,
     ChatMessage,
@@ -32,13 +33,18 @@ def load_test_sqlite_vec(connection: sqlite3.Connection) -> None:
 
 
 @pytest.fixture
-def initialized_database_path(tmp_path):
+def session_factory(tmp_path):
     result = initialize_database(
         data_dir=tmp_path / "data",
         sqlite_vec_loader=load_test_sqlite_vec,
         embedding_dimension=8,
     )
-    return result.database_path
+    engine = create_database_engine(
+        result.database_path,
+        sqlite_vec_loader=load_test_sqlite_vec,
+    )
+    yield create_session_factory(engine)
+    engine.dispose()
 
 
 def make_core_learning_data():
@@ -96,45 +102,47 @@ def make_core_learning_data():
     return document, unit, section, chunk, analysis_result, chat_session, chat_message
 
 
-def test_repositories_persist_core_learning_data_after_reconnect(initialized_database_path):
+def test_repositories_persist_core_learning_data_after_reconnect(session_factory):
     document, unit, section, chunk, analysis_result, chat_session, chat_message = make_core_learning_data()
 
-    with sqlite3.connect(initialized_database_path) as connection:
-        DocumentRepository(connection).save(document)
-        DocumentUnitRepository(connection).save(unit)
-        SectionRepository(connection).save(section)
-        ChunkRepository(connection).save(chunk)
-        AnalysisResultRepository(connection).save(analysis_result)
-        ChatSessionRepository(connection).save(chat_session)
-        ChatMessageRepository(connection).save(chat_message)
+    with session_factory() as session:
+        DocumentRepository(session).save(document)
+        DocumentUnitRepository(session).save(unit)
+        SectionRepository(session).save(section)
+        ChunkRepository(session).save(chunk)
+        AnalysisResultRepository(session).save(analysis_result)
+        ChatSessionRepository(session).save(chat_session)
+        ChatMessageRepository(session).save(chat_message)
+        session.commit()
 
-    with sqlite3.connect(initialized_database_path) as connection:
-        assert DocumentRepository(connection).get_by_id(document.id).title == "Course Deck"
-        assert DocumentUnitRepository(connection).get_by_id(unit.id).text_content == unit.text_content
-        assert SectionRepository(connection).get_by_id(section.id).title == "Course objectives"
-        assert ChunkRepository(connection).get_by_id(chunk.id).document_unit_id == unit.id
-        assert AnalysisResultRepository(connection).get_by_id(analysis_result.id).section_id == section.id
-        assert ChatSessionRepository(connection).get_by_id(chat_session.id).document_id == document.id
-        assert ChatMessageRepository(connection).get_by_id(chat_message.id).session_id == chat_session.id
+    with session_factory() as session:
+        assert DocumentRepository(session).get_by_id(document.id).title == "Course Deck"
+        assert DocumentUnitRepository(session).get_by_id(unit.id).text_content == unit.text_content
+        assert SectionRepository(session).get_by_id(section.id).title == "Course objectives"
+        assert ChunkRepository(session).get_by_id(chunk.id).document_unit_id == unit.id
+        assert AnalysisResultRepository(session).get_by_id(analysis_result.id).section_id == section.id
+        assert ChatSessionRepository(session).get_by_id(chat_session.id).document_id == document.id
+        assert ChatMessageRepository(session).get_by_id(chat_message.id).session_id == chat_session.id
 
 
-def test_embedding_repository_saves_chunk_embedding_and_traces_to_document_unit(initialized_database_path):
+def test_embedding_repository_saves_chunk_embedding_and_traces_to_document_unit(session_factory):
     document, unit, _, chunk, *_ = make_core_learning_data()
 
-    with sqlite3.connect(initialized_database_path) as connection:
-        DocumentRepository(connection).save(document)
-        DocumentUnitRepository(connection).save(unit)
-        ChunkRepository(connection).save(chunk)
+    with session_factory() as session:
+        DocumentRepository(session).save(document)
+        DocumentUnitRepository(session).save(unit)
+        ChunkRepository(session).save(chunk)
 
-        embedding = EmbeddingRepository(connection, embedding_dimension=8).save_for_chunk(
+        embedding = EmbeddingRepository(session, embedding_dimension=8).save_for_chunk(
             chunk_id=chunk.id,
             embedding_model="test-embedding-model",
             vector=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8],
         )
+        session.commit()
 
-    with sqlite3.connect(initialized_database_path) as connection:
-        persisted = EmbeddingRepository(connection, embedding_dimension=8).get_by_chunk_id(chunk.id)
-        persisted_chunk = ChunkRepository(connection).get_by_id(persisted.chunk_id)
+    with session_factory() as session:
+        persisted = EmbeddingRepository(session, embedding_dimension=8).get_by_chunk_id(chunk.id)
+        persisted_chunk = ChunkRepository(session).get_by_id(persisted.chunk_id)
 
     assert embedding.chunk_id == chunk.id
     assert persisted.chunk_id == chunk.id
@@ -143,26 +151,26 @@ def test_embedding_repository_saves_chunk_embedding_and_traces_to_document_unit(
     assert persisted_chunk.document_unit_id == unit.id
 
 
-def test_embedding_repository_rejects_dimension_mismatch(initialized_database_path):
+def test_embedding_repository_rejects_dimension_mismatch(session_factory):
     document, unit, _, chunk, *_ = make_core_learning_data()
 
-    with sqlite3.connect(initialized_database_path) as connection:
-        DocumentRepository(connection).save(document)
-        DocumentUnitRepository(connection).save(unit)
-        ChunkRepository(connection).save(chunk)
+    with session_factory() as session:
+        DocumentRepository(session).save(document)
+        DocumentUnitRepository(session).save(unit)
+        ChunkRepository(session).save(chunk)
 
         with pytest.raises(EmbeddingDimensionError, match="dimension"):
-            EmbeddingRepository(connection, embedding_dimension=8).save_for_chunk(
+            EmbeddingRepository(session, embedding_dimension=8).save_for_chunk(
                 chunk_id=chunk.id,
                 embedding_model="test-embedding-model",
                 vector=[0.1, 0.2],
             )
 
 
-def test_embedding_repository_rejects_missing_chunk(initialized_database_path):
-    with sqlite3.connect(initialized_database_path) as connection:
+def test_embedding_repository_rejects_missing_chunk(session_factory):
+    with session_factory() as session:
         with pytest.raises(MissingChunkError, match="missing-chunk"):
-            EmbeddingRepository(connection, embedding_dimension=8).save_for_chunk(
+            EmbeddingRepository(session, embedding_dimension=8).save_for_chunk(
                 chunk_id="missing-chunk",
                 embedding_model="test-embedding-model",
                 vector=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8],

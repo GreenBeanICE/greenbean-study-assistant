@@ -1,11 +1,27 @@
 const { spawnSync } = require("node:child_process");
+const { existsSync } = require("node:fs");
+const path = require("node:path");
 
 const args = ["-m", "pytest", ...process.argv.slice(2)];
+const virtualEnvPython = path.resolve(
+  process.cwd(),
+  process.platform === "win32"
+    ? ".venv/Scripts/python.exe"
+    : ".venv/bin/python",
+);
 const candidates = process.env.PYTHON
   ? [process.env.PYTHON]
   : process.platform === "win32"
-    ? ["py", "python"]
-    : ["python", "python3"];
+    ? [
+        ...(existsSync(virtualEnvPython) ? [virtualEnvPython] : []),
+        "python",
+        "py",
+      ]
+    : [
+        ...(existsSync(virtualEnvPython) ? [virtualEnvPython] : []),
+        "python",
+        "python3",
+      ];
 
 let lastResult;
 

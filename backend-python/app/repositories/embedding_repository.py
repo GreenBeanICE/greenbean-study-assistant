@@ -1,8 +1,12 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
-import sqlite3
 from uuid import uuid4
 
+from sqlalchemy import select, update
+from sqlalchemy.dialects.sqlite import insert
+from sqlalchemy.orm import Session
+
+from app.db.models import ChunkModel, EmbeddingVectorModel
 from app.repositories.sqlite_helpers import datetime_value, json_array, json_value
 
 
@@ -25,8 +29,8 @@ class ChunkEmbedding:
 
 
 class EmbeddingRepository:
-    def __init__(self, connection: sqlite3.Connection, *, embedding_dimension: int) -> None:
-        self.connection = connection
+    def __init__(self, session: Session, *, embedding_dimension: int) -> None:
+        self.session = session
         self.embedding_dimension = embedding_dimension
 
     def save_for_chunk(
@@ -40,6 +44,7 @@ class EmbeddingRepository:
             raise EmbeddingDimensionError(
                 f"embedding vector dimension must be {self.embedding_dimension}, got {len(vector)}"
             )
+        self.session.flush()
         if not self._chunk_exists(chunk_id):
             raise MissingChunkError(f"Chunk does not exist: {chunk_id}")
 
@@ -51,52 +56,48 @@ class EmbeddingRepository:
             vector=vector,
             created_at=datetime.now(timezone.utc),
         )
-        self.connection.execute(
-            """
-            INSERT INTO embedding_vectors (
-                id, chunk_id, embedding_model, vector_dimension, vector_json, created_at
+        embedding_table = EmbeddingVectorModel.__table__
+        statement = insert(embedding_table).values(
+            id=embedding.id,
+            chunk_id=embedding.chunk_id,
+            embedding_model=embedding.embedding_model,
+            vector_dimension=embedding.vector_dimension,
+            vector_json=json_value(embedding.vector),
+            created_at=datetime_value(embedding.created_at),
+        )
+        statement = statement.on_conflict_do_update(
+            index_elements=[embedding_table.c.chunk_id],
+            set_={
+                "embedding_model": statement.excluded.embedding_model,
+                "vector_dimension": statement.excluded.vector_dimension,
+                "vector_json": statement.excluded.vector_json,
+                "created_at": statement.excluded.created_at,
+            },
+        )
+        self.session.execute(statement)
+        self.session.execute(
+            update(ChunkModel.__table__)
+            .where(ChunkModel.__table__.c.id == embedding.chunk_id)
+            .values(
+                embedding_model=embedding.embedding_model,
+                embedding_dimension=embedding.vector_dimension,
+                embedding_created_at=datetime_value(embedding.created_at),
             )
-            VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(chunk_id) DO UPDATE SET
-                embedding_model = excluded.embedding_model,
-                vector_dimension = excluded.vector_dimension,
-                vector_json = excluded.vector_json,
-                created_at = excluded.created_at
-            """,
-            (
-                embedding.id,
-                embedding.chunk_id,
-                embedding.embedding_model,
-                embedding.vector_dimension,
-                json_value(embedding.vector),
-                datetime_value(embedding.created_at),
-            ),
         )
-        self.connection.execute(
-            """
-            UPDATE chunks
-            SET embedding_model = ?, embedding_dimension = ?, embedding_created_at = ?
-            WHERE id = ?
-            """,
-            (
-                embedding.embedding_model,
-                embedding.vector_dimension,
-                datetime_value(embedding.created_at),
-                embedding.chunk_id,
-            ),
-        )
-        self.connection.commit()
         return embedding
 
     def get_by_chunk_id(self, chunk_id: str) -> ChunkEmbedding | None:
-        row = self.connection.execute(
-            """
-            SELECT id, chunk_id, embedding_model, vector_dimension, vector_json, created_at
-            FROM embedding_vectors
-            WHERE chunk_id = ?
-            """,
-            (chunk_id,),
-        ).fetchone()
+        table = EmbeddingVectorModel.__table__
+        row = self.session.execute(
+            select(
+                table.c.id,
+                table.c.chunk_id,
+                table.c.embedding_model,
+                table.c.vector_dimension,
+                table.c.vector_json,
+                table.c.created_at,
+            ).where(table.c.chunk_id == chunk_id)
+        ).one_or_none()
         if row is None:
             return None
         return ChunkEmbedding(
@@ -109,5 +110,10 @@ class EmbeddingRepository:
         )
 
     def _chunk_exists(self, chunk_id: str) -> bool:
-        row = self.connection.execute("SELECT 1 FROM chunks WHERE id = ?", (chunk_id,)).fetchone()
-        return row is not None
+        table = ChunkModel.__table__
+        return (
+            self.session.execute(
+                select(table.c.id).where(table.c.id == chunk_id)
+            ).scalar_one_or_none()
+            is not None
+        )
