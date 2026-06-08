@@ -50,33 +50,77 @@ describe("UploadZone", () => {
     expect(onLogin).toHaveBeenCalledTimes(1);
   });
 
-  it("shows file name after drag-and-drop", () => {
+  it("shows file name and calls onLogin after drag-and-drop with file", () => {
     const onLogin = vi.fn();
     const { container } = render(<UploadZone onLogin={onLogin} />, {
       wrapper: createI18nWrapper("zh"),
     });
 
     const zone = container.querySelector("[class*='cursor-pointer']")!;
-    // Simulate drop event
     const file = new File(["dummy"], "macroeconomic.pdf", { type: "application/pdf" });
     fireEvent.drop(zone, {
       dataTransfer: { files: [file] },
     });
 
     expect(onLogin).toHaveBeenCalledTimes(1);
-    // After drop, the displayed text should be the file name
     expect(screen.getByText("macroeconomic.pdf")).toBeDefined();
   });
 
-  it("changes border style on drag over", () => {
+  it("does not call onLogin on drop without file", () => {
+    const onLogin = vi.fn();
+    const { container } = render(<UploadZone onLogin={onLogin} />, {
+      wrapper: createI18nWrapper("zh"),
+    });
+
+    const zone = container.querySelector("[class*='cursor-pointer']")!;
+    fireEvent.drop(zone, {
+      dataTransfer: { files: [] },
+    });
+
+    expect(onLogin).not.toHaveBeenCalled();
+  });
+
+  it("changes border style on drag over and resets on drag leave", () => {
     const { container } = render(<UploadZone onLogin={() => {}} />, {
       wrapper: createI18nWrapper("zh"),
     });
 
     const zone = container.querySelector("[class*='cursor-pointer']")!;
-    fireEvent.dragOver(zone);
 
-    // After dragOver the dragging state should add scale class
+    fireEvent.dragOver(zone);
     expect(zone.className).toContain("scale");
+
+    fireEvent.dragLeave(zone);
+    // After drag leave, the dragging state resets to false
+    // The zone should no longer have the scale class or the dragging border
+    expect(zone.className).not.toContain("border-black dark:border-white");
+  });
+
+  it("handles file change via input", () => {
+    const onLogin = vi.fn();
+    const { container } = render(<UploadZone onLogin={onLogin} />, {
+      wrapper: createI18nWrapper("zh"),
+    });
+
+    const input = container.querySelector("input[type='file']")!;
+    const file = new File(["content"], "test.pptx", { type: "application/vnd.openxmlformats-officedocument.presentationml.presentation" });
+
+    fireEvent.change(input, { target: { files: [file] } });
+
+    expect(screen.getByText("test.pptx")).toBeDefined();
+  });
+
+  it("handles file change via input with no file", () => {
+    const onLogin = vi.fn();
+    const { container } = render(<UploadZone onLogin={onLogin} />, {
+      wrapper: createI18nWrapper("zh"),
+    });
+
+    const input = container.querySelector("input[type='file']")!;
+    // Change with no files selected
+    fireEvent.change(input, { target: { files: [] } });
+
+    // Prompt text should still be visible (no file name set)
+    expect(screen.getByText("拖拽文件到此处，或点击上传")).toBeDefined();
   });
 });

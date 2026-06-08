@@ -1,5 +1,7 @@
+import React from "react";
 import { describe, it, expect } from "vitest";
-import { translations } from "./i18n";
+import { render } from "@testing-library/react";
+import { translations, useI18n, I18nContext } from "./i18n";
 
 describe("i18n translations", () => {
   it("should have the same keys for zh and fr", () => {
@@ -33,5 +35,25 @@ describe("i18n translations", () => {
     expect(translations.zh.uploadPrompt).toBe("拖拽文件到此处，或点击上传");
     expect(translations.fr.heroTitle1).toBe("Les cours français");
     expect(translations.fr.loginTitle).toBe("Connectez-vous pour importer");
+  });
+});
+
+describe("I18nContext default values", () => {
+  it("should export I18nContext and useI18n", () => {
+    expect(I18nContext).toBeDefined();
+    expect(typeof useI18n).toBe("function");
+  });
+
+  it("should have default translation values in the context", () => {
+    // Render a component using useI18n without a Provider to test defaults
+    let captured = { lang: "", tResult: "" };
+    function TestComponent() {
+      const ctx = useI18n();
+      captured = { lang: ctx.lang, tResult: ctx.t("heroTitle1") };
+      return React.createElement("div", null, ctx.t("heroTitle1"));
+    }
+    render(React.createElement(TestComponent));
+    expect(captured.lang).toBe("zh");
+    expect(captured.tResult).toBe("让法国课程");
   });
 });

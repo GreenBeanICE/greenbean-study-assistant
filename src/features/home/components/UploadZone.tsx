@@ -1,18 +1,11 @@
 import { useState, useRef, type DragEvent } from "react";
 import { motion } from "framer-motion";
 import { useI18n } from "../../../lib/i18n";
+import { SVG_ICONS, SUPPORTED_FORMATS } from "../constants";
 
 interface UploadZoneProps {
   onLogin: () => void;
 }
-
-const SUPPORTED_FORMATS = [
-  { ext: "PDF", descKey: "formatDoc" as const },
-  { ext: "DOCX", descKey: "formatWord" as const },
-  { ext: "PPTX", descKey: "formatPpt" as const },
-  { ext: "TXT / MD", descKey: "formatText" as const },
-  { ext: "JPG / PNG / WEBP", descKey: "formatOcr" as const },
-];
 
 export default function UploadZone({ onLogin }: UploadZoneProps) {
   const [dragging, setDragging] = useState(false);

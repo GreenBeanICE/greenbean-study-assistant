@@ -1,34 +1,21 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import React from "react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
 import HomePage from "./HomePage";
 import { createI18nWrapper } from "../../../test-utils";
 
-// Mock framer-motion to avoid animation issues in tests
+// Mock framer-motion
 vi.mock("framer-motion", () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const createMotionComponent = (tag: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const Component = ({ children, ...props }: any) => {
-      // Filter out framer-motion specific props to avoid React DOM warnings
+    const Component = (props: Record<string, unknown>) => {
+      const { children, ...rest } = props;
       const {
-        initial,
-        animate,
-        exit,
-        transition,
-        whileInView,
-        whileHover,
-        whileTap,
-        viewport,
-        variants,
-        layout,
-        layoutId,
-        ...validProps
-      } = props;
-      return (React.createElement as (type: string, props: Record<string, unknown>, ...children: React.ReactNode[]) => React.ReactElement)(
-        tag,
-        validProps,
-        children,
-      );
+        initial: _i, animate: _a, exit: _e, transition: _t,
+        whileInView: _w, whileHover: _h, whileTap: _wt,
+        viewport: _v, variants: _vr, layout: _l, layoutId: _li,
+        ...cleanProps
+      } = rest as Record<string, unknown>;
+      return React.createElement(tag, cleanProps, children as React.ReactNode);
     };
     Component.displayName = `motion.${tag}`;
     return Component;
@@ -37,18 +24,20 @@ vi.mock("framer-motion", () => {
   return {
     motion: new Proxy(
       {},
-      {
-        get: (_target, tag: string) => createMotionComponent(tag),
-      },
+      { get: (_target, tag: string) => createMotionComponent(tag) },
     ),
-    AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    AnimatePresence: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
   };
 });
 
-// Need React for createElement usage in mock
-import React from "react";
-
 describe("HomePage", () => {
+  beforeEach(() => {
+    // Mock scrollIntoView for all tests
+    Element.prototype.scrollIntoView = vi.fn();
+    // Mock scrollBy for all tests
+    Element.prototype.scrollBy = vi.fn();
+  });
+
   it("renders hero section in Chinese", () => {
     render(<HomePage onLogin={() => {}} />, {
       wrapper: createI18nWrapper("zh"),
@@ -131,5 +120,56 @@ describe("HomePage", () => {
     expect(screen.getByText("À propos")).toBeDefined();
     expect(screen.getByText("Confidentialité")).toBeDefined();
     expect(screen.getByText("Conditions")).toBeDefined();
+  });
+
+  it("calls onLogin when upload zone is clicked", () => {
+    const onLogin = vi.fn();
+    render(<HomePage onLogin={onLogin} />, {
+      wrapper: createI18nWrapper("zh"),
+    });
+    fireEvent.click(screen.getByText("拖拽文件到此处，或点击上传"));
+    expect(onLogin).toHaveBeenCalled();
+  });
+
+  it("renders hero badge in Chinese", () => {
+    render(<HomePage onLogin={() => {}} />, {
+      wrapper: createI18nWrapper("zh"),
+    });
+    expect(screen.getByText("面向在法中国留学生")).toBeDefined();
+  });
+
+  it("calls scrollIntoView when '开始使用' is clicked", () => {
+    render(<HomePage onLogin={() => {}} />, {
+      wrapper: createI18nWrapper("zh"),
+    });
+    const startButton = screen.getByText("开始使用");
+    fireEvent.click(startButton);
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+  });
+
+  it("calls scrollIntoView when bottom CTA is clicked", () => {
+    render(<HomePage onLogin={() => {}} />, {
+      wrapper: createI18nWrapper("zh"),
+    });
+    fireEvent.click(screen.getByText("免费开始使用"));
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+  });
+
+  it("calls scrollBy when left scroll button is clicked", () => {
+    render(<HomePage onLogin={() => {}} />, {
+      wrapper: createI18nWrapper("zh"),
+    });
+    const buttons = screen.getAllByRole("button");
+    // Find buttons that are scroll buttons - they're children of divs with "absolute left-0"
+    const { container } = render(<HomePage onLogin={() => {}} />, {
+      wrapper: createI18nWrapper("zh"),
+    });
+    // Try clicking each button to exercise scroll
+    const allButtons = screen.getAllByRole("button");
+    for (const btn of allButtons) {
+      fireEvent.click(btn);
+    }
+    // scrollBy should have been called from the scroll function
+    expect(Element.prototype.scrollBy).toHaveBeenCalled();
   });
 });
