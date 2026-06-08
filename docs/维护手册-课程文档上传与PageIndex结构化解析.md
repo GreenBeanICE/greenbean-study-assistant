@@ -228,6 +228,9 @@ pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tessera
 cd backend-python
 pytest
 
+# 按 User Story 筛选运行
+pytest -m us25 -v
+
 # 运行特定测试文件
 pytest tests/test_ppt_parser.py -v
 
@@ -257,6 +260,35 @@ pytest --cov=app --cov-report=html:../coverage/python/html
 - `test_word_parser.py`: 使用 `python-docx` 库动态生成 `.docx` 文件
 - `test_pdf_parser.py`: 使用 `PyMuPDF` 库动态生成 `.pdf` 文件
 - `test_image_ocr_parser.py`: 使用 `Pillow` 库动态生成测试图片
+
+### 6.4 测试标记（Markers）
+
+所有与课程文档上传和解析相关的测试均已添加 `@pytest.mark.us25` 标记，方便按 User Story 筛选执行：
+
+```bash
+# 仅运行 US25 相关测试
+pytest -m us25 -v
+
+# 排除 US25 测试运行其余测试
+pytest -m "not us25" -v
+```
+
+涉及标记的测试文件及数量：
+
+| 测试文件 | 标记数 |
+|----------|--------|
+| `test_document_controller.py` | 13 |
+| `test_document_ingest_service.py` | 7 |
+| `test_file_utils.py` | 13 |
+| `test_text_utils.py` | 30 |
+| `test_image_preprocessor.py` | 17 |
+| `test_image_ocr_parser.py` | 8 |
+| `test_parser_factory.py` | 12 |
+| `test_text_parser.py` | 7 |
+| `test_ppt_parser.py` | 6 |
+| `test_pdf_parser.py` | 1 |
+| `test_word_parser.py` | 5 |
+| **合计** | **119** |
 
 ---
 

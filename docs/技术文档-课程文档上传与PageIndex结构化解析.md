@@ -367,17 +367,17 @@ class ImagePreprocessor:
 
 | 测试文件 | 测试数 | 覆盖率 |
 |----------|--------|--------|
-| `tests/test_document_controller.py` | 11 | 92% |
-| `tests/test_document_ingest_service.py` | 8 | 100% |
-| `tests/test_file_utils.py` | 14 | 100% |
-| `tests/test_text_utils.py` | 34 | 100% |
-| `tests/test_image_preprocessor.py` | 16 | 100% |
-| `tests/test_image_ocr_parser.py` | 7 | 98% |
+| `tests/test_document_controller.py` | 13 | 100% |
+| `tests/test_document_ingest_service.py` | 7 | 100% |
+| `tests/test_file_utils.py` | 13 | 100% |
+| `tests/test_text_utils.py` | 30 | 100% |
+| `tests/test_image_preprocessor.py` | 17 | 100% |
+| `tests/test_image_ocr_parser.py` | 8 | 100% |
 | `tests/test_parser_factory.py` | 12 | 100% |
-| `tests/test_text_parser.py` | 6 | 92% |
-| `tests/test_ppt_parser.py` | 4 | 94% |
+| `tests/test_text_parser.py` | 7 | 100% |
+| `tests/test_ppt_parser.py` | 6 | 100% |
 | `tests/test_pdf_parser.py` | 1 | 100% |
-| `tests/test_word_parser.py` | 4 | 97% |
+| `tests/test_word_parser.py` | 5 | 100% |
 
 ### 6.2 运行测试
 

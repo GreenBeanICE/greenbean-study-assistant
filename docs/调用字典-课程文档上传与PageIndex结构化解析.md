@@ -424,7 +424,36 @@ type PreprocessingStep =
 
 ---
 
-## 8. 附录：快速参考卡片
+## 8. 测试参考
+
+### 8.1 测试文件一览
+
+| 测试文件 | 测试数 | 覆盖率 | 测试范围 |
+|----------|--------|--------|----------|
+| `test_document_controller.py` | 13 | 100% | API 上传接口（成功/异常/边界） |
+| `test_document_ingest_service.py` | 7 | 100% | 文档摄取服务（多格式/空内容/异常） |
+| `test_file_utils.py` | 13 | 100% | 文件工具函数（扩展名/格式/MIME） |
+| `test_text_utils.py` | 30 | 100% | 文本工具函数（清洗/截断/分段/语言检测） |
+| `test_image_preprocessor.py` | 17 | 100% | 图片预处理（灰度/二值化/缩放/纠偏） |
+| `test_image_ocr_parser.py` | 8 | 100% | OCR 解析（多格式/失败/缓存） |
+| `test_parser_factory.py` | 12 | 100% | 解析器工厂分发（全部格式/大小写/异常） |
+| `test_text_parser.py` | 7 | 100% | 纯文本解析（编码/Markdown/边界） |
+| `test_ppt_parser.py` | 6 | 100% | PPT 解析（多页/空/元数据/边界） |
+| `test_pdf_parser.py` | 1 | 100% | PDF 解析（文本提取） |
+| `test_word_parser.py` | 5 | 100% | Word 解析（段落/表格/标题/边界） |
+
+### 8.2 测试标记
+
+所有文档上传与解析相关测试均标记为 `us25`，可按 User Story 筛选：
+
+```bash
+pytest -m us25 -v          # 仅运行 US25 测试（119 个）
+pytest -m "not us25" -v    # 排除 US25 测试
+```
+
+---
+
+## 9. 附录：快速参考卡片
 
 ### 请求卡片
 
