@@ -53,8 +53,12 @@ function ContentLineRender({ line, blockId, onViewFootnote, onLineHtmlChange }: 
     }
   }, [blockId, line.id, line.text, onLineHtmlChange]);
 
-  // 检测是否有内联 HTML 标签
-  const hasInlineHtml = /<[a-zA-Z]/.test(line.text);
+  // 同步外部 line.text 变化到 contentEditable（仅在内容确实不同时）
+  useEffect(() => {
+    if (spanRef.current && spanRef.current.innerHTML !== line.text) {
+      spanRef.current.innerHTML = line.text;
+    }
+  }, [line.text]);
 
   return (
     <div
@@ -73,10 +77,7 @@ function ContentLineRender({ line, blockId, onViewFootnote, onLineHtmlChange }: 
         onBlur={handleBlur}
         className={`outline-none cursor-text ${getLineStyle(line)}`}
         style={{ color: line.color || undefined, backgroundColor: line.highlighted ? "rgba(254,240,138,0.4)" : undefined }}
-        dangerouslySetInnerHTML={hasInlineHtml ? { __html: line.text } : undefined}
-      >
-        {hasInlineHtml ? null : line.text}
-      </span>
+      />
       {line.footnoteRef && (
         <button
           onClick={(e) => handleFootnoteClick(e, line.footnoteRef!)}
@@ -196,32 +197,11 @@ function DocumentViewer({
 }: DocumentViewerProps) {
   const { t } = useI18n();
   const viewerRef = useRef<HTMLDivElement>(null);
-  const lastRangeRef = useRef<Range | null>(null);
 
   const filteredBlocks = selectedSectionId
     ? contentBlocks.filter((block) => block.sectionId === selectedSectionId)
     : [];
   const showEmptyState = !selectedSectionId;
-
-  // 选中文本后弹出菜单（引用询问AI）— 菜单位于选中文字右侧，不遮挡文字
-  useEffect(() => {
-    const handleMouseUp = () => {
-      const s = window.getSelection();
-      if (s && s.toString().trim().length > 0 && selectedSectionId) {
-        try {
-          const range = s.getRangeAt(0);
-          lastRangeRef.current = range.cloneRange();
-          const rect = range.getBoundingClientRect();
-          onSelectText({ text: s.toString().trim(), blockId: "", sectionId: selectedSectionId, fromLineId: "", toLineId: "" });
-          onShowSelectionMenu(true, { x: rect.right + 8, y: rect.top });
-        } catch { /* noop */ }
-        return;
-      }
-      setTimeout(() => { if (!window.getSelection()?.toString().trim()) { onSelectText(null); onShowSelectionMenu(false); } }, 100);
-    };
-    document.addEventListener("mouseup", handleMouseUp);
-    return () => document.removeEventListener("mouseup", handleMouseUp);
-  }, [selectedSectionId, onSelectText, onShowSelectionMenu]);
 
   // 监听选中变化，同步 hasSelection 状态用于工具栏按钮启用
   const [hasSelection, setHasSelection] = useState(false);
@@ -239,89 +219,11 @@ function DocumentViewer({
     onUpdateLineText(blockId, lineId, html);
   }, [onUpdateLineText]);
 
-  // 点击工具栏按钮：恢复选中 → execCommand 格式化 → 读取 innerHTML → 持久化
+  // 工具栏格式操作 — 通过 document.execCommand 在 mousedown 阶段执行
   const handleFormat = useCallback((format: TextFormatAction) => {
-    const sel = window.getSelection();
-
-    // 处理插入图片
-    if (format === "insert-image") {
-      const url = prompt("请输入图片 URL：");
-      if (!url) return;
-      // 在当前位置插入图片
-      if (lastRangeRef.current) {
-        sel?.removeAllRanges();
-        sel?.addRange(lastRangeRef.current);
-      }
-      document.execCommand("insertImage", false, url);
-      // 保存修改
-      saveEditedLineHtml();
-      return;
-    }
-
-    // 处理插入表格
-    if (format === "insert-table") {
-      const cols = prompt("列数：", "3");
-      const rows = prompt("行数：", "3");
-      if (!cols || !rows) return;
-      if (lastRangeRef.current) {
-        sel?.removeAllRanges();
-        sel?.addRange(lastRangeRef.current);
-      }
-      let tableHtml = '<table border="1" style="width:100%;border-collapse:collapse"><tbody>';
-      for (let r = 0; r < parseInt(rows); r++) {
-        tableHtml += '<tr>';
-        for (let c = 0; c < parseInt(cols); c++) {
-          tableHtml += `<td style="border:1px solid #ccc;padding:4px;min-width:40px">&nbsp;</td>`;
-        }
-        tableHtml += '</tr>';
-      }
-      tableHtml += '</tbody></table>';
-      document.execCommand("insertHTML", false, tableHtml);
-      saveEditedLineHtml();
-      return;
-    }
-
-    // 恢复选中的 range
-    if (!lastRangeRef.current) {
-      if (!sel || sel.toString().trim().length === 0) return;
-    } else {
-      sel?.removeAllRanges();
-      sel?.addRange(lastRangeRef.current);
-    }
-
-    // 对选中部分应用格式
-    if (format === "bold") document.execCommand("bold", false);
-    else if (format === "italic") document.execCommand("italic", false);
-    else if (format === "underline") document.execCommand("underline", false);
-    else if (format === "strikethrough") document.execCommand("strikeThrough", false);
-    else if (format === "align-left") document.execCommand("justifyLeft", false);
-    else if (format === "align-center") document.execCommand("justifyCenter", false);
-    else if (format === "align-right") document.execCommand("justifyRight", false);
-    else if (format === "highlight") {
-      // 切换高亮：检查选中区域是否已经有黄色背景
-      const isHighlighted = sel && sel.anchorNode?.parentElement?.closest?.("[style*='background']");
-      document.execCommand("backColor", false, "#fef08a");
-    }
-
-    // 保存修改后的 HTML
-    saveEditedLineHtml();
-  }, [onUpdateLineText, onFormatLine]);
-
-  // 从当前选中区域的父元素找到 data-line-id 并保存内容
-  const saveEditedLineHtml = useCallback(() => {
-    const sel = window.getSelection();
-    if (!sel || !sel.anchorNode) return;
-    let el = sel.anchorNode.nodeType === Node.ELEMENT_NODE
-      ? sel.anchorNode as HTMLElement
-      : sel.anchorNode.parentElement;
-    while (el && !el.dataset.lineId) el = el.parentElement;
-    if (el && el.dataset.blockId && el.dataset.lineId) {
-      const span = el.querySelector("span");
-      if (span) {
-        onUpdateLineText(el.dataset.blockId, el.dataset.lineId, span.innerHTML);
-      }
-    }
-  }, [onUpdateLineText]);
+    // 由工具栏按钮在 mousedown 阶段通过 execLocalFormat 处理
+    // 这里只是占位，实际操作在 DocumentToolbar 的 execLocalFormat 中完成
+  }, []);
 
   const expandedFootnote = expandedFootnoteId ? footnotes.find((fn) => fn.id === expandedFootnoteId) || null : null;
 
@@ -388,10 +290,6 @@ function DocumentViewer({
           </div>
         )}
       </div>
-
-      {showSelectionMenu && selectionMenuPos && currentSelection && (
-        <SelectionMenu pos={selectionMenuPos} onQuote={() => { onQuoteSelection(); onShowSelectionMenu(false); }} onClose={() => onShowSelectionMenu(false)} />
-      )}
 
       <AnimatePresence>
         {expandedFootnote && <FootnotePanel footnote={expandedFootnote} onClose={() => onToggleFootnote(expandedFootnote.id)} />}
