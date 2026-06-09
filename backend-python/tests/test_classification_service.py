@@ -57,3 +57,18 @@ async def test_classification_tests_with_mock(MockOpenAI):
 
     # 5. （进阶校验）确认我们循环了多少次测试用例，替身就应该被调用了多少次
     assert mock_openai_instance.chat.completions.create.call_count == len(test_cases)
+
+
+@patch("app.agents.classification_agent.OpenAI")
+@pytest.mark.asyncio
+async def test_classification_falls_back_when_model_call_fails(MockOpenAI):
+    mock_openai_instance = MockOpenAI.return_value
+    mock_openai_instance.chat.completions.create.side_effect = RuntimeError(
+        "model unavailable"
+    )
+    agent = RouterAgent(api_key="sk-fake-key-for-testing-only")
+
+    decision = await agent.route_question("这份课件主要讲什么？")
+
+    assert decision.route == "COMPREHENSIVE"
+    assert "model unavailable" in decision.reason
