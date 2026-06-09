@@ -1,0 +1,54 @@
+
+ RUN  v4.1.6 D:/绿豆冰/greenbean-study-assistant
+
+ ✓ src/lib/title.test.ts (1 test) 11ms
+ ✓ src/lib/i18n.test.ts (7 tests) 107ms
+ ✓ src/components/ui/Navbar.test.tsx (9 tests) 954ms
+     ✓ calls setDark when dark mode toggle is clicked  476ms
+ ✓ src/features/home/components/LoginModal.test.tsx (6 tests) 217ms
+ ✓ src/features/home/pages/HomePage.test.tsx (14 tests) 1837ms
+     ✓ renders hero section in Chinese  350ms
+     ✓ calls scrollBy when left scroll button is clicked  491ms
+ ✓ src/features/home/components/UploadZone.test.tsx (10 tests) 369ms
+ ❯ src/features/workspace/pages/WorkspacePage.test.tsx (14 tests | 1 failed) 1114ms
+     ✓ 渲染三栏布局：左侧图标条、中间文档查看器、右侧图标条 192ms
+     ✓ 点击展开左侧按钮后显示章节树 172ms
+     ✓ 点击章节时，中间区域显示对应的内容块 156ms
+     ✓ 点击章节折叠/展开可以切换子章节 85ms
+     × 文档内容包含脚注引用蓝色圆点标记 76ms
+     ✓ 点击展开右侧后显示AI聊天面板 69ms
+     ✓ 右侧聊天面板输入框可输入文本 33ms
+     ✓ 发送消息后用户和AI消息显示在聊天列表中 59ms
+     ✓ 输入为空且无引用时发送按钮不可点击 23ms
+     ✓ 显示Word风格文档工具栏 14ms
+     ✓ 发送消息后token用量增加 39ms
+     ✓ 工作区顶部显示返回按钮和GreenBean Logo 15ms
+     ✓ 工作区顶部有语言和暗黑模式切换按钮 161ms
+     ✓ 文档标题栏包含下载和分享按钮 13ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/features/workspace/pages/WorkspacePage.test.tsx > WorkspacePage > 文档内容包含脚注引用蓝色圆点标记
+AssertionError: expected '' to be '1' // Object.is equality
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 1[39m
+
+ ❯ src/features/workspace/pages/WorkspacePage.test.tsx:73:41
+     71|     const footnoteBtns = screen.getAllByTitle("点击查看原文引用");
+     72|     expect(footnoteBtns.length).toBeGreaterThanOrEqual(1);
+     73|     expect(footnoteBtns[0].textContent).toBe("1");
+       |                                         ^
+     74|   });
+     75|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 6 passed (7)
+      Tests  1 failed | 60 passed (61)
+   Start at  21:22:31
+   Duration  12.56s (transform 1.71s, setup 0ms, import 14.50s, tests 4.61s, environment 47.16s)
+

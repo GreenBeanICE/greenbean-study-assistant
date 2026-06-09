@@ -8,9 +8,11 @@ import { SVG_ICONS, SCREENSHOT_GRADIENTS } from "../constants";
 interface HomePageProps {
   /** 用户触发登录流程时的回调函数 */
   onLogin: () => void;
+  /** 跳转到工作区的回调函数 */
+  onStart?: () => void;
 }
 
-function HomePage({ onLogin }: HomePageProps) {
+function HomePage({ onLogin, onStart }: HomePageProps) {
   // 功能卡片横向滚动容器的 ref
   const scrollRef = useRef<HTMLDivElement>(null);
   // "三步搞定课程解析"流程区域的 ref，用于点击按钮后精确滚动定位
@@ -77,10 +79,19 @@ function HomePage({ onLogin }: HomePageProps) {
                 {t("heroDesc")}
               </p>
               <div className="mt-8 flex gap-3">
-                <button onClick={scrollToWorkflow} className="px-7 py-3 rounded-full bg-black text-white dark:bg-white dark:text-black text-sm font-medium hover:opacity-85 transition shadow-lg shadow-black/10 dark:shadow-white/10">
+                <button
+                  onClick={() => {
+                    if (onStart) {
+                      onStart();
+                    } else {
+                      scrollToWorkflow();
+                    }
+                  }}
+                  className="px-7 py-3 rounded-full bg-black text-white dark:bg-white dark:text-black text-sm font-medium hover:opacity-85 transition shadow-lg shadow-black/10 dark:shadow-white/10"
+                >
                   {t("heroCta")}
                 </button>
-                <button className="px-7 py-3 rounded-full border border-black/10 dark:border-white/20 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/5 transition">
+                <button onClick={scrollToWorkflow} className="px-7 py-3 rounded-full border border-black/10 dark:border-white/20 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/5 transition">
                   {t("heroLearnMore")}
                 </button>
               </div>
