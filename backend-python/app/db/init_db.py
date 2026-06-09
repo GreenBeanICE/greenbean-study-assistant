@@ -1,1 +1,204 @@
-﻿# 数据库初始化占位文件，后续用于初始化表结构和基础数据。
+from contextlib import closing
+from dataclasses import dataclass
+from pathlib import Path
+import sqlite3
+from typing import Callable
+
+
+SQLiteVecLoader = Callable[[sqlite3.Connection], None]
+
+
+class SQLiteVecInitializationError(RuntimeError):
+    """Raised when sqlite-vec cannot be loaded or checked."""
+
+
+@dataclass(frozen=True)
+class DatabaseInitializationResult:
+    database_path: Path
+    persistence_ready: bool
+    sqlite_vec_version: str
+
+
+def load_sqlite_vec_extension(connection: sqlite3.Connection) -> None:
+    connection.enable_load_extension(True)
+    try:
+        connection.load_extension("sqlite_vec")
+    finally:
+        connection.enable_load_extension(False)
+
+
+def initialize_database(
+    *,
+    data_dir: str | Path = Path("data"),
+    database_name: str = "greenbean-study-assistant.sqlite3",
+    sqlite_vec_loader: SQLiteVecLoader = load_sqlite_vec_extension,
+    embedding_dimension: int,
+) -> DatabaseInitializationResult:
+    data_path = Path(data_dir)
+    data_path.mkdir(parents=True, exist_ok=True)
+    database_path = data_path / database_name
+
+    try:
+        with closing(sqlite3.connect(database_path)) as connection:
+            connection.execute("PRAGMA foreign_keys = ON")
+            sqlite_vec_loader(connection)
+            sqlite_vec_version = _check_sqlite_vec(connection)
+            _create_schema(connection, embedding_dimension)
+            connection.commit()
+    except SQLiteVecInitializationError:
+        raise
+    except Exception as exc:
+        raise SQLiteVecInitializationError(f"sqlite-vec initialization failed: {exc}") from exc
+
+    return DatabaseInitializationResult(
+        database_path=database_path,
+        persistence_ready=True,
+        sqlite_vec_version=sqlite_vec_version,
+    )
+
+
+def _check_sqlite_vec(connection: sqlite3.Connection) -> str:
+    try:
+        row = connection.execute("SELECT vec_version()").fetchone()
+    except sqlite3.Error as exc:
+        raise SQLiteVecInitializationError(f"sqlite-vec health check failed: {exc}") from exc
+
+    if row is None or not row[0]:
+        raise SQLiteVecInitializationError("sqlite-vec health check failed: vec_version() returned no version")
+    return str(row[0])
+
+
+def _create_schema(connection: sqlite3.Connection, embedding_dimension: int) -> None:
+    connection.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS document_records (
+            id TEXT PRIMARY KEY,
+            workspace_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            original_filename TEXT NOT NULL,
+            file_type TEXT NOT NULL,
+            file_path TEXT NOT NULL,
+            file_hash TEXT,
+            status TEXT NOT NULL,
+            page_count INTEGER,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS document_units (
+            id TEXT PRIMARY KEY,
+            document_id TEXT NOT NULL,
+            sequence_index INTEGER NOT NULL,
+            text_content TEXT NOT NULL,
+            page_number INTEGER,
+            start_char INTEGER,
+            end_char INTEGER,
+            token_count INTEGER,
+            metadata_json TEXT,
+            raw_content_json TEXT,
+            parser_name TEXT,
+            parser_version TEXT,
+            external_id TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (document_id) REFERENCES document_records(id),
+            UNIQUE (document_id, sequence_index)
+        );
+
+        CREATE TABLE IF NOT EXISTS sections (
+            id TEXT PRIMARY KEY,
+            document_id TEXT NOT NULL,
+            parent_section_id TEXT,
+            title TEXT NOT NULL,
+            level INTEGER NOT NULL,
+            order_index INTEGER NOT NULL,
+            start_page INTEGER,
+            end_page INTEGER,
+            summary TEXT,
+            metadata_json TEXT,
+            parser_name TEXT,
+            parser_version TEXT,
+            external_id TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (document_id) REFERENCES document_records(id),
+            FOREIGN KEY (parent_section_id) REFERENCES sections(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS chunks (
+            id TEXT PRIMARY KEY,
+            document_unit_id TEXT NOT NULL,
+            sequence_index INTEGER NOT NULL,
+            text_content TEXT NOT NULL,
+            start_char INTEGER,
+            end_char INTEGER,
+            token_count INTEGER,
+            metadata_json TEXT,
+            chunker_name TEXT,
+            chunker_version TEXT,
+            embedding_model TEXT,
+            embedding_dimension INTEGER,
+            embedding_created_at TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (document_unit_id) REFERENCES document_units(id),
+            UNIQUE (document_unit_id, sequence_index)
+        );
+
+        CREATE TABLE IF NOT EXISTS analysis_results (
+            id TEXT PRIMARY KEY,
+            document_id TEXT NOT NULL,
+            section_id TEXT,
+            analysis_type TEXT NOT NULL,
+            language TEXT NOT NULL,
+            content_markdown TEXT NOT NULL,
+            content_json TEXT,
+            model_name TEXT,
+            prompt_version TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (document_id) REFERENCES document_records(id),
+            FOREIGN KEY (section_id) REFERENCES sections(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS chat_sessions (
+            id TEXT PRIMARY KEY,
+            workspace_id TEXT NOT NULL,
+            document_id TEXT,
+            title TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (document_id) REFERENCES document_records(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id TEXT PRIMARY KEY,
+            session_id TEXT NOT NULL,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            source_context_json TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (session_id) REFERENCES chat_sessions(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS embedding_vectors (
+            id TEXT PRIMARY KEY,
+            chunk_id TEXT NOT NULL UNIQUE,
+            embedding_model TEXT NOT NULL,
+            vector_dimension INTEGER NOT NULL,
+            vector_json TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (chunk_id) REFERENCES chunks(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS app_metadata (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
+        """
+    )
+    connection.execute(
+        """
+        INSERT INTO app_metadata(key, value)
+        VALUES('embedding_dimension', ?)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value
+        """,
+        (str(embedding_dimension),),
+    )
