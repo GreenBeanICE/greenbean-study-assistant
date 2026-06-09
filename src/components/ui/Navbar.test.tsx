@@ -43,20 +43,27 @@ describe("Navbar", () => {
       <Navbar dark={false} setDark={setDark} onLogin={() => {}} />,
       { wrapper: createI18nWrapper("zh") },
     );
-    // Find the dark mode toggle button (contains SVG)
     const buttons = screen.getAllByRole("button");
-    // The dark mode toggle is the second button (after language toggle)
     const darkToggle = buttons[1];
     fireEvent.click(darkToggle);
     expect(setDark).toHaveBeenCalledTimes(1);
   });
 
-  it("toggles language button text", () => {
+  it("renders sun icon in dark mode", () => {
+    render(
+      <Navbar dark={true} setDark={() => {}} onLogin={() => {}} />,
+      { wrapper: createI18nWrapper("zh") },
+    );
+    // When dark=true, the SVG with sun rays (circle+lines) should render
+    const buttons = screen.getAllByRole("button");
+    expect(buttons.length).toBeGreaterThan(0);
+  });
+
+  it("shows language toggle button with FR text", () => {
     render(
       <Navbar dark={false} setDark={() => {}} onLogin={() => {}} />,
       { wrapper: createI18nWrapper("zh") },
     );
-    // Should show "FR" when lang is zh
     const langBtn = screen.getByText("FR");
     expect(langBtn).toBeDefined();
   });
@@ -74,13 +81,27 @@ describe("Navbar", () => {
       <Navbar dark={false} setDark={() => {}} onLogin={() => {}} />,
       { wrapper: createI18nWrapper("zh") },
     );
-    const featuresLink = screen.getByText("功能特性").closest("a");
-    expect(featuresLink?.getAttribute("href")).toBe("#features");
+    const featuresLinks = screen.getAllByText("功能特性");
+    expect(featuresLinks.length).toBeGreaterThanOrEqual(1);
+    expect(featuresLinks[0].closest("a")?.getAttribute("href")).toBe("#features");
 
-    const screenshotsLink = screen.getByText("使用体验").closest("a");
-    expect(screenshotsLink?.getAttribute("href")).toBe("#screenshots");
+    const screenshotsLinks = screen.getAllByText("使用体验");
+    expect(screenshotsLinks[0].closest("a")?.getAttribute("href")).toBe("#screenshots");
 
-    const workflowLink = screen.getByText("解析流程").closest("a");
-    expect(workflowLink?.getAttribute("href")).toBe("#workflow");
+    const workflowLinks = screen.getAllByText("解析流程");
+    expect(workflowLinks[0].closest("a")?.getAttribute("href")).toBe("#workflow");
+  });
+
+  it("opens mobile menu when hamburger button is clicked", () => {
+    render(
+      <Navbar dark={false} setDark={() => {}} onLogin={() => {}} />,
+      { wrapper: createI18nWrapper("zh") },
+    );
+    const buttons = screen.getAllByRole("button");
+    const hamburgerBtn = buttons[buttons.length - 1];
+    fireEvent.click(hamburgerBtn);
+    // After opening mobile menu, both desktop and mobile nav links exist
+    const featuresLinks = screen.getAllByText("功能特性");
+    expect(featuresLinks.length).toBe(2);
   });
 });

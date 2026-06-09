@@ -34,7 +34,7 @@ export default function UploadZone({ onLogin }: UploadZoneProps) {
   };
 
   const handleClick = () => {
-    // 先弹出登录提示，登录成功后再打开文件选择器
+    // 点击弹出登录提示，后续接入真实 auth 后可在此判断是否已登录
     onLogin();
   };
 
@@ -52,10 +52,13 @@ export default function UploadZone({ onLogin }: UploadZoneProps) {
       transition={{ delay: 0.15, duration: 0.6 }}
     >
       <div
+        role="button"
+        tabIndex={0}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={handleClick}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleClick(); }}
         className={`
           relative cursor-pointer rounded-[32px] border-2 border-dashed p-8 md:p-10
           transition-all duration-300

@@ -4,19 +4,25 @@ import UploadZone from "../components/UploadZone";
 import { useI18n } from "../../../lib/i18n";
 import { SVG_ICONS, SCREENSHOT_GRADIENTS } from "../constants";
 
+/** 首页宣传页面属性 */
 interface HomePageProps {
+  /** 用户触发登录流程时的回调函数 */
   onLogin: () => void;
 }
 
 function HomePage({ onLogin }: HomePageProps) {
+  // 功能卡片横向滚动容器的 ref
   const scrollRef = useRef<HTMLDivElement>(null);
+  // "三步搞定课程解析"流程区域的 ref，用于点击按钮后精确滚动定位
   const workflowRef = useRef<HTMLDivElement>(null);
   const { t } = useI18n();
 
+  // 滚动到上传流程区域（"三步搞定课程解析"标题）
   const scrollToWorkflow = () => {
     workflowRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  // 功能卡片区域的左右横向滚动
   const scroll = (dir: "left" | "right") => {
     if (!scrollRef.current) return;
     const amount = 320;
@@ -26,6 +32,7 @@ function HomePage({ onLogin }: HomePageProps) {
     });
   };
 
+  // 四个功能特性卡片：文档解析、AI 分析、知识结构化、智能问答
   const features = [
     { title: t("feature1Title"), description: t("feature1Desc"), svg: SVG_ICONS.document },
     { title: t("feature2Title"), description: t("feature2Desc"), svg: SVG_ICONS.brain },
@@ -33,6 +40,7 @@ function HomePage({ onLogin }: HomePageProps) {
     { title: t("feature4Title"), description: t("feature4Desc"), svg: SVG_ICONS.messageCircle },
   ];
 
+  // 五个宣传截图占位卡片
   const screenshots = [
     { label: t("screenshot1Label"), desc: t("screenshot1Desc") },
     { label: t("screenshot2Label"), desc: t("screenshot2Desc") },
@@ -41,6 +49,7 @@ function HomePage({ onLogin }: HomePageProps) {
     { label: t("screenshot5Label"), desc: t("screenshot5Desc") },
   ];
 
+  // 三步上传流程：上传文件、自动解析、深度互动
   const steps = [
     { step: "01", title: t("step1Title"), desc: t("step1Desc"), svg: SVG_ICONS.upload },
     { step: "02", title: t("step2Title"), desc: t("step2Desc"), svg: SVG_ICONS.trending },
@@ -49,7 +58,7 @@ function HomePage({ onLogin }: HomePageProps) {
 
   return (
     <div className="min-h-screen bg-[#f5f5f7] dark:bg-[#0a0a0a] transition-colors duration-300">
-      {/* Hero */}
+      {/* 页面顶部 Hero 区域：左文右图两栏布局 */}
       <section className="pt-28 pb-20 md:pt-36 md:pb-28 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
@@ -88,7 +97,7 @@ function HomePage({ onLogin }: HomePageProps) {
         </div>
       </section>
 
-      {/* Features */}
+      {/* 功能特性区域：横向可滑动的四个产品功能卡片 */}
       <section id="features" className="py-20 md:py-28 px-4 bg-white/40 dark:bg-white/[0.02]">
         <div className="max-w-6xl mx-auto">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }} transition={{ duration: 0.6 }} className="mb-14">
@@ -116,7 +125,7 @@ function HomePage({ onLogin }: HomePageProps) {
         </div>
       </section>
 
-      {/* Screenshots */}
+      {/* 宣传截图区域：横向滑动的产品截图占位卡片 */}
       <section id="screenshots" className="py-20 md:py-28 px-4">
         <div className="max-w-6xl mx-auto">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }} transition={{ duration: 0.6 }} className="mb-14">
@@ -145,7 +154,7 @@ function HomePage({ onLogin }: HomePageProps) {
         </div>
       </section>
 
-      {/* Workflow + UploadZone */}
+      {/* 上传流程区域：三步流程说明 + 拖拽上传组件 */}
       <section id="workflow" ref={workflowRef} className="py-20 md:py-28 px-4 bg-white/40 dark:bg-white/[0.02]">
         <div className="max-w-6xl mx-auto">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }} transition={{ duration: 0.6 }} className="mb-14">
@@ -169,7 +178,7 @@ function HomePage({ onLogin }: HomePageProps) {
         </div>
       </section>
 
-      {/* CTA */}
+      {/* 底部 CTA 区域：引导用户开始使用 */}
       <section className="py-24 md:py-32 px-4">
         <div className="max-w-3xl mx-auto text-center">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
@@ -182,7 +191,7 @@ function HomePage({ onLogin }: HomePageProps) {
         </div>
       </section>
 
-      {/* Footer */}
+      {/* 页面底部：版权信息和链接 */}
       <footer className="py-8 px-4 border-t border-black/5 dark:border-white/10">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-neutral-400">
           <span>&copy; 2025 GreenBean Study Assistant</span>

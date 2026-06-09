@@ -13,7 +13,7 @@ export default function LoginModal({ open, onClose }: LoginModalProps) {
     <AnimatePresence>
       {open && (
         <>
-          {/* 遮罩层 */}
+          {/* 遮罩层：点击遮罩可关闭浮框 */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -21,6 +21,9 @@ export default function LoginModal({ open, onClose }: LoginModalProps) {
             transition={{ duration: 0.2 }}
             className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
             onClick={onClose}
+            onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
+            role="button"
+            tabIndex={-1}
           />
 
           {/* 浮框 */}

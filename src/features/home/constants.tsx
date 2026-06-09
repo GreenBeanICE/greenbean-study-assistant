@@ -1,4 +1,4 @@
-/** SVG icons used across home page components */
+/** 首页模块中使用的 SVG 图标集合 */
 export const SVG_ICONS = {
   document: (
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
@@ -98,7 +98,7 @@ export const SVG_ICONS = {
   ),
 } as const;
 
-/** 截图占位项的渐变色方案 */
+/** 截图占位项的渐变色方案（用于宣传截图区域的背景色） */
 export const SCREENSHOT_GRADIENTS = [
   "from-blue-400 to-indigo-500",
   "from-purple-400 to-pink-500",
@@ -107,7 +107,7 @@ export const SCREENSHOT_GRADIENTS = [
   "from-rose-400 to-red-500",
 ] as const;
 
-/** 支持的文件格式列表 */
+/** 首页上传区域支持的文件格式列表 */
 export const SUPPORTED_FORMATS = [
   { ext: "PDF", descKey: "formatDoc" as const },
   { ext: "DOCX", descKey: "formatWord" as const },

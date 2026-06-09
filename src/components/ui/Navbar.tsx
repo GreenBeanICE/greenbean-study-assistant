@@ -11,6 +11,7 @@ export default function Navbar({ dark, setDark, onLogin }: NavbarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { t, lang, setLang } = useI18n();
 
+  // 导航项配置：对应首页各 section 的锚点
   const NAV_ITEMS = [
     { label: t("navFeatures"), href: "#features" },
     { label: t("navScreenshots"), href: "#screenshots" },
@@ -20,12 +21,12 @@ export default function Navbar({ dark, setDark, onLogin }: NavbarProps) {
   return (
     <header className="fixed top-0 left-0 w-full h-14 z-50 backdrop-blur-xl bg-white/80 dark:bg-black/70 border-b border-black/5 dark:border-white/10">
       <div className="h-full max-w-7xl mx-auto px-4 md:px-8 flex items-center justify-between">
-        {/* Logo */}
+        {/* 应用 Logo */}
         <a href="#" className="text-base font-semibold tracking-tight select-none">
           GreenBean
         </a>
 
-        {/* 桌面端导航 */}
+        {/* 桌面端导航：展示三个锚点导航链接 */}
         <nav className="hidden md:flex items-center gap-1">
           {NAV_ITEMS.map((item) => (
             <a
@@ -38,9 +39,9 @@ export default function Navbar({ dark, setDark, onLogin }: NavbarProps) {
           ))}
         </nav>
 
-        {/* 右侧操作区 */}
+        {/* 右侧操作区：语言切换、暗黑模式、登录、移动端菜单 */}
         <div className="flex items-center gap-1.5">
-          {/* 语言切换 */}
+          {/* 语言切换按钮：在中文和法语之间切换 */}
           <button
             onClick={() => setLang(lang === "zh" ? "fr" : "zh")}
             className="px-2.5 py-1.5 rounded-full text-xs font-medium text-neutral-600 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/10 transition"
@@ -48,7 +49,7 @@ export default function Navbar({ dark, setDark, onLogin }: NavbarProps) {
             {lang === "zh" ? "FR" : "中文"}
           </button>
 
-          {/* 夜间模式 */}
+          {/* 暗黑模式切换按钮：日间模式显示月亮图标，夜间模式显示太阳图标 */}
           <button
             onClick={() => setDark((prev) => !prev)}
             className="w-8 h-8 rounded-full flex items-center justify-center text-sm hover:bg-black/5 dark:hover:bg-white/10 transition"
@@ -72,7 +73,7 @@ export default function Navbar({ dark, setDark, onLogin }: NavbarProps) {
             )}
           </button>
 
-          {/* 登录按钮 */}
+          {/* 登录按钮：触发 onLogin 回调打开登录浮框 */}
           <button
             onClick={onLogin}
             className="ml-1 px-4 py-1.5 rounded-full text-xs font-medium bg-black text-white dark:bg-white dark:text-black hover:opacity-85 transition"
@@ -80,7 +81,7 @@ export default function Navbar({ dark, setDark, onLogin }: NavbarProps) {
             {t("login")}
           </button>
 
-          {/* 移动端汉堡菜单 */}
+          {/* 移动端汉堡菜单：点击展开/收起导航菜单 */}
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
             className="md:hidden w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 transition"
@@ -94,7 +95,7 @@ export default function Navbar({ dark, setDark, onLogin }: NavbarProps) {
         </div>
       </div>
 
-      {/* 移动端菜单 */}
+      {/* 移动端导航菜单：点击链接后自动收起 */}
       {mobileOpen && (
         <div className="md:hidden border-t border-black/5 dark:border-white/10 bg-white/95 dark:bg-black/80 backdrop-blur-xl">
           <div className="px-4 py-3 space-y-1">
