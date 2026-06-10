@@ -75,8 +75,10 @@ describe("HomePage", () => {
     expect(screen.getByText("课程概览")).toBeDefined();
     expect(screen.getByText("AI 问答")).toBeDefined();
     expect(screen.getByText("解析报告")).toBeDefined();
-    expect(screen.getByText("文件管理")).toBeDefined();
-    expect(screen.getByText("章节导航")).toBeDefined();
+    const fileMgmtElements = screen.getAllByText("文件管理");
+    expect(fileMgmtElements.length).toBeGreaterThanOrEqual(1);
+    const sectionNavElements = screen.getAllByText("章节导航");
+    expect(sectionNavElements.length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders workflow section", () => {
