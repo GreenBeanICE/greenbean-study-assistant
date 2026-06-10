@@ -87,6 +87,12 @@ function uid(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
     return `f_${crypto.randomUUID().slice(0, 8)}`;
   }
+  // 使用 CSPRNG 生成随机值（兼容不支持 crypto.randomUUID 的环境）
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+    const array = new Uint32Array(1);
+    crypto.getRandomValues(array);
+    return `f_${array[0].toString(36).slice(0, 7)}`;
+  }
   return `f_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
@@ -356,7 +362,7 @@ export default function FileManager({
 
                     {contextMenu?.fileId === file.id && (
                       <>
-                        <div className="fixed inset-0 z-40" onClick={() => setContextMenu(null)} />
+                        <div className="fixed inset-0 z-40" onClick={() => setContextMenu(null)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setContextMenu(null); }} tabIndex={0} role="button" aria-label="Close context menu" />
                         <div className="fixed z-50 bg-white dark:bg-neutral-800 rounded-xl shadow-xl border border-black/10 dark:border-white/10 py-1 min-w-[160px]" style={{ left: contextMenu.x, top: contextMenu.y }}>
                           <div className="px-3 py-1.5 text-[10px] font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">{t("wsFileMoveTo")}</div>
                           {folders.filter((f) => f.key !== file.category).map((f) => (

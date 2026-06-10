@@ -11,24 +11,24 @@ import type { SectionNode, ContentBlock, ContentLine, FootnoteReference } from "
 import type { ChatMessage } from "../../../types/chat";
 
 function getLocalizedSections(lang: string): SectionNode[] {
-  const zh = lang === "zh"; const fr = lang === "fr";
+  const zh = lang === "zh"; 
   return [
-    { id: "ch1", title: zh ? "第一章：引言" : fr ? "Ch.1 Introduction" : "Ch.1 Introduction", index: "1", expanded: true, children: [
-      { id: "ch1-1", title: zh ? "背景介绍" : fr ? "Contexte" : "Contexte", index: "1.1" },
-      { id: "ch1-2", title: zh ? "研究意义" : fr ? "Importance" : "Importance", index: "1.2" },
-      { id: "ch1-3", title: zh ? "论文结构" : fr ? "Structure" : "Structure", index: "1.3" },
+    { id: "ch1", title: zh ? "第一章：引言" : "Ch.1 Introduction", index: "1", expanded: true, children: [
+      { id: "ch1-1", title: zh ? "背景介绍" : "Contexte", index: "1.1" },
+      { id: "ch1-2", title: zh ? "研究意义" : "Importance", index: "1.2" },
+      { id: "ch1-3", title: zh ? "论文结构" : "Structure", index: "1.3" },
     ]},
-    { id: "ch2", title: zh ? "第二章：理论基础" : fr ? "Ch.2 Fondements" : "Ch.2 Fondements", index: "2", expanded: true, children: [
-      { id: "ch2-1", title: zh ? "概念定义" : fr ? "Définitions" : "Définitions", index: "2.1" },
-      { id: "ch2-2", title: zh ? "相关研究" : fr ? "Travaux connexes" : "Travaux connexes", index: "2.2" },
+    { id: "ch2", title: zh ? "第二章：理论基础" : "Ch.2 Fondements", index: "2", expanded: true, children: [
+      { id: "ch2-1", title: zh ? "概念定义" : "Définitions", index: "2.1" },
+      { id: "ch2-2", title: zh ? "相关研究" : "Travaux connexes", index: "2.2" },
     ]},
-    { id: "ch3", title: zh ? "第三章：方法论" : fr ? "Ch.3 Méthodologie" : "Ch.3 Méthodologie", index: "3", expanded: false, children: [
-      { id: "ch3-1", title: zh ? "数据采集" : fr ? "Collecte" : "Collecte", index: "3.1" },
-      { id: "ch3-2", title: zh ? "分析方法" : fr ? "Analyse" : "Analyse", index: "3.2" },
-      { id: "ch3-3", title: zh ? "验证方案" : fr ? "Validation" : "Validation", index: "3.3" },
+    { id: "ch3", title: zh ? "第三章：方法论" : "Ch.3 Méthodologie", index: "3", expanded: false, children: [
+      { id: "ch3-1", title: zh ? "数据采集" : "Collecte", index: "3.1" },
+      { id: "ch3-2", title: zh ? "分析方法" : "Analyse", index: "3.2" },
+      { id: "ch3-3", title: zh ? "验证方案" : "Validation", index: "3.3" },
     ]},
-    { id: "ch4", title: zh ? "第四章：实验与结果" : fr ? "Ch.4 Expériences" : "Ch.4 Expériences", index: "4" },
-    { id: "ch5", title: zh ? "第五章：结论" : fr ? "Ch.5 Conclusion" : "Ch.5 Conclusion", index: "5" },
+    { id: "ch4", title: zh ? "第四章：实验与结果" : "Ch.4 Expériences", index: "4" },
+    { id: "ch5", title: zh ? "第五章：结论" : "Ch.5 Conclusion", index: "5" },
   ];
 }
 

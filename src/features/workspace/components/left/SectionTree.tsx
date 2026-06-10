@@ -18,7 +18,7 @@ function TreeNode({ node, depth = 0, selectedSectionId, onSelect, onToggle }: {
           isSelected ? "bg-black text-white dark:bg-white dark:text-black shadow-md" : "text-neutral-700 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/10"
         }`} style={{ paddingLeft: `${12 + depth * 16}px` }}>
         {hasChildren ? (
-          <span onClick={(e) => { e.stopPropagation(); onToggle(node.id); }}
+          <span onClick={(e) => { e.stopPropagation(); onToggle(node.id); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onToggle(node.id); } }} tabIndex={0} role="button" aria-label={isExpanded ? "Collapse section" : "Expand section"}
             className={`flex-shrink-0 w-4 h-4 flex items-center justify-center transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}>
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
           </span>

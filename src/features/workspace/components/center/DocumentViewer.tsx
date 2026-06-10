@@ -142,7 +142,7 @@ function ImageBlock({ block }: { block: ContentBlock }) {
 
 function SelectionMenu({ pos, onQuote, onClose }: { pos: { x: number; y: number }; onQuote: () => void; onClose: () => void }) {
   const { t } = useI18n();
-  return (<><div className="fixed inset-0 z-40" onClick={onClose} />
+  return (<><div className="fixed inset-0 z-40" onClick={onClose} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClose(); }} tabIndex={0} role="button" aria-label="Close selection menu" />
     <div className="fixed z-50 bg-white dark:bg-neutral-800 rounded-xl shadow-xl border border-black/10 dark:border-white/10 py-1 min-w-[140px]" style={{ left: pos.x, top: pos.y }}>
       <button onClick={onQuote} className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/10 transition">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
