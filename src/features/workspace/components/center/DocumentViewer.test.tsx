@@ -240,25 +240,30 @@ describe("DocumentViewer", () => {
   });
 
   it("下载按钮点击时创建下载链接", () => {
-    const appendChild = vi.spyOn(document.body, "appendChild").mockImplementation(() => document.createElement("a"));
-    const removeChild = vi.spyOn(document.body, "removeChild").mockImplementation(() => document.createElement("a"));
+    // 模拟 <a> 元素的 click 行为
+    const clickSpy = vi.fn();
+    const originalCreateElement = document.createElement.bind(document);
+    const createElementSpy = vi.spyOn(document, "createElement").mockImplementation((tagName, options) => {
+      const el = originalCreateElement(tagName, options);
+      if (tagName === "a") {
+        el.click = clickSpy;
+      }
+      return el;
+    });
     
     render(<DocumentViewer {...defaultProps} />, { wrapper });
     fireEvent.click(screen.getByTitle("下载文档"));
     
-    appendChild.mockRestore();
-    removeChild.mockRestore();
-    // 下载函数被调用时创建了一个 a 元素并点击
-    expect(appendChild).toHaveBeenCalled();
+    expect(createElementSpy).toHaveBeenCalledWith("a");
+    expect(clickSpy).toHaveBeenCalled();
+    createElementSpy.mockRestore();
   });
 
   it("分享按钮在支持 navigator.share 时调用分享API", () => {
     const mockShare = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "share", {
-      value: mockShare,
-      writable: true,
-      configurable: true,
-    });
+    // 使用 vi.stubGlobal 在 jsdom 中正确 mock navigator.share
+    const originalShare = navigator.share;
+    vi.stubGlobal("navigator", { ...navigator, share: mockShare });
     
     render(<DocumentViewer {...defaultProps} />, { wrapper });
     fireEvent.click(screen.getByTitle("分享文档"));
@@ -267,9 +272,13 @@ describe("DocumentViewer", () => {
       title: "GreenBean Document",
       text: "Share my course analysis",
     });
+    
+    vi.stubGlobal("navigator", { ...navigator, share: originalShare });
   });
 
   it("分享按钮在不支持 navigator.share 时不报错", () => {
+    // 确保 navigator.share 为 undefined
+    const originalShareDesc = Object.getOwnPropertyDescriptor(navigator, "share");
     Object.defineProperty(navigator, "share", {
       value: undefined,
       writable: true,
@@ -279,17 +288,21 @@ describe("DocumentViewer", () => {
     render(<DocumentViewer {...defaultProps} />, { wrapper });
     // 不报错即可
     fireEvent.click(screen.getByTitle("分享文档"));
+    
+    if (originalShareDesc) {
+      Object.defineProperty(navigator, "share", originalShareDesc);
+    }
   });
 
   it("分享失败时 catch 块不报错", () => {
-    Object.defineProperty(navigator, "share", {
-      value: vi.fn().mockRejectedValue(new Error("User cancelled")),
-      writable: true,
-      configurable: true,
-    });
+    const mockShare = vi.fn().mockRejectedValue(new Error("User cancelled"));
+    const originalShare = navigator.share;
+    vi.stubGlobal("navigator", { ...navigator, share: mockShare });
     
     render(<DocumentViewer {...defaultProps} />, { wrapper });
     // catch 块应该正常运行
     fireEvent.click(screen.getByTitle("分享文档"));
+    
+    vi.stubGlobal("navigator", { ...navigator, share: originalShare });
   });
 });
