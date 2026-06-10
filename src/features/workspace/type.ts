@@ -88,4 +88,5 @@ export interface WorkspacePageProps {
   lang: Lang;
   setLang: (lang: Lang) => void;
   onBack?: () => void;
+  onLogout?: () => void;
 }

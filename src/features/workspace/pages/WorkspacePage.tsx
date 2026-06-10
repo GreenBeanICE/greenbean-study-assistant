@@ -2,6 +2,7 @@ import { useReducer, useCallback, useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { useI18n } from "../../../lib/i18n";
 import SectionTree from "../components/left/SectionTree";
+import FileManager from "../components/left/FileManager";
 import DocumentViewer from "../components/center/DocumentViewer";
 import ChatPanel from "../components/right/ChatPanel";
 import ResizableHandle from "../components/shared/ResizableHandle";
@@ -128,9 +129,12 @@ function workspaceReducer(state: WorkspaceState, action: WorkspaceAction): Works
   }
 }
 
-function WorkspacePage({ onBack, dark, setDark, lang, setLang }: WorkspacePageProps) {
+function WorkspacePage({ onBack, dark, setDark, lang, setLang, onLogout }: WorkspacePageProps) {
   const { t } = useI18n();
   const titleRef = useRef<HTMLInputElement>(null);
+
+  // 左侧面板切换: "sections" | "files" | "both"
+  const [leftPanelMode, setLeftPanelMode] = useState<"sections" | "files">("sections");
   
   const [state, dispatch] = useReducer(workspaceReducer, {
     sections: getLocalizedSections(lang), selectedSectionId: null, contentBlocks: getLocalizedContent(lang),
@@ -185,6 +189,7 @@ function WorkspacePage({ onBack, dark, setDark, lang, setLang }: WorkspacePagePr
         <span className="hidden md:inline text-[11px] text-neutral-400 dark:text-neutral-500 bg-black/5 dark:bg-white/10 px-2 py-0.5 rounded-full">{t("wsTitle")}</span>
         <div className="flex items-center gap-1 ml-auto">
           <button onClick={() => setLang(lang === "zh" ? "fr" : "zh")} className="px-2 py-1 rounded-full text-[11px] font-medium text-neutral-600 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/10 transition">{lang === "zh" ? "FR" : "中文"}</button>
+          <button onClick={onLogout} className="px-2.5 py-1 rounded-full text-[11px] font-medium text-neutral-600 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/10 transition" title={t("logout")}>{t("logout")}</button>
           <button onClick={() => setDark((p) => !p)} className="w-7 h-7 rounded-full flex items-center justify-center text-sm hover:bg-black/5 dark:hover:bg-white/10 transition">
             {dark ? (
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /></svg>
@@ -207,8 +212,31 @@ function WorkspacePage({ onBack, dark, setDark, lang, setLang }: WorkspacePagePr
         {/* 左侧面板 */}
         <div className="flex">
           <div className="w-10 flex-shrink-0 bg-white/70 dark:bg-white/[0.03] border-r border-black/5 dark:border-white/10 flex flex-col items-center py-2 gap-2">
-            <button onClick={tl} className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 text-neutral-400 dark:text-neutral-500" title={state.leftCollapsed ? t("wsExpandSection") : t("wsCollapseSection")}>
+            <button onClick={tl} className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 text-neutral-400 dark:text-neutral-500" title={t("wsCollapseSection")}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="6" height="18" rx="1" /><line x1="11" y1="3" x2="21" y2="3" /><line x1="11" y1="9" x2="21" y2="9" /><line x1="11" y1="15" x2="21" y2="15" /></svg>
+            </button>
+            <div className="w-6 border-t border-black/10 dark:border-white/10" />
+            <button
+              onClick={() => setLeftPanelMode("sections")}
+              className={`w-7 h-7 rounded-md flex items-center justify-center transition-all ${
+                leftPanelMode === "sections"
+                  ? "bg-black/10 dark:bg-white/10 text-neutral-700 dark:text-neutral-200"
+                  : "text-neutral-400 dark:text-neutral-500 hover:bg-black/5 dark:hover:bg-white/10"
+              }`}
+              title={t("wsSectionNav")}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>
+            </button>
+            <button
+              onClick={() => setLeftPanelMode("files")}
+              className={`w-7 h-7 rounded-md flex items-center justify-center transition-all ${
+                leftPanelMode === "files"
+                  ? "bg-black/10 dark:bg-white/10 text-neutral-700 dark:text-neutral-200"
+                  : "text-neutral-400 dark:text-neutral-500 hover:bg-black/5 dark:hover:bg-white/10"
+              }`}
+              title={t("wsFileTitle")}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
             </button>
           </div>
           <motion.aside
@@ -219,7 +247,11 @@ function WorkspacePage({ onBack, dark, setDark, lang, setLang }: WorkspacePagePr
           >
             {!state.leftCollapsed && (
               <div style={{ width: state.leftPanelWidth }}>
-                <SectionTree sections={state.sections} selectedSectionId={state.selectedSectionId} onSelect={handleSectionSelect} onToggle={togg} />
+                {leftPanelMode === "sections" ? (
+                  <SectionTree sections={state.sections} selectedSectionId={state.selectedSectionId} onSelect={handleSectionSelect} onToggle={togg} />
+                ) : (
+                  <FileManager />
+                )}
               </div>
             )}
           </motion.aside>

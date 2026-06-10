@@ -2,7 +2,15 @@ import { useRef } from "react";
 import { motion } from "framer-motion";
 import UploadZone from "../components/UploadZone";
 import { useI18n } from "../../../lib/i18n";
-import { SVG_ICONS, SCREENSHOT_GRADIENTS } from "../constants";
+import { SVG_ICONS } from "../constants";
+import {
+  HeroIllustration,
+  ScreenshotOverview,
+  ScreenshotAIChat,
+  ScreenshotAnalysis,
+  ScreenshotFileManager,
+  ScreenshotSectionNav,
+} from "../components/ScreenshotIllustrations";
 
 /** 首页宣传页面属性 */
 interface HomePageProps {
@@ -11,6 +19,15 @@ interface HomePageProps {
   /** 跳转到工作区的回调函数 */
   onStart?: () => void;
 }
+
+/** 五张宣传截图的 SVG 组件列表 */
+const screenshotSvgs = [
+  ScreenshotOverview,
+  ScreenshotAIChat,
+  ScreenshotAnalysis,
+  ScreenshotFileManager,
+  ScreenshotSectionNav,
+] as const;
 
 function HomePage({ onLogin, onStart }: HomePageProps) {
   // 功能卡片横向滚动容器的 ref
@@ -97,11 +114,8 @@ function HomePage({ onLogin, onStart }: HomePageProps) {
               </div>
             </motion.div>
             <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7, delay: 0.15 }} className="hidden md:block">
-              <div className="aspect-[4/3] rounded-[2.5rem] bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-700 flex items-center justify-center overflow-hidden">
-                <div className="text-center p-8">
-                  <div className="text-neutral-400 dark:text-neutral-500 mx-auto opacity-50">{SVG_ICONS.bookOpen}</div>
-                  <p className="mt-4 text-sm text-neutral-400 dark:text-neutral-500">{t("heroImagePlaceholder")}</p>
-                </div>
+              <div className="aspect-[4/3] rounded-[2.5rem] bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 flex items-center justify-center overflow-hidden">
+                <HeroIllustration className="w-full h-full p-2" />
               </div>
             </motion.div>
           </div>
@@ -136,7 +150,7 @@ function HomePage({ onLogin, onStart }: HomePageProps) {
         </div>
       </section>
 
-      {/* 宣传截图区域：横向滑动的产品截图占位卡片 */}
+      {/* 宣传截图区域：横向滑动的大图展示，无圆角 */}
       <section id="screenshots" className="py-20 md:py-28 px-4">
         <div className="max-w-6xl mx-auto">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }} transition={{ duration: 0.6 }} className="mb-14">
@@ -145,21 +159,23 @@ function HomePage({ onLogin, onStart }: HomePageProps) {
           </motion.div>
           <div className="relative">
             <div className="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
-              {screenshots.map((item, idx) => (
-                <motion.div key={item.label} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ delay: idx * 0.1, duration: 0.5 }}
-                  className="min-w-[280px] md:min-w-[380px] lg:min-w-[420px] flex-shrink-0 snap-start rounded-[2rem] bg-white dark:bg-white/5 border border-black/5 dark:border-white/10 overflow-hidden group">
-                  <div className={`aspect-[16/10] bg-gradient-to-br ${SCREENSHOT_GRADIENTS[idx]} flex items-center justify-center`}>
-                    <div className="text-center text-white/60">
-                      <div className="mx-auto opacity-60">{SVG_ICONS.image}</div>
-                      <p className="mt-2 text-xs text-white/40">{t("screenshotPlaceholder")}</p>
+              {screenshots.map((item, idx) => {
+                const SvgComp = screenshotSvgs[idx];
+                return (
+                  <motion.div key={item.label} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ delay: idx * 0.1, duration: 0.5 }}
+                    className="min-w-[320px] md:min-w-[600px] lg:min-w-[720px] flex-shrink-0 snap-start bg-white dark:bg-white/5 border border-black/5 dark:border-white/10 overflow-hidden group hover:shadow-xl transition-all duration-300">
+                    {/* 大图区域 — 无圆角 */}
+                    <div className="aspect-[16/11] bg-white relative overflow-hidden">
+                      <SvgComp className="w-full h-full" />
                     </div>
-                  </div>
-                  <div className="p-5">
-                    <h3 className="font-semibold">{item.label}</h3>
-                    <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{item.desc}</p>
-                  </div>
-                </motion.div>
-              ))}
+                    {/* 下方说明文字 */}
+                    <div className="p-5 border-t border-black/5 dark:border-white/10">
+                      <h3 className="font-semibold">{item.label}</h3>
+                      <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{item.desc}</p>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
           </div>
         </div>

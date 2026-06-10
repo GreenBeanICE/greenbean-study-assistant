@@ -40,7 +40,7 @@ function App() {
           </>
         )}
         {page === "workspace" && (
-          <WorkspacePage dark={dark} setDark={setDark} lang={lang} setLang={setLang} onBack={navigateToHome} />
+          <WorkspacePage dark={dark} setDark={setDark} lang={lang} setLang={setLang} onBack={navigateToHome} onLogout={navigateToHome} />
         )}
       </div>
     </I18nContext.Provider>

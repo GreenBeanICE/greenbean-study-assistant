@@ -32,10 +32,17 @@ const TRANSLATION_KEYS = [
   "formatDoc", "formatWord", "formatPpt", "formatText", "formatOcr",
   // Login Modal
   "loginTitle", "loginDesc", "loginContinue", "loginLater",
+  // File Manager
+  "wsFileTitle", "wsFileAll", "wsFileCourse", "wsFileExam", "wsFileThesis",
+  "wsFileSearch", "wsFileEmpty", "wsFileToggle",
+  "wsFileAddFolder", "wsFileRemoveFolder", "wsFileFolderName",
+  "wsFileMoveTo", "wsFileRemove", "wsFileChooseFolder",
   // Bottom CTA
   "ctaTitle", "ctaDesc", "ctaButton",
   // Footer
   "footerAbout", "footerPrivacy", "footerTerms",
+  // Auth
+  "logout",
   // Workspace
   "wsTitle", "wsSectionNav", "wsSections", "wsNoSections", "wsUploadHint",
   "wsDocViewer", "wsFiltered", "wsSelectSection", "wsClickHint",
@@ -122,6 +129,21 @@ const zhValues: readonly (readonly [string, string])[] = [
   ["loginDesc", "请先登录你的账户，即可上传课件并享受完整的 AI 解析服务。"],
   ["loginContinue", "继续登录"],
   ["loginLater", "稍后再说"],
+  // File Manager
+  ["wsFileTitle", "文件管理"],
+  ["wsFileAll", "所有文件"],
+  ["wsFileCourse", "课程资料"],
+  ["wsFileExam", "考试复习"],
+  ["wsFileThesis", "论文参考"],
+  ["wsFileSearch", "搜索文件名..."],
+  ["wsFileEmpty", "暂无匹配文件"],
+  ["wsFileToggle", "文件管理"],
+  ["wsFileAddFolder", "新建文件夹"],
+  ["wsFileRemoveFolder", "删除文件夹"],
+  ["wsFileFolderName", "输入文件夹名称..."],
+  ["wsFileMoveTo", "移入文件夹"],
+  ["wsFileRemove", "删除文件"],
+  ["wsFileChooseFolder", "选择文件夹"],
   // Bottom CTA
   ["ctaTitle", "准备好提升学习效率了吗？"],
   ["ctaDesc", "免费开始使用 GreenBean，让法国课程学习变得更轻松、更高效。"],
@@ -130,6 +152,8 @@ const zhValues: readonly (readonly [string, string])[] = [
   ["footerAbout", "关于我们"],
   ["footerPrivacy", "隐私政策"],
   ["footerTerms", "使用条款"],
+  // Auth
+  ["logout", "退出登录"],
   // Workspace
   ["wsTitle", "工作区"],
   ["wsSectionNav", "章节导航"],
@@ -228,6 +252,21 @@ const frValues: readonly (readonly [string, string])[] = [
   ["loginDesc", "Connectez-vous pour importer vos cours et profiter de l'analyse IA complète."],
   ["loginContinue", "Continuer"],
   ["loginLater", "Plus tard"],
+  // File Manager
+  ["wsFileTitle", "Gestion fichiers"],
+  ["wsFileAll", "Tous les fichiers"],
+  ["wsFileCourse", "Cours"],
+  ["wsFileExam", "Examens"],
+  ["wsFileThesis", "Mémoire"],
+  ["wsFileSearch", "Rechercher..."],
+  ["wsFileEmpty", "Aucun fichier trouvé"],
+  ["wsFileToggle", "Fichiers"],
+  ["wsFileAddFolder", "Nouveau dossier"],
+  ["wsFileRemoveFolder", "Supprimer dossier"],
+  ["wsFileFolderName", "Nom du dossier..."],
+  ["wsFileMoveTo", "Déplacer vers"],
+  ["wsFileRemove", "Retirer"],
+  ["wsFileChooseFolder", "Choisir dossier"],
   // Bottom CTA
   ["ctaTitle", "Prêt à booster votre apprentissage ?"],
   ["ctaDesc", "Commencez gratuitement avec GreenBean et simplifiez vos études en français."],
@@ -236,6 +275,8 @@ const frValues: readonly (readonly [string, string])[] = [
   ["footerAbout", "À propos"],
   ["footerPrivacy", "Confidentialité"],
   ["footerTerms", "Conditions"],
+  // Auth
+  ["logout", "Déconnexion"],
   // Workspace
   ["wsTitle", "Espace de travail"],
   ["wsSectionNav", "Navigation"],
