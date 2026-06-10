@@ -43,20 +43,20 @@ function ContentLineRender({ line, blockId, onViewFootnote, onLineHtmlChange }: 
     if (onViewFootnote) onViewFootnote(ref);
   }, [onViewFootnote]);
 
-  // contentEditable 失去焦点时保存 HTML
+  // contentEditable 失去焦点时保存文本内容
   const handleBlur = useCallback(() => {
     if (spanRef.current && onLineHtmlChange) {
-      const html = spanRef.current.innerHTML;
-      if (html !== line.text) {
-        onLineHtmlChange(blockId, line.id, html);
+      const text = spanRef.current.textContent ?? "";
+      if (text !== line.text) {
+        onLineHtmlChange(blockId, line.id, text);
       }
     }
   }, [blockId, line.id, line.text, onLineHtmlChange]);
 
   // 同步外部 line.text 变化到 contentEditable（仅在内容确实不同时）
   useEffect(() => {
-    if (spanRef.current && spanRef.current.innerHTML !== line.text) {
-      spanRef.current.innerHTML = line.text;
+    if (spanRef.current && spanRef.current.textContent !== line.text) {
+      spanRef.current.textContent = line.text;
     }
   }, [line.text]);
 
@@ -234,7 +234,10 @@ function DocumentViewer({
 
   const handleDownload = () => {
     const btn = document.createElement("a");
-    btn.href = "#"; btn.download = "document.md"; btn.click();
+    btn.href = "#"; btn.download = "document.md";
+    document.body.appendChild(btn);
+    btn.click();
+    document.body.removeChild(btn);
   };
   const handleShare = () => {
     if (navigator.share) {
@@ -243,6 +246,8 @@ function DocumentViewer({
       });
     }
   };
+
+  const showSelectionMenuVisible = showSelectionMenu && selectionMenuPos;
 
   return (
     <div className="flex flex-col h-full">
@@ -298,6 +303,14 @@ function DocumentViewer({
       <AnimatePresence>
         {expandedFootnote && <FootnotePanel footnote={expandedFootnote} onClose={() => onToggleFootnote(expandedFootnote.id)} />}
       </AnimatePresence>
+
+      {showSelectionMenuVisible && (
+        <SelectionMenu
+          pos={selectionMenuPos!}
+          onQuote={onQuoteSelection}
+          onClose={() => onShowSelectionMenu(false)}
+        />
+      )}
     </div>
   );
 }
