@@ -32,7 +32,6 @@ describe("FileManager", () => {
 
   it("点击文件夹分类过滤文件", () => {
     render(<FileManager />, { wrapper });
-    // 点击"法律"文件夹
     const examBtn = screen.getByText("法律");
     fireEvent.click(examBtn);
     expect(screen.getByText((content) => content.includes("exam.pdf"))).toBeDefined();
@@ -58,5 +57,31 @@ describe("FileManager", () => {
     const searchInput = screen.getByPlaceholderText("搜索文件名...");
     fireEvent.change(searchInput, { target: { value: "不存在的文件名称" } });
     expect(screen.getByText("暂无匹配文件")).toBeDefined();
+  });
+
+  it("新建文件夹使用 crypto.randomUUID 生成唯一 key", () => {
+    const realCrypto = globalThis.crypto;
+    const mockUUID = vi.fn().mockReturnValue("abcdef12-abcd-abcd-abcd-123456789abc");
+    Object.defineProperty(globalThis, "crypto", {
+      value: { randomUUID: mockUUID },
+      writable: true,
+      configurable: true,
+    });
+
+    render(<FileManager />, { wrapper });
+
+    fireEvent.click(screen.getByTitle("新建文件夹"));
+    const input = screen.getByPlaceholderText("输入文件夹名称...");
+    fireEvent.change(input, { target: { value: "测试新文件夹" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(screen.getByText("测试新文件夹")).toBeDefined();
+
+    // 恢复原始 crypto
+    Object.defineProperty(globalThis, "crypto", {
+      value: realCrypto,
+      writable: true,
+      configurable: true,
+    });
   });
 });
