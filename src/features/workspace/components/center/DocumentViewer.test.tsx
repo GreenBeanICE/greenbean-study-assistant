@@ -447,8 +447,8 @@ describe("DocumentViewer", () => {
       />,
       { wrapper },
     );
-    expect(screen.getByText("引用选中内容")).toBeDefined();
-    fireEvent.click(screen.getByText("引用选中内容"));
+    expect(screen.getByText("引用此段询问 AI")).toBeDefined();
+    fireEvent.click(screen.getByText("引用此段询问 AI"));
     expect(onQuoteSelection).toHaveBeenCalled();
   });
 
@@ -482,6 +482,6 @@ describe("DocumentViewer", () => {
       />,
       { wrapper },
     );
-    expect(screen.queryByText("引用选中内容")).toBeNull();
+    expect(screen.queryByText("引用此段询问 AI")).toBeNull();
   });
 });
