@@ -82,7 +82,11 @@ export function getDefaultFiles(lang: string): FileItem[] {
   ];
 }
 
+/** 生成唯一标识，用于文件夹 key */
 function uid(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return `f_${crypto.randomUUID().slice(0, 8)}`;
+  }
   return `f_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
