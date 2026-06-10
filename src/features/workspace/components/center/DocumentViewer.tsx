@@ -237,7 +237,11 @@ function DocumentViewer({
     btn.href = "#"; btn.download = "document.md"; btn.click();
   };
   const handleShare = () => {
-    if (navigator.share) { navigator.share({ title: "GreenBean Document", text: "Share my course analysis" }).catch(() => {}); }
+    if (navigator.share) {
+      navigator.share({ title: "GreenBean Document", text: "Share my course analysis" }).catch((_err: unknown) => {
+        // User cancelled share or share failed - this is expected
+      });
+    }
   };
 
   return (

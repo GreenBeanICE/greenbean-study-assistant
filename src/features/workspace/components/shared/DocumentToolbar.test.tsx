@@ -53,4 +53,36 @@ describe("DocumentToolbar", () => {
     fireEvent.mouseDown(insertImageBtns[0]);
     expect(onFormat).toHaveBeenCalledWith("insert-image");
   });
+
+  it("未选中行时插入表格按钮仍然可用", () => {
+    const onFormat = vi.fn();
+    render(<DocumentToolbar selectedLineId={null} onFormat={onFormat} />);
+
+    const insertTableBtns = screen.getAllByTitle("插入表格");
+    fireEvent.mouseDown(insertTableBtns[0]);
+    expect(onFormat).toHaveBeenCalledWith("insert-table");
+  });
+
+  it("未选中行时插入图片按钮仍然可用", () => {
+    const onFormat = vi.fn();
+    render(<DocumentToolbar selectedLineId={null} onFormat={onFormat} />);
+
+    const insertImageBtns = screen.getAllByTitle("插入图片");
+    fireEvent.mouseDown(insertImageBtns[0]);
+    expect(onFormat).toHaveBeenCalledWith("insert-image");
+  });
+
+  it("未选中行时对齐按钮被禁用", () => {
+    render(<DocumentToolbar selectedLineId={null} onFormat={() => {}} />);
+    const alignRightBtns = screen.getAllByTitle("右对齐");
+    const btn = alignRightBtns[0].closest("button");
+    expect(btn?.disabled).toBe(true);
+  });
+
+  it("selectedLineId 为 null 时 enabled 为 false", () => {
+    render(<DocumentToolbar selectedLineId={null} onFormat={() => {}} />);
+    const boldBtns = screen.getAllByTitle("加粗");
+    const btn = boldBtns[0].closest("button");
+    expect(btn?.disabled).toBe(true);
+  });
 });

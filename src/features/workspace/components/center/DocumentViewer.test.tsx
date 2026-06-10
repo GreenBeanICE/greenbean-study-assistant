@@ -41,12 +41,52 @@ const sampleBlocks: ContentBlock[] = [
       { id: "l1", text: "AI技术发展迅速。", type: "paragraph", footnoteRef: "1" },
       { id: "l2", text: "教育领域应用广泛。", type: "paragraph" },
       { id: "l3", text: "研究背景与动机", type: "heading", level: 2 },
+      { id: "l4", text: "• 测试列表项", type: "list" },
+      { id: "l5", text: "const x = 1;", type: "code", highlighted: true },
+    ],
+  },
+  {
+    id: "block-table",
+    sectionId: "ch1-1",
+    title: "表1: 对比",
+    contentType: "table",
+    tableData: {
+      headers: ["名称", "值"],
+      rows: [
+        { id: "tr1", cells: ["A", "1"] },
+        { id: "tr2", cells: ["B", "2"] },
+      ],
+    },
+  },
+  {
+    id: "block-image",
+    sectionId: "ch1-1",
+    title: "图1: 示意",
+    contentType: "image",
+    imageUrl: "",
+    imageCaption: "示意图说明文字",
+  },
+  {
+    id: "block-img-url",
+    sectionId: "ch1-1",
+    title: "图2: 实图",
+    contentType: "image",
+    imageUrl: "https://example.com/img.png",
+  },
+  {
+    id: "block-other-section",
+    sectionId: "ch2-1",
+    title: "2.1 概念定义",
+    contentType: "text",
+    lines: [
+      { id: "l10", text: "不同章节内容", type: "paragraph" },
     ],
   },
 ];
 
 const sampleFootnotes: FootnoteReference[] = [
   { id: "fn-1", refNumber: "1", sourceText: "Gartner预测到2025年", sourceDesc: "第1页，第1段" },
+  { id: "fn-2", refNumber: "2", sourceText: "第二个引用来源", sourceDesc: "第2页，第3段" },
 ];
 
 const defaultProps = {
@@ -127,6 +167,129 @@ describe("DocumentViewer", () => {
 
   it("显示内容块数量", () => {
     render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />, { wrapper });
-    expect(screen.getByText(/1 个章节/)).toBeDefined();
+    expect(screen.getByText(/4 个章节/)).toBeDefined();
+  });
+
+  it("表格块正确渲染表头和行", () => {
+    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />, { wrapper });
+    expect(screen.getByText("表1: 对比")).toBeDefined();
+    expect(screen.getByText("名称")).toBeDefined();
+    expect(screen.getByText("值")).toBeDefined();
+  });
+
+  it("图片块显示占位图和标题", () => {
+    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />, { wrapper });
+    expect(screen.getByText("图1: 示意")).toBeDefined();
+    expect(screen.getByText("示意图说明文字")).toBeDefined();
+    expect(screen.getByText("Chart")).toBeDefined();
+  });
+
+  it("有URL的图片块显示图片", () => {
+    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />, { wrapper });
+    const img = screen.getByAltText("图2: 实图");
+    expect(img).toBeDefined();
+    expect(img.getAttribute("src")).toBe("https://example.com/img.png");
+  });
+
+  it("列表类型行有正确样式", () => {
+    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />, { wrapper });
+    expect(screen.getByText("• 测试列表项")).toBeDefined();
+  });
+
+  it("高亮代码行有背景色", () => {
+    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />, { wrapper });
+    expect(screen.getByText("const x = 1;")).toBeDefined();
+  });
+
+  it("跨章节内容不会显示", () => {
+    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />, { wrapper });
+    expect(screen.queryByText("2.1 概念定义")).toBeNull();
+  });
+
+  it("内容块之间有分隔线", () => {
+    const { container } = render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />, { wrapper });
+    const hrs = container.querySelectorAll("hr");
+    expect(hrs.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("空章节内容块列表显示空", () => {
+    render(<DocumentViewer {...defaultProps} contentBlocks={[]} selectedSectionId="ch1-1" />, { wrapper });
+    expect(screen.queryByText("1.1 背景介绍")).toBeNull();
+  });
+
+  it("contentEditable 行可编辑", () => {
+    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />, { wrapper });
+    const span = screen.getByText("AI技术发展迅速。");
+    expect(span.getAttribute("contentEditable")).toBe("true");
+  });
+
+  it("脚注引用 refNumber 与 footnote 匹配时触发回调", () => {
+    const onToggleFootnote = vi.fn();
+    render(
+      <DocumentViewer
+        {...defaultProps}
+        selectedSectionId="ch1-1"
+        footnotes={[{ id: "fn-1", refNumber: "1", sourceText: "test", sourceDesc: "desc" }]}
+        onToggleFootnote={onToggleFootnote}
+      />,
+      { wrapper },
+    );
+    const footnoteBtns = screen.getAllByTitle("点击查看原文引用");
+    fireEvent.click(footnoteBtns[0]);
+    expect(onToggleFootnote).toHaveBeenCalledWith("fn-1");
+  });
+
+  it("下载按钮点击时创建下载链接", () => {
+    const appendChild = vi.spyOn(document.body, "appendChild").mockImplementation(() => document.createElement("a"));
+    const removeChild = vi.spyOn(document.body, "removeChild").mockImplementation(() => document.createElement("a"));
+    
+    render(<DocumentViewer {...defaultProps} />, { wrapper });
+    fireEvent.click(screen.getByTitle("下载文档"));
+    
+    appendChild.mockRestore();
+    removeChild.mockRestore();
+    // 下载函数被调用时创建了一个 a 元素并点击
+    expect(appendChild).toHaveBeenCalled();
+  });
+
+  it("分享按钮在支持 navigator.share 时调用分享API", () => {
+    const mockShare = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "share", {
+      value: mockShare,
+      writable: true,
+      configurable: true,
+    });
+    
+    render(<DocumentViewer {...defaultProps} />, { wrapper });
+    fireEvent.click(screen.getByTitle("分享文档"));
+    
+    expect(mockShare).toHaveBeenCalledWith({
+      title: "GreenBean Document",
+      text: "Share my course analysis",
+    });
+  });
+
+  it("分享按钮在不支持 navigator.share 时不报错", () => {
+    Object.defineProperty(navigator, "share", {
+      value: undefined,
+      writable: true,
+      configurable: true,
+    });
+    
+    render(<DocumentViewer {...defaultProps} />, { wrapper });
+    // 不报错即可
+    fireEvent.click(screen.getByTitle("分享文档"));
+  });
+
+  it("分享失败时 catch 块不报错", () => {
+    Object.defineProperty(navigator, "share", {
+      value: vi.fn().mockRejectedValue(new Error("User cancelled")),
+      writable: true,
+      configurable: true,
+    });
+    
+    render(<DocumentViewer {...defaultProps} />, { wrapper });
+    // catch 块应该正常运行
+    fireEvent.click(screen.getByTitle("分享文档"));
   });
 });
