@@ -62,7 +62,7 @@ jobs:
         run: |
           mkdir -p coverage/python
           cd backend-python
-          python -m pytest --cov=app --cov-report=term-missing --cov-report=xml:../coverage/python/coverage.xml
+          python -m pytest --cov=app --cov-config=tests/.coveragerc --cov-report=term-missing --cov-report=xml:../coverage/python/coverage.xml
 
       - name: Upload Python coverage
         uses: actions/upload-artifact@v4
