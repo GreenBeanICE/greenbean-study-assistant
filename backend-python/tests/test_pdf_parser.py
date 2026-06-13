@@ -40,7 +40,7 @@ def test_pdf_parser_extract_text_success():
         assert result[0]["parser_version"] == "1.0.0"
         assert result[0]["metadata"]["source_type"] == "pdf"
         assert result[0]["metadata"]["headings"] == []
-        assert result[0]["metadata"]["paragraphs_count"] == 0
+        assert result[0]["metadata"]["paragraphs_count"] == 1
         assert result[1]["page_number"] == 2
         assert result[1]["char_count"] == 20
         assert result[1]["parser_name"] == "PDFParser"

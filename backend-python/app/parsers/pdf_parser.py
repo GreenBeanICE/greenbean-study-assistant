@@ -31,7 +31,7 @@ class PDFParser:
                     "metadata": {
                         "source_type": "pdf",
                         "headings": [],
-                        "paragraphs_count": 0,
+                        "paragraphs_count": len([p for p in text.split("\n\n") if p.strip()]),
                     }
                 }
                 parsed_pages.append(page_node)
