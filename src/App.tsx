@@ -1,50 +1,49 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import { useState, useCallback } from "react";
+import HomePage from "./features/home/pages/HomePage";
+import WorkspacePage from "./features/workspace/pages/WorkspacePage";
+import Navbar from "./components/ui/Navbar";
+import LoginModal from "./features/home/components/LoginModal";
+import { I18nContext, type Lang, translations } from "./lib/i18n";
+
+type Page = "home" | "workspace";
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+  const [dark, setDark] = useState(() => {
+    if (typeof window !== "undefined") {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    }
+    return false;
+  });
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
+  const [lang, setLang] = useState<Lang>("zh");
+  const [showLogin, setShowLogin] = useState(false);
+  const [page, setPage] = useState<Page>("home");
+
+  const openLogin = useCallback(() => setShowLogin(true), []);
+  const closeLogin = useCallback(() => setShowLogin(false), []);
+  const navigateToWorkspace = useCallback(() => setPage("workspace"), []);
+  const navigateToHome = useCallback(() => setPage("home"), []);
+
+  const t = useCallback(
+    (key: keyof typeof translations.zh) => translations[lang][key],
+    [lang],
+  );
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <I18nContext.Provider value={{ lang, setLang, t }}>
+      <div className={dark ? "dark" : ""}>
+        {page === "home" && (
+          <>
+            <Navbar dark={dark} setDark={setDark} onLogin={openLogin} />
+            <HomePage onLogin={openLogin} onStart={navigateToWorkspace} />
+            <LoginModal open={showLogin} onClose={closeLogin} />
+          </>
+        )}
+        {page === "workspace" && (
+          <WorkspacePage dark={dark} setDark={setDark} lang={lang} setLang={setLang} onBack={navigateToHome} onLogout={navigateToHome} />
+        )}
       </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
+    </I18nContext.Provider>
   );
 }
 
