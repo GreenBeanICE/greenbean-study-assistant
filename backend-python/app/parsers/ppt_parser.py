@@ -59,6 +59,8 @@ class PptParser:
                 "page_number": slide_num,
                 "content": full_text,
                 "char_count": len(full_text),
+                "parser_name": "PptParser",
+                "parser_version": "1.0.0",
                 "metadata": {
                     "source_type": "ppt",
                     "headings": headings,

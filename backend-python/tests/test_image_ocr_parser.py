@@ -37,6 +37,8 @@ def test_ocr_parser_png():
         assert "Hello Greenbean" in result[0]["content"]
         assert "这是中文" in result[0]["content"]
         assert "Bonjour le monde" in result[0]["content"]
+        assert result[0]["parser_name"] == "ImageOCRParser"
+        assert result[0]["parser_version"] == "1.0.0"
         assert result[0]["metadata"]["source_type"] == "image"
         assert result[0]["metadata"]["image_format"] == "PNG"
         assert result[0]["metadata"]["ocr_engine"] == "tesseract"
@@ -57,6 +59,8 @@ def test_ocr_parser_jpg():
         assert len(result) == 1
         assert result[0]["metadata"]["image_format"] == "JPEG"
         assert "JPG test content" in result[0]["content"]
+        assert result[0]["parser_name"] == "ImageOCRParser"
+        assert result[0]["parser_version"] == "1.0.0"
 
 
 @pytest.mark.us25
@@ -73,6 +77,8 @@ def test_ocr_parser_webp():
         assert len(result) == 1
         assert result[0]["metadata"]["image_format"] == "WEBP"
         assert "WEBP test content" in result[0]["content"]
+        assert result[0]["parser_name"] == "ImageOCRParser"
+        assert result[0]["parser_version"] == "1.0.0"
 
 
 @pytest.mark.us25
@@ -92,6 +98,8 @@ def test_ocr_parser_image_metadata():
         assert "grayscale" in metadata["preprocessing_applied"]
         assert "denoise" in metadata["preprocessing_applied"]
         assert "contrast_enhancement" in metadata["preprocessing_applied"]
+        assert result[0]["parser_name"] == "ImageOCRParser"
+        assert result[0]["parser_version"] == "1.0.0"
 
 
 @pytest.mark.us25
@@ -109,6 +117,8 @@ def test_ocr_parser_ocr_failure():
         assert result[0]["content"] == ""  # OCR 失败返回空文本
         assert "ocr_error" in result[0]["metadata"]
         assert "Tesseract not found" in result[0]["metadata"]["ocr_error"]
+        assert result[0]["parser_name"] == "ImageOCRParser"
+        assert result[0]["parser_version"] == "1.0.0"
 
 
 @pytest.mark.us25

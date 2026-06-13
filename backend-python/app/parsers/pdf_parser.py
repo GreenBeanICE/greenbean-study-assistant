@@ -25,7 +25,14 @@ class PDFParser:
                 page_node = {
                     "page_number": page_num + 1,
                     "content": text,
-                    "char_count": len(text)
+                    "char_count": len(text),
+                    "parser_name": "PDFParser",
+                    "parser_version": "1.0.0",
+                    "metadata": {
+                        "source_type": "pdf",
+                        "headings": [],
+                        "paragraphs_count": 0,
+                    }
                 }
                 parsed_pages.append(page_node)
         finally:

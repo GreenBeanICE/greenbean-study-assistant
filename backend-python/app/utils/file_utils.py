@@ -6,7 +6,7 @@ from typing import Set
 
 # 定义支持的文件扩展名集合
 SUPPORTED_EXTENSIONS: Set[str] = {
-    ".pdf", ".docx", ".doc",
+    ".pdf", ".docx",
     ".pptx",
     ".jpg", ".jpeg", ".png", ".webp",
     ".txt", ".md",
@@ -16,7 +16,7 @@ SUPPORTED_EXTENSIONS: Set[str] = {
 IMAGE_EXTENSIONS: Set[str] = {".jpg", ".jpeg", ".png", ".webp"}
 
 # 文档文件扩展名
-DOCUMENT_EXTENSIONS: Set[str] = {".pdf", ".docx", ".doc", ".pptx", ".txt", ".md"}
+DOCUMENT_EXTENSIONS: Set[str] = {".pdf", ".docx", ".pptx", ".txt", ".md"}
 
 
 def get_extension(filename: str) -> str:
@@ -72,7 +72,6 @@ def get_mime_type(filename: str) -> str:
     mime_map = {
         ".pdf": "application/pdf",
         ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        ".doc": "application/msword",
         ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         ".jpg": "image/jpeg",
         ".jpeg": "image/jpeg",

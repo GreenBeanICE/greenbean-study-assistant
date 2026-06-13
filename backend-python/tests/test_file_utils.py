@@ -91,7 +91,6 @@ class TestGetMimeType:
     def test_known_mime_types(self):
         assert get_mime_type("file.pdf") == "application/pdf"
         assert get_mime_type("file.docx") == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        assert get_mime_type("file.doc") == "application/msword"
         assert get_mime_type("file.pptx") == "application/vnd.openxmlformats-officedocument.presentationml.presentation"
         assert get_mime_type("file.jpg") == "image/jpeg"
         assert get_mime_type("file.jpeg") == "image/jpeg"

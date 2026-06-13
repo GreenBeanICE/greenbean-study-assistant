@@ -19,6 +19,8 @@ class TestTextParser:
         assert result[0]["page_number"] == 1
         assert result[0]["content"] == "Hello World\n\nThis is a test."
         assert result[0]["char_count"] == 28
+        assert result[0]["parser_name"] == "TextParser"
+        assert result[0]["parser_version"] == "1.0.0"
         assert result[0]["metadata"]["source_type"] == "text"
         assert result[0]["metadata"]["is_markdown"] is False
         assert result[0]["metadata"]["paragraphs_count"] == 2
@@ -32,6 +34,8 @@ class TestTextParser:
         
         assert len(result) == 1
         assert "你好世界" in result[0]["content"]
+        assert result[0]["parser_name"] == "TextParser"
+        assert result[0]["parser_version"] == "1.0.0"
         assert result[0]["metadata"]["source_type"] == "text"
 
     @pytest.mark.us25
@@ -52,6 +56,8 @@ print("hello")
         result = parser.parse(content.encode("utf-8"))
         
         assert len(result) == 1
+        assert result[0]["parser_name"] == "TextParser"
+        assert result[0]["parser_version"] == "1.0.0"
         assert result[0]["metadata"]["is_markdown"] is True
         assert len(result[0]["metadata"]["headings"]) == 2
         assert result[0]["metadata"]["headings"][0] == {"level": 1, "text": "第一章"}
@@ -66,6 +72,8 @@ print("hello")
         assert len(result) == 1
         assert result[0]["content"] == ""
         assert result[0]["char_count"] == 0
+        assert result[0]["parser_name"] == "TextParser"
+        assert result[0]["parser_version"] == "1.0.0"
         assert result[0]["metadata"]["paragraphs_count"] == 0
 
     @pytest.mark.us25
@@ -77,6 +85,8 @@ print("hello")
         assert len(result) == 1
         assert result[0]["content"] == "Just one line"
         assert result[0]["char_count"] == 13
+        assert result[0]["parser_name"] == "TextParser"
+        assert result[0]["parser_version"] == "1.0.0"
         assert result[0]["metadata"]["paragraphs_count"] == 1
 
     def test_parse_markdown_without_headings(self):

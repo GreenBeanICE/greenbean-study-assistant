@@ -38,6 +38,8 @@ def test_word_parser_extract_paragraphs():
         assert result[0]["page_number"] == 1
         assert "第一段文本" in result[0]["content"]
         assert "第二段文本" in result[0]["content"]
+        assert result[0]["parser_name"] == "WordParser"
+        assert result[0]["parser_version"] == "1.0.0"
         assert result[0]["metadata"]["source_type"] == "word"
         assert result[0]["metadata"]["paragraphs_count"] == 2
         assert result[0]["metadata"]["tables_count"] == 0
@@ -84,6 +86,8 @@ def test_word_parser_extract_tables():
         assert "年龄" in result[0]["content"]
         assert "张三" in result[0]["content"]
         assert "25" in result[0]["content"]
+        assert result[0]["parser_name"] == "WordParser"
+        assert result[0]["parser_version"] == "1.0.0"
         assert result[0]["metadata"]["tables_count"] == 1
 
 
@@ -124,6 +128,8 @@ def test_word_parser_headings():
         assert headings[0]["text"] == "第一章 引言"
         assert headings[1]["level"] == 2
         assert headings[1]["text"] == "1.1 研究背景"
+        assert result[0]["parser_name"] == "WordParser"
+        assert result[0]["parser_version"] == "1.0.0"
 
 
 @pytest.mark.us25
@@ -147,6 +153,8 @@ def test_word_parser_empty_document():
         assert len(result) == 1
         assert result[0]["content"] == ""
         assert result[0]["char_count"] == 0
+        assert result[0]["parser_name"] == "WordParser"
+        assert result[0]["parser_version"] == "1.0.0"
         assert result[0]["metadata"]["paragraphs_count"] == 0
         assert result[0]["metadata"]["tables_count"] == 0
 

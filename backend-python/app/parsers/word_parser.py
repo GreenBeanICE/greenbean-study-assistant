@@ -62,6 +62,8 @@ class WordParser:
             "page_number": 1,
             "content": full_text,
             "char_count": len(full_text),
+            "parser_name": "WordParser",
+            "parser_version": "1.0.0",
             "metadata": {
                 "source_type": "word",
                 "paragraphs_count": len(paragraphs_text),

@@ -52,6 +52,8 @@ class TextParser:
             "page_number": 1,
             "content": text,
             "char_count": len(text),
+            "parser_name": "TextParser",
+            "parser_version": "1.0.0",
             "metadata": {
                 "source_type": "text",
                 "is_markdown": is_markdown,

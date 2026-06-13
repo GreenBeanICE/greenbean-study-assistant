@@ -101,6 +101,8 @@ class ImageOCRParser:
             "page_number": 1,
             "content": text,
             "char_count": len(text),
+            "parser_name": "ImageOCRParser",
+            "parser_version": "1.0.0",
             "metadata": {
                 "source_type": "image",
                 "image_format": image_format,

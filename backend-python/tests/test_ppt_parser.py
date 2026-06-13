@@ -47,6 +47,10 @@ class TestPptParser:
         assert result[1]["page_number"] == 2
         assert "第1章 测试标题" in result[0]["content"]
         assert "第2章 测试标题" in result[1]["content"]
+        assert result[0]["parser_name"] == "PptParser"
+        assert result[0]["parser_version"] == "1.0.0"
+        assert result[1]["parser_name"] == "PptParser"
+        assert result[1]["parser_version"] == "1.0.0"
         assert result[0]["metadata"]["source_type"] == "ppt"
         assert result[1]["metadata"]["source_type"] == "ppt"
 
@@ -60,6 +64,8 @@ class TestPptParser:
         assert len(result) == 1
         assert result[0]["page_number"] == 1
         assert result[0]["char_count"] > 0
+        assert result[0]["parser_name"] == "PptParser"
+        assert result[0]["parser_version"] == "1.0.0"
         assert len(result[0]["metadata"]["headings"]) > 0
 
     @pytest.mark.us25
@@ -87,6 +93,8 @@ class TestPptParser:
         assert "shapes_count" in metadata
         assert "paragraphs_count" in metadata
         assert metadata["source_type"] == "ppt"
+        assert result[0]["parser_name"] == "PptParser"
+        assert result[0]["parser_version"] == "1.0.0"
 
     @pytest.mark.us25
     def test_parse_shape_without_text_frame(self):
@@ -143,6 +151,8 @@ class TestPptParser:
             
             assert len(result) == 1
             assert "有效文本" in result[0]["content"]
+            assert result[0]["parser_name"] == "PptParser"
+            assert result[0]["parser_version"] == "1.0.0"
 
     @pytest.mark.us25
     def test_parse_empty_paragraph_skipped(self):
