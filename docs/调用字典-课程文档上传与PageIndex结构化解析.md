@@ -1,7 +1,7 @@
 # 课程文档上传与 PageIndex 结构化解析 — 调用字典
 
-> **版本**: 1.2  
-> **最后更新**: 2026-06-08  
+> **版本**: 1.3  
+> **最后更新**: 2026-06-13  
 > **用途**: 前后端数据对齐、接口联调参考
 
 ---
@@ -65,10 +65,12 @@ Content-Type: multipart/form-data
 | `page_number` | `int` | ✅ | 页码，从 1 开始 | `1` |
 | `content` | `str` | ✅ | 提取的文本内容 | `"第一章 绪论..."` |
 | `char_count` | `int` | ✅ | 字符数（含空格） | `1234` |
-| `source_type` | `str` | ✅ | 来源类型枚举 | `"pdf"` |
-| `metadata` | `dict` | ❌ | 元数据（可选） | `{...}` |
+| `source_type` | `str` | ✅ | 来源类型枚举，位于 `metadata.source_type` | `"pdf"` |
+| `parser_name` | `str` | ✅ | 解析器类名，用于审计追溯 | `"PDFParser"` |
+| `parser_version` | `str` | ✅ | 解析器版本号 | `"1.0.0"` |
+| `metadata` | `dict` | ✅ | 元数据（至少含 `source_type`） | `{...}` |
 
-### 2.2 source_type 枚举
+### 2.2 source_type 枚举（位于 `metadata.source_type`）
 
 | 值 | 说明 | 来源解析器 |
 |----|------|-----------|
@@ -78,7 +80,25 @@ Content-Type: multipart/form-data
 | `"text"` | 纯文本 / Markdown | `TextParser` |
 | `"image"` | 图片文件 | `ImageOCRParser` |
 
-### 2.3 metadata 结构
+### 2.3 各解析器输出差异
+
+| 字段 | PDFParser | WordParser | PptParser | TextParser | ImageOCRParser |
+|------|-----------|------------|-----------|------------|----------------|
+| `page_number` | 实际页码 | 固定 1 | 幻灯片编号 | 固定 1 | 固定 1 |
+| `content` | 每页文本 | 全部文本 | 每页文本 | 全部文本 | OCR 文本 |
+| `char_count` | 每页字符数 | 总字符数 | 每页字符数 | 总字符数 | 总字符数 |
+| `parser_name` | `"PDFParser"` | `"WordParser"` | `"PptParser"` | `"TextParser"` | `"ImageOCRParser"` |
+| `parser_version` | `"1.0.0"` | `"1.0.0"` | `"1.0.0"` | `"1.0.0"` | `"1.0.0"` |
+| `metadata.source_type` | `"pdf"` | `"word"` | `"ppt"` | `"text"` | `"image"` |
+| `metadata.headings` | ❌ | ✅ | ✅ | ✅ (仅 Markdown) | ❌ |
+| `metadata.paragraphs_count` | ❌ | ✅ | ✅ | ✅ | ❌ |
+| `metadata.tables_count` | ❌ | ✅ | ❌ | ❌ | ❌ |
+| `metadata.shapes_count` | ❌ | ❌ | ✅ | ❌ | ❌ |
+| `metadata.is_markdown` | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `metadata.language` | ❌ | ❌ | ❌ | ❌ | ✅ |
+| `metadata.preprocessing_steps` | ❌ | ❌ | ❌ | ❌ | ✅ |
+
+### 2.4 metadata 结构详解
 
 #### PDF 文档
 
@@ -166,7 +186,7 @@ Content-Type: multipart/form-data
 | `language` | `str` | OCR 使用的语言代码 |
 | `preprocessing_steps` | `list[str]` | 预处理步骤列表 |
 
-### 2.4 language 枚举（OCR）
+### 2.5 language 枚举（OCR）
 
 | 值 | 说明 |
 |----|------|
@@ -174,7 +194,7 @@ Content-Type: multipart/form-data
 | `"chi_sim"` | 简体中文 |
 | `"fra"` | 法语 |
 
-### 2.5 preprocessing_steps 枚举
+### 2.6 preprocessing_steps 枚举
 
 | 值 | 说明 |
 |----|------|
@@ -184,7 +204,7 @@ Content-Type: multipart/form-data
 | `"binarization"` | 二值化 |
 | `"scaling"` | 缩放 |
 
-### 2.6 status 枚举
+### 2.7 status 枚举
 
 | 值 | 说明 |
 |----|------|
@@ -431,7 +451,7 @@ type PreprocessingStep =
 | 测试文件 | 测试数 | 覆盖率 | 测试范围 |
 |----------|--------|--------|----------|
 | `test_document_controller.py` | 13 | 100% | API 上传接口（成功/异常/边界） |
-| `test_document_ingest_service.py` | 7 | 100% | 文档摄取服务（多格式/空内容/异常） |
+| `test_document_ingest_service.py` | 21 | 100% | 文档摄取服务（多格式/空内容/异常/实体化/关键词参数） |
 | `test_file_utils.py` | 13 | 100% | 文件工具函数（扩展名/格式/MIME） |
 | `test_text_utils.py` | 30 | 100% | 文本工具函数（清洗/截断/分段/语言检测） |
 | `test_image_preprocessor.py` | 17 | 100% | 图片预处理（灰度/二值化/缩放/纠偏） |
@@ -447,7 +467,7 @@ type PreprocessingStep =
 所有文档上传与解析相关测试均标记为 `us25`，可按 User Story 筛选：
 
 ```bash
-pytest -m us25 -v          # 仅运行 US25 测试（119 个）
+pytest -m us25 -v          # 仅运行 US25 测试（85 个标记）
 pytest -m "not us25" -v    # 排除 US25 测试
 ```
 

@@ -1,7 +1,7 @@
 # 课程文档上传与 PageIndex 结构化解析 — 维护手册
 
-> **版本**: 1.2  
-> **最后更新**: 2026-06-08  
+> **版本**: 1.3  
+> **最后更新**: 2026-06-13  
 > **用途**: 运维部署、问题排查、性能调优参考
 
 ---
@@ -278,7 +278,7 @@ pytest -m "not us25" -v
 | 测试文件 | 标记数 |
 |----------|--------|
 | `test_document_controller.py` | 13 |
-| `test_document_ingest_service.py` | 7 |
+| `test_document_ingest_service.py` | 21 |
 | `test_file_utils.py` | 13 |
 | `test_text_utils.py` | 30 |
 | `test_image_preprocessor.py` | 17 |
@@ -288,7 +288,7 @@ pytest -m "not us25" -v
 | `test_ppt_parser.py` | 6 |
 | `test_pdf_parser.py` | 1 |
 | `test_word_parser.py` | 5 |
-| **合计** | **119** |
+| **合计** | **133** |
 
 ---
 

@@ -66,18 +66,18 @@
 | 模块 | 状态 | 质量 |
 |------|------|------|
 | `ParserFactory` | ✅ 完成 | 路由逻辑全覆盖，大小写不敏感，12 个测试全绿 |
-| `PDFParser` | ✅ 完成 | mock 隔离测试通过，逐页提取 page_number/content/char_count |
+| `PDFParser` | ✅ 完成 | mock 隔离测试通过，逐页提取 page_number/content/char_count/parser_name/parser_version/metadata |
 | `WordParser` | ✅ 完成 | 段落+表格+标题提取，空段落跳过，5 个测试全绿 |
 | `PptParser` | ✅ 完成 | 逐 slide，标题检测(idx==0)，空 PPT 处理，6 个测试全绿 |
 | `TextParser` | ✅ 完成 | UTF-8→GBK→Latin-1 回退，Markdown 检测，7 个测试全绿 |
 | `ImageOCRParser` | ✅ 完成 | Tesseract 中英法，OCR 失败降级，8 个测试全绿 |
 | `ImagePreprocessor` | ✅ 完成 | 缩放→灰度→降噪→对比度→二值化，15 个测试全绿 |
-| `DocumentIngestService` | ⚠️ 部分 | 仅返回内存 preview，未持久化到 DB |
+| `DocumentIngestService` | ✅ 完成 | 解析 + 实体化（DocumentRecord + DocumentUnit），21 个测试全绿 |
 | `DocumentController` | ✅ 完成 | POST /api/documents/upload，完整错误处理，13 个测试全绿 |
-| `file_utils` | ✅ 完成 | 扩展名检测/MIME 映射，但 `.doc` 在支持列表内却无对应 Parser |
+| `file_utils` | ✅ 完成 | 扩展名检测/MIME 映射，`.doc` 已移除 |
 | `text_utils` | ✅ 完成 | 清洗/截断/分词/语言检测，所有函数已测试 |
 
-**测试汇总**：US #25 相关的 11 个测试文件，**122 个测试用例，0 失败**。
+**测试汇总**：US #25 相关的 11 个测试文件，**133 个测试用例，0 失败**。
 
 ### 2.2 Database 层状态
 
@@ -98,17 +98,17 @@
 | **`embedding_index` vec0 虚拟表** | ❌ 缺失 | sqlite-vec 已加载但未创建索引表 |
 | **批量 save_batch 方法** | ❌ 缺失 | 所有仓库仅支持单条 upsert |
 
-### 2.3 Parser 输出不一致问题
+### 2.3 Parser 输出统一情况（已全部完成 ✅）
 
 | Parser | `metadata` 字段 | `parser_name` | `parser_version` |
 |--------|:---:|:---:|:---:|
-| `PDFParser` | ❌ 缺失 | ❌ 缺失 | ❌ 缺失 |
-| `WordParser` | ✅ | ❌ 缺失 | ❌ 缺失 |
-| `PptParser` | ✅ | ❌ 缺失 | ❌ 缺失 |
-| `TextParser` | ✅ | ❌ 缺失 | ❌ 缺失 |
-| `ImageOCRParser` | ✅ | ❌ 缺失 | ❌ 缺失 |
+| `PDFParser` | ✅ | ✅ | ✅ |
+| `WordParser` | ✅ | ✅ | ✅ |
+| `PptParser` | ✅ | ✅ | ✅ |
+| `TextParser` | ✅ | ✅ | ✅ |
+| `ImageOCRParser` | ✅ | ✅ | ✅ |
 
-**结论**：所有 Parser 需要统一补充 `parser_name`、`parser_version` 字段；PDFParser 需要补充 `metadata: {"source_type": "pdf", "headings": [], "paragraphs_count": N}`。
+**结论**：所有 Parser 已统一输出 `parser_name`、`parser_version` 和 `metadata` 字段，契约一致性已达到。
 
 ---
 
@@ -947,7 +947,10 @@ Database 团队:
 
 **Phase 1 验收标准**：
 
-- [ ] Parser 团队：所有 122 个现有测试 + 新增测试 100% 绿灯
+- [x] Parser 团队：所有 133 个现有测试 100% 绿灯
+- [x] Parser 团队：5 个 Parser 全部补全 `parser_name`/`parser_version`/`metadata`
+- [x] Parser 团队：`file_utils.py` 已移除 `.doc`
+- [x] Parser 团队：`DocumentIngestService` 实体化（解析 + 实体构建）完成
 - [ ] Database 团队：`SectionUnitLinkRepository` 完整 CRUD 测试通过
 - [ ] 联调：上传 PDF/DOCX/PPTX/TXT/Image → DB 中有对应的 `DocumentRecord` + `DocumentUnit` 记录
 - [ ] 联调：违反唯一约束时事务正确回滚
@@ -991,7 +994,7 @@ Database 团队:
 
 | 测试类型 | 要求 | 现有状态 |
 |---------|------|---------|
-| 单元测试 | 每个 Parser 独立测试，mock 外部依赖 | ✅ 122 个测试全绿 |
+| 单元测试 | 每个 Parser 独立测试，mock 外部依赖 | ✅ 133 个测试全绿 |
 | 契约测试 | 验证每个 Parser 输出符合 PageIndex 数据契约 | ❌ 需新增（基于 §3 的契约） |
 | 边界测试 | 空文件、超大文件、损坏文件、OCR 失败 | ✅ 已覆盖 |
 

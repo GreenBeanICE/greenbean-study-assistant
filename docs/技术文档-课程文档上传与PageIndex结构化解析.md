@@ -1,7 +1,7 @@
 # 课程文档上传与 PageIndex 结构化解析 — 技术文档
 
-> **版本**: 1.2  
-> **最后更新**: 2026-06-08  
+> **版本**: 1.3  
+> **最后更新**: 2026-06-13  
 > **适用范围**: Greenbean Study Assistant 后端 Python 服务
 
 ---
@@ -86,19 +86,27 @@
     │  └─ 读取文件二进制流
     │
     ▼
-[2] document_ingest_service.ingest_document()
+    [2] document_ingest_service.ingest_document()
     │  ├─ ParserFactory.get_parser(filename)
     │  │   └─ 根据扩展名返回对应解析器实例
     │  └─ parser.parse(file_content)
-    │      └─ 返回 List[PageIndex]
+    │      └─ 返回 List[PageIndex]（含 parser_name/parser_version/metadata）
     │
     ▼
-[3] 返回统一响应格式
+[3] 实体化（纯内存）
+    │  ├─ PageIndex[] → DocumentRecord（标题、页码、hash 等）
+    │  ├─ PageIndex[𝑖] → DocumentUnit（文本、页码、偏移、追溯信息）
+    │  └─ source_type → DocumentFileType 映射
+    │
+    ▼
+[4] 返回统一响应格式 + Pydantic 实体
     {
         "filename": "xxx.pdf",
         "total_pages": 1,
         "status": "parsed_successfully",
-        "page_index_preview": [PageIndex, ...]
+        "page_index_preview": [PageIndex, ...],
+        "document_record": DocumentRecord,
+        "document_units": [DocumentUnit, ...]
     }
 ```
 
@@ -156,25 +164,44 @@
 核心方法:
 
 ```python
-async def ingest_document(filename: str, file_content: bytes) -> dict:
+async def ingest_document(
+    filename: str,
+    file_content: bytes,
+    *,
+    workspace_id: str | None = None,
+    title: str | None = None,
+    file_path: str | None = None,
+    file_hash: str | None = None,
+) -> dict:
     """
-    文档摄取入口
-    
+    文档摄取入口 — 解析 + 实体化（纯内存，不涉及 DB 持久化）
+
     Args:
         filename: 文件名（用于判断格式）
         file_content: 文件二进制内容
-        
+        workspace_id: 工作区 ID（可选，写入 DocumentRecord）
+        title: 文档标题（可选，默认从文件名推导）
+        file_path: 文件存储路径（可选）
+        file_hash: 文件 SHA-256 哈希（可选）
+
     Returns:
         {
             "filename": str,
             "total_pages": int,
             "status": str,
-            "page_index_preview": List[dict]
+            "page_index_preview": List[dict],
+            "document_record": DocumentRecord,
+            "document_units": List[DocumentUnit],
         }
-        
+
     Raises:
         ValueError: 不支持的文件格式
     """
+
+    # 流水线步骤:
+    # Step 1 — 解析: ParserFactory → parser.parse()
+    # Step 2 — 构建实体: PageIndex[] → DocumentRecord + DocumentUnit[]
+    # Step 3 — 返回: 预览 + 实体（供 Controller 层事务持久化）
 ```
 
 ### 3.3 Parser 工厂 — `parser_factory.py`
@@ -296,24 +323,29 @@ class ImagePreprocessor:
 
 ```python
 {
-    "page_number": int,       # 页码（从1开始）
-    "content": str,           # 提取的文本内容
-    "char_count": int,        # 字符数
-    "source_type": str,       # 来源类型: "pdf" | "word" | "ppt" | "text" | "image"
-    "metadata": {             # 元数据（可选）
-        "headings": [         # 标题列表（Word/PPT/Markdown）
+    "page_number": int,        # 页码（从1开始）
+    "content": str,            # 提取的文本内容
+    "char_count": int,         # 字符数
+    "parser_name": str,        # 解析器类名（必填，用于追溯）
+    "parser_version": str,     # 解析器版本号（必填，如 "1.0.0"）
+    "metadata": {              # 元数据（必填，至少含 source_type）
+        "source_type": str,    # "pdf" | "word" | "ppt" | "text" | "image"
+        "headings": [          # 标题列表（Word/PPT/Markdown）
             {"level": 1, "text": "第一章"},
         ],
         "paragraphs_count": int,  # 段落数
         "tables_count": int,      # 表格数（仅Word）
         "shapes_count": int,      # 形状数（仅PPT）
         "is_markdown": bool,      # 是否为Markdown（仅TextParser）
-        "language": str,          # 检测到的语言
-        "preprocessing_steps": [  # 预处理步骤（图片）
+        "language": str,          # 检测到的语言（仅 ImageOCRParser）
+        "preprocessing_steps": [  # 预处理步骤（仅 ImageOCRParser）
             "grayscale",
             "denoise",
             "contrast_enhancement"
-        ]
+        ],
+        "image_format": str,      # 图片格式（仅 ImageOCRParser）
+        "image_width": int,       # 图片宽度（仅 ImageOCRParser）
+        "image_height": int,      # 图片高度（仅 ImageOCRParser）
     }
 }
 ```
@@ -325,14 +357,21 @@ class ImagePreprocessor:
 | `page_number` | 实际页码 | 固定 1 | 幻灯片编号 | 固定 1 | 固定 1 |
 | `content` | 每页文本 | 全部文本 | 每页文本 | 全部文本 | OCR 文本 |
 | `char_count` | 每页字符数 | 总字符数 | 每页字符数 | 总字符数 | 总字符数 |
-| `source_type` | `"pdf"` | `"word"` | `"ppt"` | `"text"` | `"image"` |
-| `metadata.headings` | ❌ | ✅ | ✅ | ✅ (Markdown) | ❌ |
+| `parser_name` | `"PDFParser"` | `"WordParser"` | `"PptParser"` | `"TextParser"` | `"ImageOCRParser"` |
+| `parser_version` | `"1.0.0"` | `"1.0.0"` | `"1.0.0"` | `"1.0.0"` | `"1.0.0"` |
+| `metadata.source_type` | `"pdf"` | `"word"` | `"ppt"` | `"text"` | `"image"` |
+| `metadata.headings` | ❌ | ✅ | ✅ | ✅ (仅 Markdown) | ❌ |
 | `metadata.paragraphs_count` | ❌ | ✅ | ✅ | ✅ | ❌ |
 | `metadata.tables_count` | ❌ | ✅ | ❌ | ❌ | ❌ |
 | `metadata.shapes_count` | ❌ | ❌ | ✅ | ❌ | ❌ |
 | `metadata.is_markdown` | ❌ | ❌ | ❌ | ✅ | ❌ |
-| `metadata.language` | ❌ | ❌ | ❌ | ❌ | ✅ |
-| `metadata.preprocessing_steps` | ❌ | ❌ | ❌ | ❌ | ✅ |
+| `metadata.image_format` | ❌ | ❌ | ❌ | ❌ | ✅ |
+| `metadata.image_width` | ❌ | ❌ | ❌ | ❌ | ✅ |
+| `metadata.image_height` | ❌ | ❌ | ❌ | ❌ | ✅ |
+| `metadata.ocr_engine` | ❌ | ❌ | ❌ | ❌ | ✅ |
+| `metadata.ocr_lang` | ❌ | ❌ | ❌ | ❌ | ✅ |
+| `metadata.preprocessing_applied` | ❌ | ❌ | ❌ | ❌ | ✅ |
+| `metadata.ocr_error` | ❌ | ❌ | ❌ | ❌ | ✅ |
 
 ---
 
@@ -368,7 +407,7 @@ class ImagePreprocessor:
 | 测试文件 | 测试数 | 覆盖率 |
 |----------|--------|--------|
 | `tests/test_document_controller.py` | 13 | 100% |
-| `tests/test_document_ingest_service.py` | 7 | 100% |
+| `tests/test_document_ingest_service.py` | 21 | 100% |
 | `tests/test_file_utils.py` | 13 | 100% |
 | `tests/test_text_utils.py` | 30 | 100% |
 | `tests/test_image_preprocessor.py` | 17 | 100% |
