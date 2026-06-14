@@ -1,6 +1,6 @@
 import React from "react";
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import MungBeanSplash from "./SplashScreen";
 
 vi.mock("framer-motion", () => {
@@ -27,6 +27,10 @@ vi.mock("framer-motion", () => {
     AnimatePresence: ({ children }: { children: React.ReactNode }) =>
       React.createElement(React.Fragment, null, children),
   };
+});
+
+afterEach(() => {
+  cleanup();
 });
 
 describe("MungBeanSplash", () => {
@@ -62,5 +66,16 @@ describe("MungBeanSplash", () => {
   it("applies custom className", () => {
     const { container } = render(<MungBeanSplash onSkip={() => {}} className="custom-test" />);
     expect(container.innerHTML).toContain("custom-test");
+  });
+
+  it("uses all color properties", () => {
+    // Access all firstVersionColors properties to ensure 100% coverage
+    const { container } = render(<MungBeanSplash onSkip={() => {}} />);
+    const divs = container.querySelectorAll("div");
+    const classNames = Array.from(divs).map(d => d.className || "").join(" ");
+    expect(classNames).toContain("from-emerald-300/60");
+    expect(classNames).toContain("bg-emerald-400/70");
+    expect(classNames).toContain("bg-cyan-300/60");
+    expect(classNames).toContain("bg-lime-300/60");
   });
 });

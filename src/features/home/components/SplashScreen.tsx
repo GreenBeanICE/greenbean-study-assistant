@@ -5,14 +5,10 @@ interface MungBeanSplashProps {
   className?: string;
 }
 
-const firstVersionColors = {
-  emerald: "from-emerald-300/60 via-green-400/40 to-sky-300/50",
-  emeraldDark: "dark:from-emerald-400/40 dark:via-green-500/30 dark:to-sky-400/30",
-  crystal1: "bg-emerald-400/70",
-  crystal2: "bg-cyan-300/60",
-  crystal3: "bg-lime-300/60",
-};
-
+const EMERALD_GRADIENT = "from-emerald-300/60 via-green-400/40 to-sky-300/50";
+const CRYSTAL_1 = "bg-emerald-400/70";
+const CRYSTAL_2 = "bg-cyan-300/60";
+const CRYSTAL_3 = "bg-lime-300/60";
 export default function MungBeanSplash({ onSkip, className = "" }: MungBeanSplashProps) {
   return (
     <motion.div
@@ -20,16 +16,16 @@ export default function MungBeanSplash({ onSkip, className = "" }: MungBeanSplas
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.6 }}
-      className={`fixed inset-0 z-[100] flex items-center justify-center bg-white dark:bg-[#0a0a0a] select-none ${className}`}
+      className={`fixed inset-0 z-[100] flex items-center justify-center bg-white select-none ${className}`}
     >
       {onSkip && (
         <button
           onClick={onSkip}
           className="fixed top-5 right-5 z-10 px-5 py-2 rounded-full text-sm font-medium
-                     text-neutral-400 dark:text-neutral-500
-                     border border-neutral-300 dark:border-neutral-600
-                     hover:text-neutral-600 dark:hover:text-neutral-300
-                     hover:border-neutral-400 dark:hover:border-neutral-500
+                     text-neutral-400
+                     border border-neutral-300
+                     hover:text-neutral-600
+                     hover:border-neutral-400
                      transition-colors duration-200 cursor-pointer"
         >
           跳过
@@ -40,19 +36,19 @@ export default function MungBeanSplash({ onSkip, className = "" }: MungBeanSplas
         <div className="relative w-16 h-20 flex items-center justify-center">
           {/* 背景光晕 */}
           <motion.div
-            className={`absolute rounded-full bg-gradient-to-br ${firstVersionColors.emerald} ${firstVersionColors.emeraldDark}`}
+            className={`absolute rounded-full bg-gradient-to-br ${EMERALD_GRADIENT}`}
             style={{ width: 52, height: 52, left: -8, bottom: 0 }}
             animate={{ scale: [0.9, 1.18, 0.9], opacity: [0.5, 0.9, 0.5] }}
             transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut", delay: 0 }}
           />
           <motion.div
-            className="absolute rounded-full bg-gradient-to-br from-sky-300/50 to-blue-300/35 dark:from-sky-400/35 dark:to-blue-400/25"
+            className="absolute rounded-full bg-gradient-to-br from-sky-300/50 to-blue-300/35"
             style={{ width: 46, height: 46, right: -6, top: -6 }}
             animate={{ scale: [0.85, 1.22, 0.85], opacity: [0.4, 0.85, 0.4] }}
             transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
           />
           <motion.div
-            className={`absolute rounded-full bg-gradient-to-br ${firstVersionColors.emerald} ${firstVersionColors.emeraldDark}`}
+            className={`absolute rounded-full bg-gradient-to-br ${EMERALD_GRADIENT}`}
             style={{ width: 28, height: 28, right: 4, bottom: 2 }}
             animate={{ scale: [0.9, 1.25, 0.9], opacity: [0.3, 0.7, 0.3] }}
             transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
@@ -136,19 +132,19 @@ export default function MungBeanSplash({ onSkip, className = "" }: MungBeanSplas
 
             {/* 四周闪烁小圆形 */}
             <motion.div
-              className={`absolute w-1.5 h-1.5 rounded-full ${firstVersionColors.crystal1}`}
+              className={`absolute w-1.5 h-1.5 rounded-full ${CRYSTAL_1}`}
               style={{ left: -5, top: 6 }}
               animate={{ scale: [0.6, 1.3, 0.6], opacity: [0.3, 0.9, 0.3] }}
               transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut", delay: 0 }}
             />
             <motion.div
-              className={`absolute w-1.5 h-1.5 rounded-full ${firstVersionColors.crystal2}`}
+              className={`absolute w-1.5 h-1.5 rounded-full ${CRYSTAL_2}`}
               style={{ right: -4, top: 22 }}
               animate={{ scale: [0.6, 1.3, 0.6], opacity: [0.3, 0.9, 0.3] }}
               transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
             />
             <motion.div
-              className={`absolute w-1 h-1 rounded-full ${firstVersionColors.crystal3}`}
+              className={`absolute w-1 h-1 rounded-full ${CRYSTAL_3}`}
               style={{ right: -2, bottom: 8 }}
               animate={{ scale: [0.6, 1.3, 0.6], opacity: [0.3, 0.9, 0.3] }}
               transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut", delay: 1.1 }}
@@ -156,7 +152,7 @@ export default function MungBeanSplash({ onSkip, className = "" }: MungBeanSplas
           </div>
         </div>
 
-        <p className="text-xs tracking-[0.15em] text-neutral-300 dark:text-neutral-600 animate-pulse">
+        <p className="text-xs tracking-[0.15em] text-neutral-300 animate-pulse">
           GreenBean Study Assistant
         </p>
       </div>
