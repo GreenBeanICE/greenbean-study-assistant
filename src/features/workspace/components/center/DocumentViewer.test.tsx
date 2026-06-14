@@ -1,11 +1,8 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
-import { createI18nWrapper } from "../../../../test-utils";
 import DocumentViewer from "./DocumentViewer";
 import type { ContentBlock, FootnoteReference } from "../../../../types/section";
-
-const wrapper = createI18nWrapper("zh");
 
 // Mock framer-motion
 vi.mock("framer-motion", () => {
@@ -112,36 +109,31 @@ describe("DocumentViewer", () => {
   });
 
   it("未选择章节时显示空状态", () => {
-    render(<DocumentViewer {...defaultProps} />, { wrapper });
+    render(<DocumentViewer {...defaultProps} />);
     expect(screen.getByText("选择章节查看内容")).toBeDefined();
     expect(screen.getByText("点击左侧章节列表，文档内容将在此处展示")).toBeDefined();
   });
 
   it("选择章节后显示内容块", () => {
-    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />, { wrapper });
+    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />);
     expect(screen.getByText("1.1 背景介绍")).toBeDefined();
     expect(screen.getByText("AI技术发展迅速。")).toBeDefined();
     expect(screen.getByText("教育领域应用广泛。")).toBeDefined();
   });
 
-  it("选择章节后显示筛选标记", () => {
-    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />, { wrapper });
-    expect(screen.getByText("已筛选章节")).toBeDefined();
-  });
-
   it("显示下载和分享按钮", () => {
-    render(<DocumentViewer {...defaultProps} />, { wrapper });
-    expect(screen.getByTitle("下载文档")).toBeDefined();
-    expect(screen.getByTitle("分享文档")).toBeDefined();
+    render(<DocumentViewer {...defaultProps} />);
+    expect(screen.getByTitle("下载")).toBeDefined();
+    expect(screen.getByTitle("分享")).toBeDefined();
   });
 
   it("显示文档工具栏", () => {
-    render(<DocumentViewer {...defaultProps} />, { wrapper });
+    render(<DocumentViewer {...defaultProps} />);
     expect(screen.getAllByTitle("加粗").length).toBeGreaterThanOrEqual(1);
   });
 
   it("脚注引用显示蓝色圆点按钮", () => {
-    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />, { wrapper });
+    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />);
     const footnoteBtns = screen.getAllByTitle("点击查看原文引用");
     expect(footnoteBtns.length).toBeGreaterThanOrEqual(1);
   });
@@ -150,7 +142,6 @@ describe("DocumentViewer", () => {
     const onToggleFootnote = vi.fn();
     render(
       <DocumentViewer {...defaultProps} selectedSectionId="ch1-1" onToggleFootnote={onToggleFootnote} />,
-      { wrapper },
     );
     const footnoteBtns = screen.getAllByTitle("点击查看原文引用");
     fireEvent.click(footnoteBtns[0]);
@@ -160,7 +151,6 @@ describe("DocumentViewer", () => {
   it("展开脚注显示脚注详情", () => {
     render(
       <DocumentViewer {...defaultProps} selectedSectionId="ch1-1" expandedFootnoteId="fn-1" />,
-      { wrapper },
     );
     expect(screen.getByText("Gartner预测到2025年")).toBeDefined();
   });
@@ -169,9 +159,7 @@ describe("DocumentViewer", () => {
     const onToggleFootnote = vi.fn();
     render(
       <DocumentViewer {...defaultProps} selectedSectionId="ch1-1" expandedFootnoteId="fn-1" onToggleFootnote={onToggleFootnote} />,
-      { wrapper },
     );
-    // click close button inside footnote panel
     const closeBtns = document.querySelectorAll("button");
     for (const btn of Array.from(closeBtns)) {
       const svg = btn.querySelector("svg");
@@ -184,77 +172,61 @@ describe("DocumentViewer", () => {
   });
 
   it("显示内容块数量", () => {
-    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />, { wrapper });
+    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />);
     expect(screen.getByText(/4 个章节/)).toBeDefined();
   });
 
   it("表格块正确渲染表头和行", () => {
-    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />, { wrapper });
+    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />);
     expect(screen.getByText("表1: 对比")).toBeDefined();
     expect(screen.getByText("名称")).toBeDefined();
     expect(screen.getByText("值")).toBeDefined();
   });
 
   it("图片块显示占位图和标题", () => {
-    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />, { wrapper });
+    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />);
     expect(screen.getByText("图1: 示意")).toBeDefined();
     expect(screen.getByText("示意图说明文字")).toBeDefined();
     expect(screen.getByText("Chart")).toBeDefined();
   });
 
   it("有URL的图片块显示图片", () => {
-    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />, { wrapper });
+    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />);
     const img = screen.getByAltText("图2: 实图");
     expect(img).toBeDefined();
     expect(img.getAttribute("src")).toBe("https://example.com/img.png");
   });
 
   it("列表类型行有正确样式", () => {
-    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />, { wrapper });
+    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />);
     expect(screen.getByText("• 测试列表项")).toBeDefined();
   });
 
   it("高亮代码行有背景色", () => {
-    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />, { wrapper });
+    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />);
     expect(screen.getByText("const x = 1;")).toBeDefined();
   });
 
   it("跨章节内容不会显示", () => {
-    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />, { wrapper });
+    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />);
     expect(screen.queryByText("2.1 概念定义")).toBeNull();
   });
 
   it("内容块之间有分隔线", () => {
-    const { container } = render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />, { wrapper });
+    const { container } = render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />);
     const hrs = container.querySelectorAll("hr");
     expect(hrs.length).toBeGreaterThanOrEqual(1);
   });
 
   it("空章节内容块列表显示空", () => {
-    render(<DocumentViewer {...defaultProps} contentBlocks={[]} selectedSectionId="ch1-1" />, { wrapper });
+    render(<DocumentViewer {...defaultProps} contentBlocks={[]} selectedSectionId="ch1-1" />);
     expect(screen.queryByText("1.1 背景介绍")).toBeNull();
   });
 
   it("contentEditable 行可编辑", () => {
-    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />, { wrapper });
+    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />);
     const span = screen.getByText("AI技术发展迅速。");
     expect(span.getAttribute("contentEditable")).toBe("true");
-  });
-
-  it("脚注引用 refNumber 与 footnote 匹配时触发回调", () => {
-    const onToggleFootnote = vi.fn();
-    render(
-      <DocumentViewer
-        {...defaultProps}
-        selectedSectionId="ch1-1"
-        footnotes={[{ id: "fn-1", refNumber: "1", sourceText: "test", sourceDesc: "desc" }]}
-        onToggleFootnote={onToggleFootnote}
-      />,
-      { wrapper },
-    );
-    const footnoteBtns = screen.getAllByTitle("点击查看原文引用");
-    fireEvent.click(footnoteBtns[0]);
-    expect(onToggleFootnote).toHaveBeenCalledWith("fn-1");
   });
 
   it("下载按钮点击时创建下载链接", () => {
@@ -268,8 +240,8 @@ describe("DocumentViewer", () => {
       return el;
     });
     
-    render(<DocumentViewer {...defaultProps} />, { wrapper });
-    fireEvent.click(screen.getByTitle("下载文档"));
+    render(<DocumentViewer {...defaultProps} />);
+    fireEvent.click(screen.getByTitle("下载"));
     
     expect(createElementSpy).toHaveBeenCalledWith("a");
     expect(clickSpy).toHaveBeenCalled();
@@ -281,8 +253,8 @@ describe("DocumentViewer", () => {
     const originalShare = navigator.share;
     vi.stubGlobal("navigator", { ...navigator, share: mockShare });
     
-    render(<DocumentViewer {...defaultProps} />, { wrapper });
-    fireEvent.click(screen.getByTitle("分享文档"));
+    render(<DocumentViewer {...defaultProps} />);
+    fireEvent.click(screen.getByTitle("分享"));
     
     expect(mockShare).toHaveBeenCalledWith({
       title: "GreenBean Document",
@@ -300,8 +272,8 @@ describe("DocumentViewer", () => {
       configurable: true,
     });
     
-    render(<DocumentViewer {...defaultProps} />, { wrapper });
-    fireEvent.click(screen.getByTitle("分享文档"));
+    render(<DocumentViewer {...defaultProps} />);
+    fireEvent.click(screen.getByTitle("分享"));
     
     if (originalShareDesc) {
       Object.defineProperty(navigator, "share", originalShareDesc);
@@ -313,8 +285,8 @@ describe("DocumentViewer", () => {
     const originalShare = navigator.share;
     vi.stubGlobal("navigator", { ...navigator, share: mockShare });
     
-    render(<DocumentViewer {...defaultProps} />, { wrapper });
-    fireEvent.click(screen.getByTitle("分享文档"));
+    render(<DocumentViewer {...defaultProps} />);
+    fireEvent.click(screen.getByTitle("分享"));
     
     vi.stubGlobal("navigator", { ...navigator, share: originalShare });
   });
@@ -339,7 +311,6 @@ describe("DocumentViewer", () => {
     ];
     render(
       <DocumentViewer {...defaultProps} contentBlocks={blocksWithHeading1} selectedSectionId="ch1-1" />,
-      { wrapper },
     );
     expect(screen.getByText("大标题")).toBeDefined();
     expect(screen.getByText("小标题")).toBeDefined();
@@ -350,69 +321,23 @@ describe("DocumentViewer", () => {
     expect(screen.getByText("彩色文本")).toBeDefined();
   });
 
-  it("handleViewFootnote 找不到脚注时不触发 onToggleFootnote", () => {
-    const onToggleFootnote = vi.fn();
-    render(
-      <DocumentViewer
-        {...defaultProps}
-        selectedSectionId="ch1-1"
-        footnotes={[]}
-        onToggleFootnote={onToggleFootnote}
-      />,
-      { wrapper },
-    );
-    const footnoteBtns = screen.getAllByTitle("点击查看原文引用");
-    fireEvent.click(footnoteBtns[0]);
-    expect(onToggleFootnote).not.toHaveBeenCalled();
-  });
-
-  it("selectionchange 事件触发状态更新", () => {
-    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />, { wrapper });
-    // 触发 selectionchange 模拟选中文字
-    act(() => {
-      const sel = window.getSelection();
-      const range = document.createRange();
-      const el = screen.getByText("AI技术发展迅速。");
-      range.selectNodeContents(el);
-      sel?.removeAllRanges();
-      sel?.addRange(range);
-      document.dispatchEvent(new Event("selectionchange"));
-    });
-    // toolbar 应变为可用状态
-    // 触发空选择
-    act(() => {
-      window.getSelection()?.removeAllRanges();
-      document.dispatchEvent(new Event("selectionchange"));
-    });
-    // 不应报错
-  });
-
   it("tableData 为 null 时 TableBlock 返回 null", () => {
     const blocksNoTable: ContentBlock[] = [
       { id: "block-no-table", sectionId: "ch1-1", title: "No Table", contentType: "table" },
     ];
     render(
       <DocumentViewer {...defaultProps} contentBlocks={blocksNoTable} selectedSectionId="ch1-1" />,
-      { wrapper },
     );
     expect(screen.getByText("No Table")).toBeDefined();
-  });
-
-  it("图片块有 imageCaption 时显示标题", () => {
-    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />, { wrapper });
-    expect(screen.getByText("示意图说明文字")).toBeDefined();
   });
 
   it("handleLineHtmlChange 触发 onUpdateLineText", () => {
     const onUpdateLineText = vi.fn();
     render(
       <DocumentViewer {...defaultProps} selectedSectionId="ch1-1" onUpdateLineText={onUpdateLineText} />,
-      { wrapper },
     );
     const span = screen.getByText("AI技术发展迅速。");
-    // 先修改 textContent 来模拟用户编辑
     act(() => { span.textContent = "修改后的文本"; });
-    // blur 触发 handleBlur，此时 textContent 与 line.text 不同
     fireEvent.blur(span);
     expect(onUpdateLineText).toHaveBeenCalled();
   });
@@ -425,9 +350,7 @@ describe("DocumentViewer", () => {
     ];
     render(
       <DocumentViewer {...defaultProps} contentBlocks={blocks} selectedSectionId="ch1-1" onUpdateLineText={onUpdateLineText} />,
-      { wrapper },
     );
-    // blur when text is same as line.text
     const span = screen.getByText("unchanged");
     fireEvent.blur(span);
     expect(onUpdateLineText).not.toHaveBeenCalled();
@@ -445,7 +368,6 @@ describe("DocumentViewer", () => {
         onQuoteSelection={onQuoteSelection}
         onShowSelectionMenu={onShowSelectionMenu}
       />,
-      { wrapper },
     );
     expect(screen.getByText("引用此段询问 AI")).toBeDefined();
     fireEvent.click(screen.getByText("引用此段询问 AI"));
@@ -462,7 +384,6 @@ describe("DocumentViewer", () => {
         selectionMenuPos={{ x: 100, y: 200 }}
         onShowSelectionMenu={onShowSelectionMenu}
       />,
-      { wrapper },
     );
     const backdrop = document.querySelector(".fixed.inset-0") as HTMLElement;
     expect(backdrop).toBeTruthy();
@@ -480,7 +401,6 @@ describe("DocumentViewer", () => {
         selectionMenuPos={null}
         onQuoteSelection={onQuoteSelection}
       />,
-      { wrapper },
     );
     expect(screen.queryByText("引用此段询问 AI")).toBeNull();
   });

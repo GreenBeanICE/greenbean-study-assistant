@@ -3,9 +3,13 @@ import { useRef, useCallback, useEffect, type MouseEvent } from "react";
 /** 可拖拽调整宽度的分隔条 */
 function ResizableHandle({
   onResize,
+  onDoubleClick,
+  onDragStateChange,
   position = "left",
 }: {
   onResize: (delta: number) => void;
+  onDoubleClick?: () => void;
+  onDragStateChange?: (isDragging: boolean) => void;
   position?: "left" | "right";
 }) {
   const handleRef = useRef<HTMLDivElement>(null);
@@ -19,8 +23,9 @@ function ResizableHandle({
       startXRef.current = e.clientX;
       document.body.style.cursor = "col-resize";
       document.body.style.userSelect = "none";
+      onDragStateChange?.(true);
     },
-    [],
+    [onDragStateChange],
   );
 
   useEffect(() => {
@@ -36,6 +41,7 @@ function ResizableHandle({
       draggingRef.current = false;
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
+      onDragStateChange?.(false);
     };
 
     document.addEventListener("mousemove", handleMouseMove);
@@ -44,16 +50,15 @@ function ResizableHandle({
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [onResize]);
+  }, [onResize, onDragStateChange]);
 
   return (
     <div
       ref={handleRef}
       onMouseDown={handleMouseDown}
-      className="w-1.5 flex-shrink-0 cursor-col-resize hover:bg-blue-500/20 dark:hover:bg-blue-400/20 active:bg-blue-500/40 dark:active:bg-blue-400/40 transition-colors duration-150 relative group"
-    >
-      <div className="absolute inset-y-0 -left-1 -right-1" />
-    </div>
+      onDoubleClick={onDoubleClick}
+      className="w-1 flex-shrink-0 cursor-col-resize hover:bg-blue-500/20 active:bg-blue-500/40 transition-colors duration-150"
+    />
   );
 }
 

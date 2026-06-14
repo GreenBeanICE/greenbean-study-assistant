@@ -1,6 +1,5 @@
 import type { SectionNode, ContentBlock, FootnoteReference, TextSelection } from "../../types/section";
 import type { ChatMessage } from "../../types/chat";
-import type { Lang } from "../../lib/i18n";
 
 export type TextFormatAction = "bold" | "italic" | "underline" | "strikethrough" | "highlight" | "align-left" | "align-center" | "align-right" | "align-justify" | "insert-image" | "insert-table";
 
@@ -83,10 +82,6 @@ export interface ChatPanelProps {
 }
 
 export interface WorkspacePageProps {
-  dark: boolean;
-  setDark: (dark: boolean | ((prev: boolean) => boolean)) => void;
-  lang: Lang;
-  setLang: (lang: Lang) => void;
-  onBack?: () => void;
-  onLogout?: () => void;
+  /** 工作区唯一标识（可选，后续可根据此加载不同数据） */
+  workspaceId?: string;
 }

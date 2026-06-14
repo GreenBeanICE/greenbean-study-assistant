@@ -1,11 +1,8 @@
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { createI18nWrapper } from "../../../../test-utils";
 import SectionTree from "./SectionTree";
 import type { SectionNode } from "../../../../types/section";
-
-const wrapper = createI18nWrapper("zh");
 
 const sampleSections: SectionNode[] = [
   {
@@ -30,7 +27,6 @@ describe("SectionTree", () => {
         onSelect={() => {}}
         onToggle={() => {}}
       />,
-      { wrapper },
     );
     expect(screen.getByText((content) => content.includes("第一章：引言"))).toBeDefined();
     expect(screen.getByText((content) => content.includes("第二章：理论基础"))).toBeDefined();
@@ -45,7 +41,6 @@ describe("SectionTree", () => {
         onSelect={() => {}}
         onToggle={() => {}}
       />,
-      { wrapper },
     );
     expect(screen.getByText("2 个章节")).toBeDefined();
   });
@@ -58,7 +53,6 @@ describe("SectionTree", () => {
         onSelect={() => {}}
         onToggle={() => {}}
       />,
-      { wrapper },
     );
     expect(screen.getByText((content) => content.includes("背景介绍"))).toBeDefined();
     expect(screen.getByText((content) => content.includes("研究意义"))).toBeDefined();
@@ -72,7 +66,6 @@ describe("SectionTree", () => {
         onSelect={() => {}}
         onToggle={() => {}}
       />,
-      { wrapper },
     );
     expect(screen.queryByText("Collecte")).toBeNull();
   });
@@ -86,7 +79,6 @@ describe("SectionTree", () => {
         onSelect={onSelect}
         onToggle={() => {}}
       />,
-      { wrapper },
     );
     fireEvent.click(screen.getByText((content) => content.includes("第一章：引言")));
     expect(onSelect).toHaveBeenCalledWith("ch1");
@@ -100,7 +92,6 @@ describe("SectionTree", () => {
         onSelect={() => {}}
         onToggle={() => {}}
       />,
-      { wrapper },
     );
     const selectedBtn = screen.getByText((content) => content.includes("第一章：引言"));
     expect(selectedBtn.closest("button")?.className).toContain("bg-black");
@@ -114,7 +105,6 @@ describe("SectionTree", () => {
         onSelect={() => {}}
         onToggle={() => {}}
       />,
-      { wrapper },
     );
     expect(screen.getByText("暂无章节数据")).toBeDefined();
   });

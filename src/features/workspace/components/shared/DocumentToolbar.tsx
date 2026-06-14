@@ -165,9 +165,9 @@ function renderToolbarButton(btn: ToolbarButton, enabled: boolean, onFormat: (ac
       onMouseDown={handleMouseDown}
       disabled={!active}
       title={btn.title}
-      className={`w-7 h-7 rounded-md flex items-center justify-center text-neutral-500 dark:text-neutral-400 transition-colors ${
+      className={`w-7 h-7 rounded-md flex items-center justify-center text-neutral-500 transition-colors ${
         active
-          ? "cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 hover:text-neutral-700 dark:hover:text-neutral-200"
+          ? "cursor-pointer hover:bg-black/10 hover:text-neutral-700"
           : "opacity-40 cursor-not-allowed"
       }`}
     >
@@ -179,11 +179,11 @@ function renderToolbarButton(btn: ToolbarButton, enabled: boolean, onFormat: (ac
 function DocumentToolbar({ selectedLineId, onFormat }: DocumentToolbarProps) {
   const enabled = !!selectedLineId;
   return (
-    <div className="flex items-center gap-1 px-3 py-1.5 bg-white/80 dark:bg-white/5 border-b border-black/5 dark:border-white/10 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-      <div className="flex items-center gap-0.5 pr-2 border-r border-black/10 dark:border-white/10">
+    <div className="flex items-center gap-1 px-3 py-1.5 bg-white/80 border-b border-black/5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+      <div className="flex items-center gap-0.5 pr-2 border-r border-black/10">
         {TOOLBAR_BUTTONS.map((btn) => renderToolbarButton(btn, enabled, onFormat))}
       </div>
-      <div className="flex items-center gap-0.5 pl-2 pr-2 border-r border-black/10 dark:border-white/10">
+      <div className="flex items-center gap-0.5 pl-2 pr-2 border-r border-black/10">
         {INSERT_BUTTONS.map((btn) => renderToolbarButton(btn, enabled, onFormat, true))}
       </div>
       <div className="flex items-center gap-0.5 pl-1">
