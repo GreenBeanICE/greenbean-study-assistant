@@ -8,7 +8,7 @@ from app.enums.document_file_type import DocumentFileType
 from app.enums.document_status import DocumentStatus
 from app.parsers.parser_factory import ParserFactory
 
-# 先注释掉未完成的服务导入，防止报错
+# ---- Phase 3 依赖（暂未实现，待 ChunkService/EmbeddingService 就绪后取消注释） ----
 # from app.services.chunk_service import ChunkService
 # from app.services.embedding_service import EmbeddingService
 
@@ -23,8 +23,12 @@ SOURCE_TYPE_TO_FILE_TYPE: dict[str, DocumentFileType] = {
 
 
 class DocumentIngestService:
+    """安全文档摄取流水线：解析 → 实体构建 → 持久化（Phase 1 为纯内存模式）。"""
+
     def __init__(self, document_repository=None, document_unit_repository=None):
         """
+        服务初始化。DB 仓库在 Phase 1 为可选注入，Phase 2 起变为必需。
+        
         :param document_repository: DocumentRepository 实例，DB 团队交付后注入
         :param document_unit_repository: DocumentUnitRepository 实例，DB 团队交付后注入
         """
@@ -32,11 +36,11 @@ class DocumentIngestService:
         self.document_repository = document_repository
         self.document_unit_repository = document_unit_repository
 
-        # 临时注释，等后面写到这两个服务时再解开
+        # ---- Phase 3 依赖（待 ChunkService / EmbeddingService 就绪后取消注释） ----
         # self.chunk_service = ChunkService()
         # self.embedding_service = EmbeddingService()
 
-    async def ingest_document(
+    def ingest_document(
         self,
         filename: str,
         file_content: bytes,
@@ -45,9 +49,12 @@ class DocumentIngestService:
         title: str | None = None,
         file_path: str = "",
         file_hash: str | None = None,
-    ):
+    ) -> dict:
         """
-        贯穿整个文件流的摄取流水线 (Pipeline)
+        贯穿整个文件流的摄取流水线 (Pipeline) — Phase 1 同步内存模式。
+        
+        Phase 1 不执行 DB 写入；Phase 2 将在此方法内通过 Repository 完成持久化，
+        届时方法签名将改为 `async def` 以支持异步 DB I/O。
 
         :param filename: 文件名（含扩展名）
         :param file_content: 文件二进制数据
@@ -85,7 +92,7 @@ class DocumentIngestService:
             page_count=len(parsed_pages),
         )
 
-        # TODO: DB 团队交付后取消以下注释即可使用
+        # ---- Phase 2: DB 团队交付 DocumentRepository 后取消注释 ----
         # self.document_repository.save(document_record)
 
         # ---- Step 3: 基于 PageIndex 构造 DocumentUnit 列表 ----
@@ -114,10 +121,10 @@ class DocumentIngestService:
             document_units.append(unit)
             cumulative_offset += content_len
 
-            # TODO: DB 团队交付后取消以下注释即可使用（逐条写入）
+            # ---- Phase 2: DB 团队交付 DocumentUnitRepository 后取消注释 ----
             # self.document_unit_repository.save(unit)
 
-        # ---- Step 4 & 5: （占位）切块和 Embedding ----
+        # ---- Step 4 & 5: （Phase 3 占位，ChunkService / EmbeddingService 就绪后启用） ----
         # chunks = self.chunk_service.split_pages_into_chunks(parsed_pages)
         # embedded_chunks = await self.embedding_service.gen_embeddings(chunks)
 

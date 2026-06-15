@@ -1,21 +1,43 @@
 ﻿"""
 文档接口控制器，提供文档上传、列表和详情相关 API。
 """
+from typing import Annotated
+
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi import status as http_status
+
 from app.services.document_ingest_service import DocumentIngestService
 from app.utils.file_utils import is_supported, get_extension
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
-# 依赖注入：确保每个请求能正确拿到 IngestService 实例
+# ---- 错误响应定义（供 @router 装饰器复用） ----
+_RESPONSE_400_BAD_REQUEST = {
+    http_status.HTTP_400_BAD_REQUEST: {"description": "请求参数无效"}
+}
+_RESPONSE_500_INTERNAL_ERROR = {
+    http_status.HTTP_500_INTERNAL_SERVER_ERROR: {"description": "服务器内部错误"}
+}
+_RESPONSE_400_AND_500 = {**_RESPONSE_400_BAD_REQUEST, **_RESPONSE_500_INTERNAL_ERROR}
+
+# 支持的格式描述信息，供错误提示复用
+_SUPPORTED_FORMATS_MSG = (
+    "PDF(.pdf), Word(.docx), PPT(.pptx), 纯文本(.txt/.md), 图片(.jpg/.jpeg/.png/.webp)"
+)
+
+
 def get_ingest_service() -> DocumentIngestService:
+    """依赖注入：确保每个请求能正确拿到 IngestService 实例。"""
     return DocumentIngestService()
 
 
-@router.post("/upload")
+@router.post(
+    "/upload",
+    responses=_RESPONSE_400_AND_500,
+)
 async def upload_document(
-    file: UploadFile = File(...),
-    ingest_service: DocumentIngestService = Depends(get_ingest_service)
+    file: Annotated[UploadFile, File(...)],
+    ingest_service: Annotated[DocumentIngestService, Depends(get_ingest_service)],
 ):
     """
     接收前端通过 FormData 传来的文件，调用 Service 流水线进行解析与导入。
@@ -33,7 +55,7 @@ async def upload_document(
         ext = get_extension(file.filename)
         raise HTTPException(
             status_code=400,
-            detail=f"暂不支持 {ext} 格式。支持的格式: PDF(.pdf), Word(.docx), PPT(.pptx), 纯文本(.txt/.md), 图片(.jpg/.jpeg/.png/.webp)"
+            detail=f"暂不支持 {ext} 格式。支持的格式: {_SUPPORTED_FORMATS_MSG}",
         )
     
     try:
@@ -45,12 +67,12 @@ async def upload_document(
             raise HTTPException(status_code=400, detail="文件内容为空")
         
         # 进入导入流水线
-        result = await ingest_service.ingest_document(file.filename, file_content)
+        result = ingest_service.ingest_document(file.filename, file_content)
         
         return {
             "code": 200,
             "message": "文件上传并解析成功",
-            "data": result
+            "data": result,
         }
         
     except ValueError as ve:

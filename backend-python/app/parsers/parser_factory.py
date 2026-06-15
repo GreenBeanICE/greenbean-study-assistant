@@ -6,6 +6,13 @@ from app.parsers.word_parser import WordParser
 from app.parsers.ppt_parser import PptParser
 from app.parsers.image_ocr_parser import ImageOCRParser
 from app.parsers.text_parser import TextParser
+from app.utils.file_utils import EXT_PDF, EXT_DOCX, EXT_PPTX, EXT_JPG, EXT_JPEG, EXT_PNG, EXT_WEBP, EXT_TXT, EXT_MD
+
+# 支持的格式描述信息，供错误提示复用
+_SUPPORTED_FORMATS_MSG = (
+    "当前支持: PDF(.pdf), Word(.docx), PPT(.pptx), "
+    "纯文本(.txt/.md), 图片(.jpg/.jpeg/.png/.webp)"
+)
 
 
 class ParserFactory:
@@ -20,30 +27,28 @@ class ParserFactory:
         """
         fn_lower = filename.lower()
         
-        if fn_lower.endswith('.pdf'):
+        if fn_lower.endswith(EXT_PDF):
             return PDFParser()
         
-        elif fn_lower.endswith('.docx'):
+        if fn_lower.endswith(EXT_DOCX):
             return WordParser()
         
-        elif fn_lower.endswith(('.pptx',)):
+        if fn_lower.endswith(EXT_PPTX):
             return PptParser()
         
-        elif fn_lower.endswith(('.jpg', '.jpeg', '.png', '.webp')):
+        if fn_lower.endswith((EXT_JPG, EXT_JPEG, EXT_PNG, EXT_WEBP)):
             return ImageOCRParser()
         
-        elif fn_lower.endswith(('.txt', '.md')):
+        if fn_lower.endswith((EXT_TXT, EXT_MD)):
             return TextParser()
         
-        elif fn_lower.endswith(('.ppt',)):
+        if fn_lower.endswith(".ppt"):
             raise ValueError(
                 f"暂不支持文件格式: {filename}。"
                 f".ppt 是旧版 PowerPoint 格式（97-2003），请转换为 .pptx 后再上传。"
-                f"当前支持: PDF(.pdf), Word(.docx), PPT(.pptx), 纯文本(.txt/.md), 图片(.jpg/.jpeg/.png/.webp)"
+                f"{_SUPPORTED_FORMATS_MSG}"
             )
         
-        else:
-            raise ValueError(
-                f"暂不支持文件格式: {filename}。"
-                f"当前支持: PDF(.pdf), Word(.docx), PPT(.pptx), 纯文本(.txt/.md), 图片(.jpg/.jpeg/.png/.webp)"
-            )
+        raise ValueError(
+            f"暂不支持文件格式: {filename}。{_SUPPORTED_FORMATS_MSG}"
+        )

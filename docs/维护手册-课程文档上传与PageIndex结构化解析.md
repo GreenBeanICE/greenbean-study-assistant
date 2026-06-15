@@ -261,7 +261,69 @@ pytest --cov=app --cov-report=html:../coverage/python/html
 - `test_pdf_parser.py`: 使用 `PyMuPDF` 库动态生成 `.pdf` 文件
 - `test_image_ocr_parser.py`: 使用 `Pillow` 库动态生成测试图片
 
-### 6.4 测试标记（Markers）
+### 6.4 真实 PDF 端到端测试
+
+除了使用内存数据运行的单元测试外，项目还提供基于真实 PDF 文件的三层验证脚本，用于快速确认 parser 流水线在生产条件下的正确性。
+
+#### 测试脚本
+
+```bash
+cd backend-python
+python scripts/test_real_pdf.py
+```
+
+#### 测试用 PDF
+
+`tests/pdf/test.pdf` — 一份 2 页、约 70KB 的法语 M1 MIAGE 项目文档，作为标准测试样本。
+
+#### 三层验证内容
+
+| 层 | 验证目标 | 方式 |
+|----|----------|------|
+| 第 1 层 | `PDFParser.parse()` 直接解析 | 逐页校验 `page_number`、`char_count`、`content`、`source_type`、`parser_name`、`parser_version`、`headings`、`paragraphs_count` |
+| 第 2 层 | `ParserFactory` 分发 | 确认 `.pdf` 文件被路由到 `PDFParser`，且输出与第 1 层一致 |
+| 第 3 层 | `DocumentIngestService` 完整流水线 | 校验 `DocumentRecord`（文件名、页数、状态）和 `DocumentUnit` 列表（页码、文本内容、parser 名称） |
+
+#### 预期输出示例
+
+```
+第 1 层：PDFParser.parse() 直接解析
+总页数: 2
+
+✅ 第1页:
+    char_count = 2469
+    content 前 80 字符: Projet M1 MIAGE FI parcours dev ...
+✅ 第2页:
+    char_count = 1251
+    content 前 80 字符: contiendra la compilation et le test ...
+
+PDFParser 测试结果: ✅ 全部通过
+
+第 2 层：ParserFactory 分发 + 解析
+✅ ParserFactory 正确返回 PDFParser，解析结果与直接调用一致
+
+第 3 层：DocumentIngestService 完整流水线
+文件名: test.pdf
+总页数: 2
+状态: parsed_successfully
+DocumentUnits 数量: 2
+
+PageIndex 预览:
+  第1页: 2469 字符, source_type=pdf
+  第2页: 1251 字符, source_type=pdf
+
+🎉 所有三层测试全部通过！PDF Parser 工作正常。
+```
+
+#### 常见问题
+
+| 问题 | 原因 | 解决 |
+|------|------|------|
+| `ModuleNotFoundError: No module named 'fitz'` | 未安装 PyMuPDF | `pip install pymupdf>=1.24` |
+| `FileNotFoundError: 测试 PDF 未找到` | `tests/pdf/test.pdf` 不存在 | 放入一个标准 PDF 文件到该路径，或修改脚本中的 `PDF_PATH` |
+| 部分页面 `char_count = 0` | PDF 为扫描件，无文字层 | 扫描件需通过 `ImageOCRParser` 处理，不在 `PDFParser` 范围内 |
+
+### 6.5 测试标记（Markers）
 
 所有与课程文档上传和解析相关的测试均已添加 `@pytest.mark.us25` 标记，方便按 User Story 筛选执行：
 

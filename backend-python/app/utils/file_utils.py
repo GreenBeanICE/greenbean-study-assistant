@@ -4,19 +4,43 @@
 import os
 from typing import Set
 
+# ---- 文件扩展名字面量常量 ----
+EXT_PDF = ".pdf"
+EXT_DOCX = ".docx"
+EXT_PPTX = ".pptx"
+EXT_JPG = ".jpg"
+EXT_JPEG = ".jpeg"
+EXT_PNG = ".png"
+EXT_WEBP = ".webp"
+EXT_TXT = ".txt"
+EXT_MD = ".md"
+
 # 定义支持的文件扩展名集合
 SUPPORTED_EXTENSIONS: Set[str] = {
-    ".pdf", ".docx",
-    ".pptx",
-    ".jpg", ".jpeg", ".png", ".webp",
-    ".txt", ".md",
+    EXT_PDF, EXT_DOCX,
+    EXT_PPTX,
+    EXT_JPG, EXT_JPEG, EXT_PNG, EXT_WEBP,
+    EXT_TXT, EXT_MD,
 }
 
 # 图片文件扩展名
-IMAGE_EXTENSIONS: Set[str] = {".jpg", ".jpeg", ".png", ".webp"}
+IMAGE_EXTENSIONS: Set[str] = {EXT_JPG, EXT_JPEG, EXT_PNG, EXT_WEBP}
 
 # 文档文件扩展名
-DOCUMENT_EXTENSIONS: Set[str] = {".pdf", ".docx", ".pptx", ".txt", ".md"}
+DOCUMENT_EXTENSIONS: Set[str] = {EXT_PDF, EXT_DOCX, EXT_PPTX, EXT_TXT, EXT_MD}
+
+# MIME 类型映射
+_MIME_MAP: dict[str, str] = {
+    EXT_PDF: "application/pdf",
+    EXT_DOCX: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    EXT_PPTX: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    EXT_JPG: "image/jpeg",
+    EXT_JPEG: "image/jpeg",
+    EXT_PNG: "image/png",
+    EXT_WEBP: "image/webp",
+    EXT_TXT: "text/plain",
+    EXT_MD: "text/markdown",
+}
 
 
 def get_extension(filename: str) -> str:
@@ -69,16 +93,5 @@ def get_mime_type(filename: str) -> str:
     :param filename: 文件名
     :return: MIME 类型字符串
     """
-    mime_map = {
-        ".pdf": "application/pdf",
-        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".png": "image/png",
-        ".webp": "image/webp",
-        ".txt": "text/plain",
-        ".md": "text/markdown",
-    }
     ext = get_extension(filename)
-    return mime_map.get(ext, "application/octet-stream")
+    return _MIME_MAP.get(ext, "application/octet-stream")

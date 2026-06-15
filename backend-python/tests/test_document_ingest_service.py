@@ -31,9 +31,8 @@ def _make_page(page_number=1, content="content", char_count=None, source_type="p
 # ========== 对原有 7 条的增强版 ==========
 
 
-@pytest.mark.asyncio
 @pytest.mark.us25
-async def test_ingest_pdf_document():
+def test_ingest_pdf_document():
     """测试摄取 PDF 文档，验证返回字段和 document_record / document_units"""
     service = DocumentIngestService()
 
@@ -45,7 +44,7 @@ async def test_ingest_pdf_document():
         ]
         mock_get_parser.return_value = mock_parser
 
-        result = await service.ingest_document("test.pdf", b"fake pdf content")
+        result = service.ingest_document("test.pdf", b"fake pdf content")
 
         # 原有断言
         assert result["filename"] == "test.pdf"
@@ -84,9 +83,8 @@ async def test_ingest_pdf_document():
         }
 
 
-@pytest.mark.asyncio
 @pytest.mark.us25
-async def test_ingest_word_document():
+def test_ingest_word_document():
     """测试摄取 Word 文档"""
     service = DocumentIngestService()
 
@@ -98,7 +96,7 @@ async def test_ingest_word_document():
         ]
         mock_get_parser.return_value = mock_parser
 
-        result = await service.ingest_document("notes.docx", b"fake docx content")
+        result = service.ingest_document("notes.docx", b"fake docx content")
 
         assert result["filename"] == "notes.docx"
         assert result["total_pages"] == 1
@@ -109,9 +107,8 @@ async def test_ingest_word_document():
         assert len(result["document_units"]) == 1
 
 
-@pytest.mark.asyncio
 @pytest.mark.us25
-async def test_ingest_image_document():
+def test_ingest_image_document():
     """测试摄取图片文档"""
     service = DocumentIngestService()
 
@@ -123,7 +120,7 @@ async def test_ingest_image_document():
         ]
         mock_get_parser.return_value = mock_parser
 
-        result = await service.ingest_document("photo.png", b"fake image content")
+        result = service.ingest_document("photo.png", b"fake image content")
 
         assert result["filename"] == "photo.png"
         assert result["total_pages"] == 1
@@ -134,9 +131,8 @@ async def test_ingest_image_document():
         assert len(result["document_units"]) == 1
 
 
-@pytest.mark.asyncio
 @pytest.mark.us25
-async def test_ingest_multiple_pages():
+def test_ingest_multiple_pages():
     """测试多页文档"""
     service = DocumentIngestService()
 
@@ -150,7 +146,7 @@ async def test_ingest_multiple_pages():
         ]
         mock_get_parser.return_value = mock_parser
 
-        result = await service.ingest_document("multi.pdf", b"fake multi page content")
+        result = service.ingest_document("multi.pdf", b"fake multi page content")
 
         assert result["total_pages"] == 2
         assert len(result["page_index_preview"]) == 2
@@ -167,9 +163,8 @@ async def test_ingest_multiple_pages():
         assert result["document_record"].page_count == 2
 
 
-@pytest.mark.asyncio
 @pytest.mark.us25
-async def test_ingest_unsupported_format():
+def test_ingest_unsupported_format():
     """测试不支持的文件格式"""
     service = DocumentIngestService()
 
@@ -177,12 +172,11 @@ async def test_ingest_unsupported_format():
         mock_get_parser.side_effect = ValueError("暂不支持文件格式: file.ppt")
 
         with pytest.raises(ValueError, match="暂不支持文件格式"):
-            await service.ingest_document("file.ppt", b"content")
+            service.ingest_document("file.ppt", b"content")
 
 
-@pytest.mark.asyncio
 @pytest.mark.us25
-async def test_ingest_empty_content():
+def test_ingest_empty_content():
     """测试空内容文档"""
     service = DocumentIngestService()
 
@@ -194,7 +188,7 @@ async def test_ingest_empty_content():
         ]
         mock_get_parser.return_value = mock_parser
 
-        result = await service.ingest_document("empty.pdf", b"")
+        result = service.ingest_document("empty.pdf", b"")
 
         assert result["total_pages"] == 1
         assert result["page_index_preview"][0]["char_count"] == 0
@@ -206,9 +200,8 @@ async def test_ingest_empty_content():
         assert unit.end_char == 0
 
 
-@pytest.mark.asyncio
 @pytest.mark.us25
-async def test_ingest_no_metadata():
+def test_ingest_no_metadata():
     """测试解析结果没有 metadata 的情况"""
     service = DocumentIngestService()
 
@@ -224,7 +217,7 @@ async def test_ingest_no_metadata():
         }]
         mock_get_parser.return_value = mock_parser
 
-        result = await service.ingest_document("test.pdf", b"content")
+        result = service.ingest_document("test.pdf", b"content")
 
         assert result["total_pages"] == 1
         # 没有 metadata 时，page_index_preview 中不包含 source_type 字段
@@ -281,9 +274,8 @@ def test_source_type_to_file_type_unknown_falls_back_to_other():
 # ========== 新增：keyword args 测试 ==========
 
 
-@pytest.mark.asyncio
 @pytest.mark.us25
-async def test_ingest_with_explicit_title():
+def test_ingest_with_explicit_title():
     """传入 title keyword arg 应覆盖默认文件名推导"""
     service = DocumentIngestService()
 
@@ -295,14 +287,13 @@ async def test_ingest_with_explicit_title():
         ]
         mock_get_parser.return_value = mock_parser
 
-        result = await service.ingest_document("notes.txt", b"content", title="自定义标题")
+        result = service.ingest_document("notes.txt", b"content", title="自定义标题")
 
         assert result["document_record"].title == "自定义标题"
 
 
-@pytest.mark.asyncio
 @pytest.mark.us25
-async def test_ingest_with_workspace_id():
+def test_ingest_with_workspace_id():
     """传入 workspace_id 应写入 document_record"""
     service = DocumentIngestService()
 
@@ -314,14 +305,13 @@ async def test_ingest_with_workspace_id():
         ]
         mock_get_parser.return_value = mock_parser
 
-        result = await service.ingest_document("f.txt", b"content", workspace_id="ws-abc")
+        result = service.ingest_document("f.txt", b"content", workspace_id="ws-abc")
 
         assert result["document_record"].workspace_id == "ws-abc"
 
 
-@pytest.mark.asyncio
 @pytest.mark.us25
-async def test_ingest_with_file_path():
+def test_ingest_with_file_path():
     """传入 file_path 应写入 document_record"""
     service = DocumentIngestService()
 
@@ -333,14 +323,13 @@ async def test_ingest_with_file_path():
         ]
         mock_get_parser.return_value = mock_parser
 
-        result = await service.ingest_document("f.txt", b"content", file_path="data/uploads/f.txt")
+        result = service.ingest_document("f.txt", b"content", file_path="data/uploads/f.txt")
 
         assert result["document_record"].file_path == "data/uploads/f.txt"
 
 
-@pytest.mark.asyncio
 @pytest.mark.us25
-async def test_ingest_with_file_hash():
+def test_ingest_with_file_hash():
     """传入 file_hash 应写入 document_record"""
     service = DocumentIngestService()
 
@@ -352,14 +341,13 @@ async def test_ingest_with_file_hash():
         ]
         mock_get_parser.return_value = mock_parser
 
-        result = await service.ingest_document("f.txt", b"content", file_hash="abc123")
+        result = service.ingest_document("f.txt", b"content", file_hash="abc123")
 
         assert result["document_record"].file_hash == "abc123"
 
 
-@pytest.mark.asyncio
 @pytest.mark.us25
-async def test_ingest_all_keyword_args():
+def test_ingest_all_keyword_args():
     """同时传入所有 keyword args"""
     service = DocumentIngestService()
 
@@ -371,7 +359,7 @@ async def test_ingest_all_keyword_args():
         ]
         mock_get_parser.return_value = mock_parser
 
-        result = await service.ingest_document(
+        result = service.ingest_document(
             "file.txt", b"content",
             workspace_id="ws-1",
             title="My Title",
@@ -389,9 +377,8 @@ async def test_ingest_all_keyword_args():
 # ========== 新增：source_type 为 "other"（第一页无 metadata）回退到 OTHER ==========
 
 
-@pytest.mark.asyncio
 @pytest.mark.us25
-async def test_ingest_first_page_no_metadata_falls_back_to_other():
+def test_ingest_first_page_no_metadata_falls_back_to_other():
     """第一页没有 metadata 时，source_type 为 'other'，file_type 应为 OTHER"""
     service = DocumentIngestService()
 
@@ -407,6 +394,6 @@ async def test_ingest_first_page_no_metadata_falls_back_to_other():
         }]
         mock_get_parser.return_value = mock_parser
 
-        result = await service.ingest_document("test.pdf", b"content")
+        result = service.ingest_document("test.pdf", b"content")
 
         assert result["document_record"].file_type == DocumentFileType.OTHER
