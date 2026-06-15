@@ -11,6 +11,9 @@ class HistoryMessage(BaseModel):
     content: str = Field(..., description="消息内容。")
 
 
+ChatMessage = HistoryMessage
+
+
 class ChatRequest(BaseModel):
     session_id: str = Field(..., description="会话 ID，用于关联对话历史。")
     query: str = Field(..., description="用户当前提出的问题。")

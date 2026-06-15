@@ -49,7 +49,7 @@ async def process_and_save_analysis(
         language="fr-zh",  # 中法双语
         content_markdown=markdown_text,  # 满足必填条件
         content_json=raw_json_dict,  # 直接塞入大模型原始 JSON
-        model_name=agent.model,  # 记录使用的模型
+        model_name=None,  # 由 provider 决定使用的模型
         prompt_version="v1.0",  # 记录提示词版本
     )
 
