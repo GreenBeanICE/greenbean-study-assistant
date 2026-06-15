@@ -25,7 +25,6 @@ class ProviderService:
             for key, value in data.items():
                 if value is not None:
                     setattr(config, key, value)
-            config.updated_at = config.updated_at
             repo.save(config)
             uow.commit()
 
