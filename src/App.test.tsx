@@ -1,6 +1,6 @@
 import React from "react";
-import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { describe, it, expect, vi, afterEach, beforeEach, afterAll } from "vitest";
+import { render, screen, fireEvent, cleanup, act } from "@testing-library/react";
 import App from "./App";
 
 vi.mock("framer-motion", () => {
@@ -31,11 +31,22 @@ vi.mock("framer-motion", () => {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
 });
 
 describe("App", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterAll(() => {
+    vi.useRealTimers();
+  });
+
   it("renders splash screen initially", () => {
     render(<App />);
+    // Advance timers past the subtitle phase (1700ms for subtitle, 800ms + 600ms for welcome)
+    act(() => { vi.advanceTimersByTime(2000); });
     expect(screen.getByText("GreenBean Study Assistant")).toBeDefined();
   });
 
