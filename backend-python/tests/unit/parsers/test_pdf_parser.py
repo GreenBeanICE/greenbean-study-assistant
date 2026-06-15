@@ -1,5 +1,5 @@
 ﻿# PDF 解析器测试占位文件，后续用于验证 PDF 解析逻辑。
-# backend-python/tests/test_pdf_parser.py
+# backend-python/tests/unit/parsers/test_pdf_parser.py
 import pytest
 from unittest.mock import MagicMock, patch
 from app.parsers.pdf_parser import PDFParser
