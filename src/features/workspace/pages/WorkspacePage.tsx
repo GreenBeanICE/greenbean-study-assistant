@@ -9,7 +9,6 @@ import type { WorkspaceState, WorkspaceAction, WorkspacePageProps, TextFormatAct
 import type { SectionNode, ContentBlock, ContentLine, FootnoteReference } from "../../../types/section";
 import type { ChatMessage } from "../../../types/chat";
 
-/** 默认（模拟）章节数据 */
 function getLocalizedSections(): SectionNode[] {
   return [
     { id: "ch1", title: "第一章：引言", index: "1", expanded: true, children: [
@@ -31,7 +30,6 @@ function getLocalizedSections(): SectionNode[] {
   ];
 }
 
-/** 默认（模拟）内容数据 */
 function getLocalizedContent(): ContentBlock[] {
   return [
     { id: "block-ch1-1", sectionId: "ch1-1", title: "1.1 背景介绍", contentType: "text",
@@ -120,9 +118,12 @@ function workspaceReducer(state: WorkspaceState, action: WorkspaceAction): Works
     case "SET_LOADING": return { ...state, loading: action.loading };
     case "SET_TOKEN_USAGE": return { ...state, tokenUsage: action.usage };
     case "TOGGLE_LEFT_PANEL": return { ...state, leftCollapsed: !state.leftCollapsed };
-    case "TOGGLE_RIGHT_PANEL": return { ...state, rightCollapsed: !state.rightCollapsed };
-    case "SET_LEFT_WIDTH": return { ...state, leftPanelWidth: Math.max(160, Math.min(400, action.width)) };
-    case "SET_RIGHT_WIDTH": return { ...state, rightPanelWidth: Math.max(200, Math.min(500, action.width)) };
+    case "TOGGLE_RIGHT_PANEL": return { ...state, rightCollapsed: !state.rightCollapsed, rightPanelWidth: state.rightCollapsed ? state.rightPanelWidth || 302 : 0 };
+    case "SET_LEFT_WIDTH": return { ...state, leftPanelWidth: Math.max(160, Math.min(302, action.width)) };
+    case "SET_RIGHT_WIDTH": {
+      const w = Math.min(340, Math.max(189, action.width));
+      return { ...state, rightPanelWidth: w, rightCollapsed: false };
+    }
     case "SET_DOC_TITLE": return { ...state, documentTitle: action.title };
     default: return state;
   }
@@ -130,12 +131,13 @@ function workspaceReducer(state: WorkspaceState, action: WorkspaceAction): Works
 
 function WorkspacePage(_props: WorkspacePageProps) {
   const titleRef = useRef<HTMLInputElement>(null);
+  const rightDragRef = useRef(false);
+  const rightWidthRef = useRef(302);
+  const rightDragClientXRef = useRef(0);
 
-  // 左侧面板模式: "files"（文件列表）| "sections"（章节树）
-  const [leftMode, setLeftMode] = useState<"files" | "sections">("files");
+  const [leftMode, setLeftMode] = useState<"files" | "sections" | null>("files");
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [selectedFileName, setSelectedFileName] = useState<string>("");
-  const [rightDragging, setRightDragging] = useState(false);
 
   const [state, dispatch] = useReducer(workspaceReducer, {
     sections: getLocalizedSections(), selectedSectionId: null, contentBlocks: getLocalizedContent(),
@@ -143,8 +145,10 @@ function WorkspacePage(_props: WorkspacePageProps) {
     expandedFootnoteId: null, currentSelection: null, showSelectionMenu: false,
     selectionMenuPos: null, quotedText: null, tokenUsage: 0,
     leftCollapsed: false, rightCollapsed: false,
-    leftPanelWidth: 256, rightPanelWidth: 300, documentTitle: "cours-analyse-s1.pdf",
+    leftPanelWidth: 256, rightPanelWidth: 302, documentTitle: "cours-analyse-s1.pdf",
   });
+
+  rightWidthRef.current = state.rightPanelWidth;
 
   const d = useCallback((s: string) => dispatch({ type: "SELECT_SECTION", sectionId: s } as any), []);
   const togg = useCallback((s: string) => dispatch({ type: "TOGGLE_SECTION_EXPAND", sectionId: s } as any), []);
@@ -158,19 +162,76 @@ function WorkspacePage(_props: WorkspacePageProps) {
   const ci = useCallback((t: string) => dispatch({ type: "SET_CHAT_INPUT", text: t } as any), []);
   const cq = useCallback(() => dispatch({ type: "CLEAR_QUOTE" } as any), []);
   const send = useCallback(() => { if ((state.chatInput.trim() || state.quotedText) && !state.loading) dispatch({ type: "SEND_CHAT_MESSAGE", message: {} as ChatMessage } as any); }, [state.chatInput, state.quotedText, state.loading]);
-  const tl = useCallback(() => dispatch({ type: "TOGGLE_LEFT_PANEL" } as any), []);
-  const tr = useCallback(() => dispatch({ type: "TOGGLE_RIGHT_PANEL" } as any), []);
   const setLeftW = useCallback((d: number) => dispatch({ type: "SET_LEFT_WIDTH", width: state.leftPanelWidth + d } as any), [state.leftPanelWidth]);
-  const setRightW = useCallback((d: number) => dispatch({ type: "SET_RIGHT_WIDTH", width: state.rightPanelWidth - d } as any), [state.rightPanelWidth]);
 
-  /** 文件选择：文件栏向左滑出，章节栏从右侧滑入 */
+  const setRightW = useCallback((d: number, clientX?: number) => {
+    rightDragRef.current = true;
+    if (clientX !== undefined) {
+      rightDragClientXRef.current = clientX;
+    }
+    if (state.rightCollapsed) {
+      rightWidthRef.current = Math.min(667, Math.max(189, 189 - d));
+      dispatch({ type: "SET_RIGHT_WIDTH", width: rightWidthRef.current } as any);
+    } else {
+      const w = Math.max(0, Math.min(667, rightWidthRef.current - d));
+      rightWidthRef.current = w;
+      dispatch({ type: "SET_RIGHT_WIDTH", width: w } as any);
+    }
+  }, [state.rightCollapsed]);
+
+  const toggleLeftPanel = useCallback((mode: "files" | "sections") => {
+    setLeftMode((prev) => (prev === mode ? null : mode));
+    if (state.leftCollapsed) {
+      dispatch({ type: "TOGGLE_LEFT_PANEL" } as any);
+    }
+  }, [state.leftCollapsed]);
+
+  const toggleRightPanel = useCallback(() => {
+    dispatch({ type: "TOGGLE_RIGHT_PANEL" } as any);
+  }, []);
+
+  // Close on mouseup when at minimum width and cursor near window right edge, or when below threshold
+  useEffect(() => {
+    const handleMouseUp = () => {
+      if (rightDragRef.current) {
+        rightDragRef.current = false;
+        const winW = window.innerWidth;
+        const cx = rightDragClientXRef.current;
+        // collapse if below threshold, or at minimum width and cursor within 50px of window right edge
+        if (
+          (!state.rightCollapsed && state.rightPanelWidth > 0 && state.rightPanelWidth < 189) ||
+          (state.rightPanelWidth <= 189 && cx > 0 && winW - cx < 50)
+        ) {
+          dispatch({ type: "TOGGLE_RIGHT_PANEL" } as any);
+        }
+      }
+    };
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => document.removeEventListener("mouseup", handleMouseUp);
+  }, [state.rightCollapsed, state.rightPanelWidth]);
+
+  // Auto-collapse right panel when viewport is too small to show content properly
+  useEffect(() => {
+    const handleResize = () => {
+      if (state.rightCollapsed) return;
+      const toolbarWidth = 40; // left icon bar
+      const leftMax = state.leftCollapsed ? 0 : state.leftPanelWidth;
+      // Minimum viewport needed: toolbar + left panel width + right panel min (189) + main content min (200)
+      const minViewportNeeded = toolbarWidth + leftMax + 189 + 200;
+      if (window.innerWidth < minViewportNeeded) {
+        dispatch({ type: "TOGGLE_RIGHT_PANEL" } as any);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [state.rightCollapsed, state.leftCollapsed, state.leftPanelWidth]);
+
   const handleFileSelect = useCallback((fileId: string, fileName: string) => {
     setSelectedFileId(fileId);
     setSelectedFileName(fileName);
     setLeftMode("sections");
   }, []);
 
-  /** 返回文件列表：章节栏向右滑出，文件栏从左侧滑入 */
   const handleBackToFiles = useCallback(() => {
     setLeftMode("files");
     setSelectedFileId(null);
@@ -184,6 +245,8 @@ function WorkspacePage(_props: WorkspacePageProps) {
     }, 50);
   }, [d]);
 
+  const showLeftPanel = leftMode !== null;
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -192,90 +255,55 @@ function WorkspacePage(_props: WorkspacePageProps) {
       className="h-screen bg-[#f5f5f7] text-neutral-800 flex flex-col"
     >
       <div className="flex-1 flex overflow-hidden min-h-0">
-        {/* 左侧面板区 */}
         <div className="flex">
-          {/* 左工具栏 */}
-          <div className="w-10 flex-shrink-0 bg-white/70 border-r border-black/5 flex flex-col items-center py-2 gap-2">
-            <button onClick={tl} className="cursor-pointer w-7 h-7 rounded-md flex items-center justify-center hover:bg-black/10 text-neutral-400" title="收起章节">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="6" height="18" rx="1" /><line x1="11" y1="3" x2="21" y2="3" /><line x1="11" y1="9" x2="21" y2="9" /><line x1="11" y1="15" x2="21" y2="15" /></svg>
-            </button>
-            <div className="w-6 border-t border-black/10" />
-            <button
-              onClick={() => setLeftMode("files")}
-              className={`cursor-pointer w-7 h-7 rounded-md flex items-center justify-center transition-all ${
-                leftMode === "files" ? "bg-black/10 text-neutral-700" : "text-neutral-400 hover:bg-black/10"
-              }`}
-              title="文件管理"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
+          <div className="w-12 flex-shrink-0 bg-white/70 border-r border-black/5 flex flex-col items-center py-3 gap-3">
+            <button onClick={() => toggleLeftPanel("files")}
+              className={`cursor-pointer w-9 h-9 rounded-lg flex items-center justify-center transition-all ${leftMode === "files" ? "bg-black/10 text-neutral-700" : "text-neutral-400 hover:bg-black/10"}`}
+              title="文件管理">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
             </button>
             {selectedFileId && (
-              <button
-                onClick={() => setLeftMode("sections")}
-                className={`cursor-pointer w-7 h-7 rounded-md flex items-center justify-center transition-all ${
-                  leftMode === "sections" ? "bg-black/10 text-neutral-700" : "text-neutral-400 hover:bg-black/10"
-                }`}
-                title="章节导航"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>
+              <button onClick={() => toggleLeftPanel("sections")}
+                className={`cursor-pointer w-9 h-9 rounded-lg flex items-center justify-center transition-all ${leftMode === "sections" ? "bg-black/10 text-neutral-700" : "text-neutral-400 hover:bg-black/10"}`}
+                title="章节导航">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>
               </button>
             )}
-            <div className="w-6 border-t border-black/10 my-1" />
-            <button onClick={tr}
-              className={`cursor-pointer w-7 h-7 rounded-md flex items-center justify-center transition-all ${
-                !state.rightCollapsed ? "bg-black/10 text-neutral-700" : "text-neutral-400 hover:bg-black/10"
-              }`}
-              title={state.rightCollapsed ? "展开聊天" : "收起聊天"}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <button onClick={toggleRightPanel}
+              className={`cursor-pointer w-9 h-9 rounded-lg flex items-center justify-center transition-all ${!state.rightCollapsed ? "bg-black/10 text-neutral-700" : "text-neutral-400 hover:bg-black/10"}`}
+              title={state.rightCollapsed ? "展开AI聊天" : "收起AI聊天"}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                 <path d="M12 2a7 7 0 0 0-7 7c0 2.4 1.2 4.5 3 5.7V17h8v-2.3c1.8-1.3 3-3.4 3-5.7a7 7 0 0 0-7-7z" />
-                <line x1="9" y1="17" x2="15" y2="17" />
-                <line x1="10" y1="20" x2="14" y2="20" />
+                <line x1="9" y1="17" x2="15" y2="17" /><line x1="10" y1="20" x2="14" y2="20" />
               </svg>
             </button>
             <div className="flex-1" />
+            <button className="cursor-pointer w-9 h-9 rounded-lg flex items-center justify-center text-neutral-400 hover:bg-black/10 transition-all" title="设置">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+            </button>
           </div>
 
-          {/* 左侧面板 */}
           <motion.aside
-            animate={{
-              width: state.leftCollapsed ? 0 : state.leftPanelWidth,
-              opacity: state.leftCollapsed ? 0 : 1,
-            }}
+            animate={{ width: !showLeftPanel ? 0 : state.leftPanelWidth, opacity: !showLeftPanel ? 0 : 1 }}
             transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
             className="flex-shrink-0 bg-white/70 border-r border-black/5 backdrop-blur-xl overflow-hidden"
           >
-            {!state.leftCollapsed && (
+            {showLeftPanel && (
               <div style={{ width: state.leftPanelWidth }} className="h-full relative overflow-hidden">
                 <AnimatePresence mode="wait">
                   {leftMode === "files" && (
-                    <motion.div
-                      key="files-panel"
-                      initial={{ x: -state.leftPanelWidth }}
-                      animate={{ x: 0 }}
-                      exit={{ x: -state.leftPanelWidth }}
-                      transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
-                      className="absolute inset-0 bg-white/70"
-                    >
+                    <motion.div key="files-panel" initial={{ x: -state.leftPanelWidth }} animate={{ x: 0 }} exit={{ x: -state.leftPanelWidth }}
+                      transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }} className="absolute inset-0 bg-white/70">
                       <FileManager onFileSelectWithName={handleFileSelect} />
                     </motion.div>
                   )}
                   {leftMode === "sections" && selectedFileId && (
-                    <motion.div
-                      key="sections-panel"
-                      initial={{ x: state.leftPanelWidth }}
-                      animate={{ x: 0 }}
-                      exit={{ x: state.leftPanelWidth }}
-                      transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
-                      className="absolute inset-0 bg-white/70"
-                    >
-                      <SectionTree
-                        sections={state.sections}
-                        selectedSectionId={state.selectedSectionId}
-                        onSelect={handleSectionSelect}
-                        onToggle={togg}
-                        onBack={handleBackToFiles}
-                        title={selectedFileName}
-                      />
+                    <motion.div key="sections-panel" initial={{ x: state.leftPanelWidth }} animate={{ x: 0 }} exit={{ x: state.leftPanelWidth }}
+                      transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }} className="absolute inset-0 bg-white/70">
+                      <SectionTree sections={state.sections} selectedSectionId={state.selectedSectionId}
+                        onSelect={handleSectionSelect} onToggle={togg} onBack={handleBackToFiles} title={selectedFileName} />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -284,52 +312,30 @@ function WorkspacePage(_props: WorkspacePageProps) {
           </motion.aside>
         </div>
 
-        {!state.leftCollapsed && <ResizableHandle onResize={setLeftW} position="left" />}
+        {showLeftPanel && <ResizableHandle onResize={setLeftW} position="left" />}
 
-        {/* 中间文档区域 */}
         <main className="flex-1 min-w-0 min-h-0">
-          <DocumentViewer
-            contentBlocks={state.contentBlocks} selectedSectionId={state.selectedSectionId}
+          <DocumentViewer contentBlocks={state.contentBlocks} selectedSectionId={state.selectedSectionId}
             footnotes={state.footnotes} expandedFootnoteId={state.expandedFootnoteId}
             currentSelection={state.currentSelection} showSelectionMenu={state.showSelectionMenu} selectionMenuPos={state.selectionMenuPos}
             onToggleHighlight={th} onUpdateLineText={ut} onFormatLine={fmt}
             onToggleFootnote={tf} onSelectText={sel} onShowSelectionMenu={sm} onQuoteSelection={qs} />
         </main>
 
-        {/* 右侧聊天面板 */}
-        <ResizableHandle onResize={setRightW} position="right" onDoubleClick={tr} onDragStateChange={setRightDragging} />
-        <aside
-          className={`flex-shrink-0 bg-white/70 border-l border-black/5 backdrop-blur-xl overflow-hidden ${
-            rightDragging ? "" : "transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)]"
-          }`}
-          style={{
-            width: state.rightCollapsed ? 28 : state.rightPanelWidth,
-            minWidth: state.rightCollapsed ? 28 : 220,
-            maxWidth: state.rightCollapsed ? 28 : "33.33vw",
-          }}
+        <ResizableHandle onResize={setRightW} position="right" onDoubleClick={toggleRightPanel} />
+        <motion.aside
+          animate={{ width: state.rightCollapsed ? 0 : state.rightPanelWidth, opacity: state.rightCollapsed ? 0 : 1 }}
+          transition={rightDragRef.current ? { duration: 0 } : { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+          className="flex-shrink-0 bg-white/70 border-l border-black/5 backdrop-blur-xl overflow-hidden"
+          style={{ maxWidth: "100vw" }}
         >
-          {state.rightCollapsed ? (
-            <button
-              onClick={tr}
-              title="展开聊天"
-              className="w-7 h-full flex flex-col items-center justify-center cursor-pointer hover:bg-black/10 transition-all duration-200 group"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="text-neutral-400 group-hover:text-neutral-700 transition-colors mb-1">
-                <path d="M12 2a7 7 0 0 0-7 7c0 2.4 1.2 4.5 3 5.7V17h8v-2.3c1.8-1.3 3-3.4 3-5.7a7 7 0 0 0-7-7z" />
-                <line x1="9" y1="17" x2="15" y2="17" />
-                <line x1="10" y1="20" x2="14" y2="20" />
-              </svg>
-              <span className="text-[8px] text-neutral-400 group-hover:text-neutral-600 transition-colors tracking-wider font-medium [writing-mode:vertical-rl]">
-                展开聊天
-              </span>
-            </button>
-          ) : (
-            <div className="h-full w-full overflow-hidden">
+          {!state.rightCollapsed && (
+            <div style={{ width: state.rightPanelWidth, maxWidth: "100%" }} className="h-full overflow-hidden relative">
               <ChatPanel messages={state.chatMessages} input={state.chatInput} quotedText={state.quotedText} tokenUsage={state.tokenUsage}
                 onInputChange={ci} onSend={send} onClearQuote={cq} loading={state.loading} />
             </div>
           )}
-        </aside>
+        </motion.aside>
       </div>
     </motion.div>
   );

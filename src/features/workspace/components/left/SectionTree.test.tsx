@@ -94,7 +94,7 @@ describe("SectionTree", () => {
       />,
     );
     const selectedBtn = screen.getByText((content) => content.includes("第一章：引言"));
-    expect(selectedBtn.closest("button")?.className).toContain("bg-black");
+    expect(selectedBtn.closest("button")?.className).toContain("bg-neutral-200");
   });
 
   it("空章节列表显示空状态", () => {

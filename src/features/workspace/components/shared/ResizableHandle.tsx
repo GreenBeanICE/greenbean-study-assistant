@@ -7,7 +7,7 @@ function ResizableHandle({
   onDragStateChange,
   position = "left",
 }: {
-  onResize: (delta: number) => void;
+  onResize: (delta: number, clientX?: number) => void;
   onDoubleClick?: () => void;
   onDragStateChange?: (isDragging: boolean) => void;
   position?: "left" | "right";
@@ -33,7 +33,7 @@ function ResizableHandle({
       if (!draggingRef.current) return;
       const delta = e.clientX - startXRef.current;
       startXRef.current = e.clientX;
-      onResize(delta);
+      onResize(delta, e.clientX);
     };
 
     const handleMouseUp = () => {

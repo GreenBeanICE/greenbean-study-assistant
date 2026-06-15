@@ -59,7 +59,7 @@ describe("App", () => {
     render(<App />);
     const skipBtn = screen.getByText("跳过");
     fireEvent.click(skipBtn);
-    expect(screen.getByText("Workspace")).toBeDefined();
+    expect(screen.getByText("我的文档")).toBeDefined();
     expect(screen.queryByText("跳过")).toBeNull();
   });
 });

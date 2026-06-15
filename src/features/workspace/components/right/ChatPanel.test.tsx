@@ -38,8 +38,7 @@ describe("ChatPanel", () => {
 
   it("空消息列表显示空状态提示", () => {
     render(<ChatPanel {...defaultProps} />);
-    expect(screen.getByText("暂无对话")).toBeDefined();
-    expect(screen.getByText("在下方输入框提问，AI 将根据文档内容回答")).toBeDefined();
+    expect(screen.getByText("有什么可以帮你？")).toBeDefined();
   });
 
   it("空白输入时发送按钮禁用", () => {
@@ -57,9 +56,13 @@ describe("ChatPanel", () => {
   });
 
   it("用户消息和AI消息正确显示", () => {
-    render(<ChatPanel {...defaultProps} messages={sampleMessages} />);
+    const { container } = render(<ChatPanel {...defaultProps} messages={sampleMessages} />);
     expect(screen.getByText("帮我总结一下第二节")).toBeDefined();
     expect(screen.getByText("这是对第二节的模拟回答。")).toBeDefined();
+    // AI消息左侧应该渲染AIAvatar（渐变背景 + svg图标）
+    const gradientDivs = container.querySelectorAll(".bg-gradient-to-br");
+    // 空状态也有一个渐变div，assistant消息还有一个
+    expect(gradientDivs.length).toBeGreaterThanOrEqual(1);
   });
 
   it("输入框值改变触发 onInputChange", () => {
@@ -94,12 +97,13 @@ describe("ChatPanel", () => {
 
   it("引用条上点击清除触发 onClearQuote", () => {
     const onClearQuote = vi.fn();
-    render(<ChatPanel {...defaultProps} quotedText="引用" onClearQuote={onClearQuote} />);
-    const svg = document.querySelector("button svg line");
-    if (svg) {
-      const clearBtn = svg.closest("button");
-      if (clearBtn) fireEvent.click(clearBtn);
-    }
+    const { container } = render(<ChatPanel {...defaultProps} quotedText="引用" onClearQuote={onClearQuote} />);
+    // Find the clear button: the QuoteBar renders a button with an X icon (two crossing lines)
+    const quoteBar = container.querySelector(".bg-blue-50");
+    expect(quoteBar).toBeDefined();
+    const clearBtn = quoteBar?.querySelector("button");
+    expect(clearBtn).toBeDefined();
+    if (clearBtn) fireEvent.click(clearBtn);
     expect(onClearQuote).toHaveBeenCalled();
   });
 

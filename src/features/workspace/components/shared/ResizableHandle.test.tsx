@@ -10,17 +10,18 @@ describe("ResizableHandle", () => {
     expect(handle.className).toContain("cursor-col-resize");
   });
 
-  it("鼠标拖拽触发 onResize", () => {
+  it("鼠标拖拽触发 onResize 并传递 clientX", () => {
     const onResize = vi.fn();
     const { container } = render(<ResizableHandle onResize={onResize} />);
     const handle = container.firstChild as HTMLElement;
 
     fireEvent.mouseDown(handle, { clientX: 100 });
     fireEvent.mouseMove(document, { clientX: 150 });
-    expect(onResize).toHaveBeenCalledWith(50);
+    // should call with delta=50 and clientX=150
+    expect(onResize).toHaveBeenCalledWith(50, 150);
 
     fireEvent.mouseMove(document, { clientX: 180 });
-    expect(onResize).toHaveBeenCalledWith(30);
+    expect(onResize).toHaveBeenCalledWith(30, 180);
   });
 
   it("鼠标松开后停止触发 onResize", () => {
@@ -46,5 +47,26 @@ describe("ResizableHandle", () => {
     const { container } = render(<ResizableHandle onResize={() => {}} position="right" />);
     const handle = container.firstChild as HTMLElement;
     expect(handle).toBeDefined();
+  });
+
+  it("鼠标松开时触发 onDragStateChange(false)", () => {
+    const onDragStateChange = vi.fn();
+    const { container } = render(<ResizableHandle onResize={() => {}} onDragStateChange={onDragStateChange} />);
+    const handle = container.firstChild as HTMLElement;
+
+    fireEvent.mouseDown(handle, { clientX: 100 });
+    expect(onDragStateChange).toHaveBeenCalledWith(true);
+
+    fireEvent.mouseUp(document);
+    expect(onDragStateChange).toHaveBeenCalledWith(false);
+  });
+
+  it("双击分隔条触发 onDoubleClick", () => {
+    const onDoubleClick = vi.fn();
+    const { container } = render(<ResizableHandle onResize={() => {}} onDoubleClick={onDoubleClick} />);
+    const handle = container.firstChild as HTMLElement;
+
+    fireEvent.doubleClick(handle);
+    expect(onDoubleClick).toHaveBeenCalled();
   });
 });

@@ -111,7 +111,7 @@ describe("DocumentViewer", () => {
   it("未选择章节时显示空状态", () => {
     render(<DocumentViewer {...defaultProps} />);
     expect(screen.getByText("选择章节查看内容")).toBeDefined();
-    expect(screen.getByText("点击左侧章节列表，文档内容将在此处展示")).toBeDefined();
+    expect(screen.getByText("点击左侧章节列表，解析内容将在此处展示")).toBeDefined();
   });
 
   it("选择章节后显示内容块", () => {
@@ -169,11 +169,6 @@ describe("DocumentViewer", () => {
       }
     }
     expect(onToggleFootnote).toHaveBeenCalledWith("fn-1");
-  });
-
-  it("显示内容块数量", () => {
-    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />);
-    expect(screen.getByText(/4 个章节/)).toBeDefined();
   });
 
   it("表格块正确渲染表头和行", () => {

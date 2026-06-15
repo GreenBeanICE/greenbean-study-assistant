@@ -285,13 +285,10 @@ function DocumentViewer({
 
   return (
     <div className="flex flex-col h-full">
-      {/* 顶部栏 — 中间栏极窄时自动换行上下排列 */}
-      <div className="flex flex-wrap items-center justify-between px-4 py-2 border-b border-black/5 bg-white/50 gap-1">
-        <h2 className="text-sm font-semibold text-neutral-700 tracking-tight">文档解析</h2>
-        {selectedSectionId && filteredBlocks.length > 0 && (
-          <span className="text-[10px] text-neutral-400">{filteredBlocks.length} 个章节</span>
-        )}
-        <div className="flex items-center gap-1.5">
+      {/* 顶部栏：文档解析永远横向排列且保证最小显示宽度，按钮必要时移至第二行 */}
+      <div className="flex flex-wrap items-center px-4 py-2 border-b border-black/5 bg-white/50 gap-x-1">
+        <h2 className="text-sm font-semibold text-neutral-700 tracking-tight whitespace-nowrap flex-shrink-0">文档解析</h2>
+        <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
           <button onClick={handleDownload}
             className="cursor-pointer w-7 h-7 rounded-md flex items-center justify-center hover:bg-black/10 text-neutral-400 transition"
             title="下载">
@@ -315,14 +312,14 @@ function DocumentViewer({
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {showEmptyState ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
+          <div className="inline-block pt-16 pl-6">
             <div className="w-16 h-16 rounded-2xl bg-black/5 flex items-center justify-center mb-4">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" className="text-neutral-400">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
               </svg>
             </div>
             <p className="text-sm text-neutral-500 font-medium">选择章节查看内容</p>
-            <p className="text-xs text-neutral-400 mt-1">点击左侧章节列表，文档内容将在此处展示</p>
+            <p className="text-xs text-neutral-400 mt-1">点击左侧章节列表，解析内容将在此处展示</p>
           </div>
         ) : (
           <div className="min-w-max" style={{ minWidth: "max-content" }}>

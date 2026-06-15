@@ -2,7 +2,7 @@ import { useRef, useEffect, type KeyboardEvent } from "react";
 import type { ChatPanelProps } from "../../type";
 
 /** AI logo */
-function AIAvatar({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
+function tar({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
   const sizeMap = { sm: "w-6 h-6", md: "w-8 h-8", lg: "w-10 h-10" };
   const iconSizeMap = { sm: 10, md: 14, lg: 18 };
   return (
@@ -21,11 +21,11 @@ function TokenUsage({ usage }: { usage: number }) {
   const max = 4096;
   const percentage = Math.min((usage / max) * 100, 100);
   return (
-    <div className="flex items-center gap-2 text-[10px] text-neutral-400">
-      <div className="w-16 h-1.5 bg-black/10 rounded-full overflow-hidden">
+    <div className="flex items-center gap-1.5 text-[9px] text-neutral-400 flex-shrink-0 min-w-0">
+      <div className="w-10 h-1.5 bg-black/10 rounded-full overflow-hidden flex-shrink-0">
         <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300" style={{ width: `${percentage}%` }} />
       </div>
-      <span className="font-medium">{usage.toLocaleString()} / {max.toLocaleString()} tokens</span>
+      <span className="font-medium flex-shrink-0">{usage.toLocaleString()} / {max.toLocaleString()}</span>
     </div>
   );
 }
@@ -67,10 +67,10 @@ function ChatPanel({ messages, input, quotedText, tokenUsage, onInputChange, onS
 
   return (
     <div className="flex flex-col h-full">
-      {/* 面板标题 - 固定在顶部 */}
-      <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-black/5 bg-white/50">
-        <h2 className="text-sm font-semibold text-neutral-700 tracking-tight">AI 助手</h2>
-        <div className="flex items-center gap-2">
+      {/* 面板标题 - 固定在顶部，高度与文件面板一致 */}
+      <div className="flex-shrink-0 flex items-center justify-between px-4 py-[10px] border-b border-black/5 bg-white/50 gap-1 h-[48px]" style={{ whiteSpace: "nowrap" }}>
+        <h2 className="text-sm font-semibold text-neutral-700 tracking-tight flex-shrink-0">AI 助手</h2>
+        <div className="flex items-center gap-1 flex-shrink-0">
           <TokenUsage usage={tokenUsage} />
           {loading && <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />}
         </div>
@@ -86,8 +86,7 @@ function ChatPanel({ messages, input, quotedText, tokenUsage, onInputChange, onS
                 <line x1="9" y1="17" x2="15" y2="17" /><line x1="10" y1="20" x2="14" y2="20" />
               </svg>
             </div>
-            <p className="text-sm text-neutral-500 font-medium">暂无对话</p>
-            <p className="text-xs text-neutral-400 mt-1">在下方输入框提问，AI 将根据文档内容回答</p>
+            <p className="text-sm text-neutral-500 font-medium">有什么可以帮你？</p>
           </div>
         ) : (
           messages.map((msg) => (
