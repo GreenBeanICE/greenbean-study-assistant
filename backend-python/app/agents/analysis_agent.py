@@ -1,32 +1,16 @@
 ﻿import json
-import os
 from typing import Any, Dict
 
-from openai import AsyncOpenAI
-
-from app.prompts.analysis_prompts import (
-    ANALYSIS_SYSTEM_PROMPT,
-    ANALYSIS_USER_PROMPT_TPL,
-)
+from app.prompts.analysis_prompts import ANALYSIS_SYSTEM_PROMPT, ANALYSIS_USER_PROMPT_TPL
+from app.providers.registry import ProviderRegistry
 from app.schemas.analysis_schema import AnalysisOutput
 
 
 class AnalysisAgent:
-    def __init__(self, api_key: str = None):
-        self.api_key = api_key or os.getenv("DEEPSEEK_API_KEY")
-        if not self.api_key:
-            raise ValueError("API Key 未配置！请检查环境变量。")
-
-        self.client = AsyncOpenAI(
-            api_key=self.api_key,
-            base_url=os.getenv("API_BASE_URL", "https://api.deepseek.com/v1"),
-        )
-        self.model = os.getenv("LLM_MODEL", "deepseek-chat")
-
     async def generate_analysis(self, document_context: str) -> Dict[str, Any]:
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
+            provider = ProviderRegistry.get_active()
+            response = await provider.chat_completion(
                 messages=[
                     {"role": "system", "content": ANALYSIS_SYSTEM_PROMPT},
                     {
@@ -39,8 +23,7 @@ class AnalysisAgent:
                 temperature=0.3,
                 response_format={"type": "json_object"},
             )
-
-            raw_content = response.choices[0].message.content
+            raw_content = response.content
             parsed = json.loads(raw_content)
 
             validated = AnalysisOutput.model_validate(parsed)
