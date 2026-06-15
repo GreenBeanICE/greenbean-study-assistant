@@ -1,6 +1,7 @@
 ﻿# 分析服务占位文件，后续用于组织 AI 结构化分析流程。
 
-from app.entities.analysis_result import AnalysisResult  # 引入你的实体
+from app.agents.analysis_agent import AnalysisAgent
+from app.entities.analysis_result import AnalysisResult
 from app.enums.analysis_type import AnalysisType
 
 

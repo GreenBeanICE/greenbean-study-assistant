@@ -2,12 +2,18 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.api.provider_controller import ProviderController
 from app.entities.provider_config import ProviderConfig
 from app.enums.api_mode import ApiMode
 from app.providers.base import ChatResult
 from app.providers.openai_compat_provider import OpenAICompatibleProvider
 from app.providers.registry import ProviderNotFoundError, ProviderRegistry
 from app.repositories.provider_config_repository import ProviderConfigRepository
+from app.schemas.provider_schema import (
+    ProviderActivateResponse,
+    ProviderConfigCreateRequest,
+    ProviderConfigUpdateRequest,
+)
 from app.services.provider_service import ProviderService
 
 
@@ -158,3 +164,151 @@ class TestProviderService:
         with patch.object(ProviderConfigRepository, "get_by_id", return_value=None):
             assert ProviderService(uow=mock_uow).activate("missing") is None
             MockRegistry.activate.assert_not_called()
+
+    def test_update(self, mock_uow):
+        config = make_config(name="original")
+        with patch.object(ProviderConfigRepository, "get_by_id", return_value=config):
+            with patch.object(ProviderConfigRepository, "save"):
+                with patch.object(ProviderConfigRepository, "list_all", return_value=[]):
+                    result = ProviderService(uow=mock_uow).update(config.id, {"name": "updated"})
+                    assert result.name == "updated"
+                    mock_uow.commit.assert_called_once()
+
+    def test_update_nonexistent(self, mock_uow):
+        with patch.object(ProviderConfigRepository, "get_by_id", return_value=None):
+            assert ProviderService(uow=mock_uow).update("missing", {"name": "nope"}) is None
+
+    @patch("app.services.provider_service.ProviderRegistry")
+    def test_update_reactivates_when_active(self, MockRegistry, mock_uow):
+        config = make_config(name="active-cfg", is_active=True)
+        MockRegistry.get_active_config.return_value = config
+        with patch.object(ProviderConfigRepository, "get_by_id", return_value=config):
+            with patch.object(ProviderConfigRepository, "save"):
+                result = ProviderService(uow=mock_uow).update(config.id, {"display_name": "Updated"})
+                assert result.display_name == "Updated"
+                MockRegistry.activate.assert_called_once_with(config)
+
+    def test_get_active(self, mock_uow):
+        config = make_config(is_active=True)
+        with patch.object(ProviderConfigRepository, "get_active", return_value=config):
+            assert ProviderService(uow=mock_uow).get_active().is_active is True
+
+    def test_get_active_returns_none(self, mock_uow):
+        with patch.object(ProviderConfigRepository, "get_active", return_value=None):
+            assert ProviderService(uow=mock_uow).get_active() is None
+
+    @patch("app.services.provider_service.ProviderRegistry")
+    def test_delete_active_clears_registry(self, MockRegistry, mock_uow):
+        with patch.object(ProviderConfigRepository, "get_by_id", return_value=make_config(is_active=True)):
+            with patch.object(ProviderConfigRepository, "delete", return_value=True):
+                assert ProviderService(uow=mock_uow).delete("active-id") is True
+                MockRegistry.clear.assert_called_once()
+
+    def test_delete_inactive_does_not_clear_registry(self, mock_uow):
+        with patch.object(ProviderConfigRepository, "get_by_id", return_value=make_config(is_active=False)):
+            with patch.object(ProviderConfigRepository, "delete", return_value=True):
+                assert ProviderService(uow=mock_uow).delete("inactive-id") is True
+
+
+# ── Controller ───────────────────────────────────────────────────────
+
+class TestProviderController:
+    @pytest.fixture
+    def mock_service(self):
+        return MagicMock(spec=ProviderService)
+
+    @pytest.fixture
+    def controller(self, mock_service):
+        return ProviderController(mock_service)
+
+    @pytest.mark.asyncio
+    async def test_list_providers(self, controller, mock_service):
+        mock_service.list_all.return_value = [make_config()]
+        result = await controller.list_providers()
+        assert len(result) == 1
+        assert result[0].name == "test-cfg"
+
+    @pytest.mark.asyncio
+    async def test_get_provider(self, controller, mock_service):
+        mock_service.get_by_id.return_value = make_config()
+        result = await controller.get_provider("some-id")
+        assert result.name == "test-cfg"
+
+    @pytest.mark.asyncio
+    async def test_get_provider_returns_none(self, controller, mock_service):
+        mock_service.get_by_id.return_value = None
+        assert await controller.get_provider("missing") is None
+
+    @pytest.mark.asyncio
+    async def test_create_provider(self, controller, mock_service):
+        cfg = make_config(name="new-cfg")
+        mock_service.create.return_value = cfg
+        req = ProviderConfigCreateRequest(
+            name="new-cfg", api_mode=ApiMode.OPENAI_COMPAT, api_key="sk-key",
+            api_host="https://api.test.com", model_id="test-model", display_name="New",
+        )
+        result = await controller.create_provider(req)
+        assert result.name == "new-cfg"
+
+    @pytest.mark.asyncio
+    async def test_update_provider(self, controller, mock_service):
+        cfg = make_config(name="updated")
+        mock_service.update.return_value = cfg
+        req = ProviderConfigUpdateRequest(display_name="Updated")
+        result = await controller.update_provider("some-id", req)
+        assert result.name == "updated"
+
+    @pytest.mark.asyncio
+    async def test_update_provider_returns_none(self, controller, mock_service):
+        mock_service.update.return_value = None
+        req = ProviderConfigUpdateRequest(display_name="Nope")
+        assert await controller.update_provider("missing", req) is None
+
+    @pytest.mark.asyncio
+    async def test_delete_provider(self, controller, mock_service):
+        mock_service.delete.return_value = True
+        assert await controller.delete_provider("some-id") is True
+
+    @pytest.mark.asyncio
+    async def test_delete_provider_false(self, controller, mock_service):
+        mock_service.delete.return_value = False
+        assert await controller.delete_provider("missing") is False
+
+    @pytest.mark.asyncio
+    async def test_activate_provider(self, controller, mock_service):
+        cfg = make_config(name="activate-me", is_active=True)
+        mock_service.activate.return_value = cfg
+        result = await controller.activate_provider("some-id")
+        assert isinstance(result, ProviderActivateResponse)
+        assert result.name == "activate-me"
+
+    @pytest.mark.asyncio
+    async def test_activate_provider_returns_none(self, controller, mock_service):
+        mock_service.activate.return_value = None
+        assert await controller.activate_provider("missing") is None
+
+    @pytest.mark.asyncio
+    async def test_get_active_provider(self, controller, mock_service):
+        cfg = make_config(name="active-cfg", is_active=True)
+        mock_service.get_active.return_value = cfg
+        result = await controller.get_active_provider()
+        assert isinstance(result, ProviderActivateResponse)
+        assert result.name == "active-cfg"
+
+    @pytest.mark.asyncio
+    async def test_get_active_provider_returns_none(self, controller, mock_service):
+        mock_service.get_active.return_value = None
+        assert await controller.get_active_provider() is None
+
+
+# ── todo_prompts.py ──────────────────────────────────────────────────
+
+def test_todo_prompts_import_and_template():
+    from app.prompts.todo_prompts import TODO_SYSTEM_PROMPT, TODO_USER_PROMPT_TPL
+    assert "study-plan" in TODO_SYSTEM_PROMPT
+    result = TODO_USER_PROMPT_TPL.substitute(
+        document_title="Doc", analysis_summary="Sum",
+        key_concepts="A,B", highlights="H",
+    )
+    assert "Doc" in result
+    assert "A,B" in result
