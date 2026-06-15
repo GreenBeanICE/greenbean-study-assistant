@@ -1,20 +1,22 @@
-import { useState } from "react";
-import SplashPage from "./features/home/pages/SplashPage";
+import { useState, useCallback } from "react";
+import { AnimatePresence } from "framer-motion";
+import SplashScreen from "./features/home/components/SplashScreen";
 import WorkspacePage from "./features/workspace/pages/WorkspacePage";
 
-type Page = "splash" | "workspace";
-
 function App() {
-  const [page, setPage] = useState<Page>("splash");
+  const [showSplash, setShowSplash] = useState(true);
+
+  const skipSplash = useCallback(() => setShowSplash(false), []);
 
   return (
     <div>
-      {page === "splash" && (
-        <SplashPage onStart={() => setPage("workspace")} />
-      )}
-      {page === "workspace" && (
-        <WorkspacePage />
-      )}
+      <AnimatePresence mode="wait">
+        {showSplash ? (
+          <SplashScreen key="splash" onSkip={skipSplash} />
+        ) : (
+          <WorkspacePage key="workspace" />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
