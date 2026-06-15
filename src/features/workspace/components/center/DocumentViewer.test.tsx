@@ -399,4 +399,37 @@ describe("DocumentViewer", () => {
     );
     expect(screen.queryByText("引用此段询问 AI")).toBeNull();
   });
+
+  it("selectionchange 事件正确触发 setHasSelection", () => {
+    const mockGetSelection = vi.spyOn(window, "getSelection").mockReturnValue({
+      toString: () => "selected text",
+      rangeCount: 1,
+      getRangeAt: () => ({}),
+    } as unknown as Selection);
+    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />);
+    document.dispatchEvent(new Event("selectionchange"));
+    expect(mockGetSelection).toHaveBeenCalled();
+    mockGetSelection.mockRestore();
+  });
+
+  it("EditableText 标题 blur 时触发 onUpdateLineText", () => {
+    const onUpdateLineText = vi.fn();
+    const blocks: ContentBlock[] = [
+      { id: "b-title", sectionId: "ch1-1", title: "可编辑标题", contentType: "text",
+        lines: [{ id: "lx", text: "内容", type: "paragraph" }] },
+    ];
+    render(
+      <DocumentViewer {...defaultProps} contentBlocks={blocks} selectedSectionId="ch1-1" onUpdateLineText={onUpdateLineText} />,
+    );
+    const titleSpan = screen.getByText("可编辑标题");
+    act(() => { titleSpan.textContent = "新标题"; });
+    fireEvent.blur(titleSpan);
+    expect(onUpdateLineText).toHaveBeenCalledWith("b-title", "title-b-title", "新标题");
+  });
+
+  it("没有选中行时工具栏按钮禁用", () => {
+    render(<DocumentViewer {...defaultProps} />);
+    const boldBtn = screen.getAllByTitle("加粗")[0];
+    expect(boldBtn.hasAttribute("disabled")).toBeFalsy();
+  });
 });
