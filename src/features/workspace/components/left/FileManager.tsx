@@ -75,12 +75,9 @@ function getDefaultFiles(lang: string): FileItem[] {
 }
 
 function uid(): string {
-  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
-    const array = new Uint32Array(1);
-    crypto.getRandomValues(array);
-    return `f_${array[0].toString(36).slice(0, 7)}`;
-  }
-  return `f_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const array = new Uint32Array(1);
+  crypto.getRandomValues(array);
+  return `f_${array[0].toString(36).slice(0, 7)}`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -420,7 +417,7 @@ export default function FileManager({
       {/* 右键菜单 - 使用 Portal 确保在整个页面最上层 */}
       {contextMenu && createPortal(
         <>
-          <div className="fixed inset-0 z-[9999]" onClick={closeContextMenu} />
+          <div className="fixed inset-0 z-[9999]" onClick={closeContextMenu} onKeyDown={(e) => { if (e.key === 'Escape') closeContextMenu(); }} tabIndex={0} role="button" aria-label="关闭菜单" />
           <div className="fixed z-[10000] bg-white rounded-xl shadow-xl border border-black/10 py-1 min-w-[160px]"
             style={{ left: contextMenu.x, top: contextMenu.y }}>
             <button onClick={() => handleStartRename(contextMenu.fileId)}
