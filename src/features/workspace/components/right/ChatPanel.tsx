@@ -2,7 +2,7 @@ import { useRef, useEffect, type KeyboardEvent } from "react";
 import type { ChatPanelProps } from "../../type";
 
 /** AI logo */
-function tar({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
+function AIAvatar({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
   const sizeMap = { sm: "w-6 h-6", md: "w-8 h-8", lg: "w-10 h-10" };
   const iconSizeMap = { sm: 10, md: 14, lg: 18 };
   return (

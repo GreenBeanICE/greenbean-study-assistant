@@ -71,7 +71,7 @@ const initialFootnotes: FootnoteReference[] = [
   { id: "fn-2", refNumber: "2", sourceText: "现有针对在法中国留学生的法语AI辅导产品仍属空白。", sourceDesc: "第1页，第6段" },
 ];
 
-function workspaceReducer(state: WorkspaceState, action: WorkspaceAction): WorkspaceState {
+export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction): WorkspaceState {
   switch (action.type) {
     case "SELECT_SECTION": return { ...state, selectedSectionId: action.sectionId };
     case "TOGGLE_SECTION_EXPAND": {

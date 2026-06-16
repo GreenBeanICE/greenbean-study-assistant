@@ -75,6 +75,11 @@ function getDefaultFiles(lang: string): FileItem[] {
 }
 
 function uid(): string {
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+    const array = new Uint32Array(1);
+    crypto.getRandomValues(array);
+    return `f_${array[0].toString(36).slice(0, 7)}`;
+  }
   return `f_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
 

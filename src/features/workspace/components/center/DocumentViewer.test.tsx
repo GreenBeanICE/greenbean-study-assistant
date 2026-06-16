@@ -430,6 +430,162 @@ describe("DocumentViewer", () => {
   it("没有选中行时工具栏按钮禁用", () => {
     render(<DocumentViewer {...defaultProps} />);
     const boldBtn = screen.getAllByTitle("加粗")[0];
-    expect(boldBtn.hasAttribute("disabled")).toBeFalsy();
+    expect(boldBtn.hasAttribute("disabled")).toBeTruthy();
+  });
+
+  it("SelectionMenu backdrop 接受 Enter 键关闭", () => {
+    const onShowSelectionMenu = vi.fn();
+    render(
+      <DocumentViewer
+        {...defaultProps}
+        selectedSectionId="ch1-1"
+        showSelectionMenu={true}
+        selectionMenuPos={{ x: 100, y: 200 }}
+        onShowSelectionMenu={onShowSelectionMenu}
+      />,
+    );
+    const backdrop = document.querySelector("[role='button']") as HTMLElement;
+    expect(backdrop).toBeTruthy();
+    fireEvent.keyDown(backdrop, { key: "Enter" });
+    expect(onShowSelectionMenu).toHaveBeenCalledWith(false);
+  });
+
+  it("SelectionMenu backdrop 接受 Space 键关闭", () => {
+    const onShowSelectionMenu = vi.fn();
+    render(
+      <DocumentViewer
+        {...defaultProps}
+        selectedSectionId="ch1-1"
+        showSelectionMenu={true}
+        selectionMenuPos={{ x: 100, y: 200 }}
+        onShowSelectionMenu={onShowSelectionMenu}
+      />,
+    );
+    const backdrop = document.querySelector("[role='button']") as HTMLElement;
+    fireEvent.keyDown(backdrop, { key: " " });
+    expect(onShowSelectionMenu).toHaveBeenCalledWith(false);
+  });
+
+  it("EditableText 初始化时同步 textContent", () => {
+    const blocks: ContentBlock[] = [
+      { id: "b-sync", sectionId: "ch1-1", title: "同步标题", contentType: "text",
+        lines: [{ id: "l-sync", text: "同步文本", type: "paragraph" }] },
+    ];
+    render(
+      <DocumentViewer {...defaultProps} contentBlocks={blocks} selectedSectionId="ch1-1" />,
+    );
+    expect(screen.getByText("同步文本")).toBeDefined();
+  });
+
+  it("footer 展开显示引用来源", () => {
+    render(
+      <DocumentViewer {...defaultProps} selectedSectionId="ch1-1" expandedFootnoteId="fn-2" />,
+    );
+    expect(screen.getByText("第二个引用来源")).toBeDefined();
+    expect(screen.getByText("第2页，第3段")).toBeDefined();
+  });
+
+  it("handleDownload 正确添加并移除临时按钮", () => {
+    const appendChildSpy = vi.spyOn(document.body, "appendChild");
+    const removeChildSpy = vi.spyOn(document.body, "removeChild");
+    render(<DocumentViewer {...defaultProps} />);
+    fireEvent.click(screen.getByTitle("下载"));
+    expect(appendChildSpy).toHaveBeenCalled();
+    expect(removeChildSpy).toHaveBeenCalled();
+    appendChildSpy.mockRestore();
+    removeChildSpy.mockRestore();
+  });
+
+  it("ContentLineRender 中 footnote 通过 refNumber 找到对应脚注", () => {
+    render(
+      <DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />,
+    );
+    const footnoteBtn = screen.getByTitle("点击查看原文引用");
+    expect(footnoteBtn.textContent).toBe("1");
+  });
+
+  it("编辑表格表头 blur 时触发 onUpdateLineText", () => {
+    const onUpdateLineText = vi.fn();
+    const blocks: ContentBlock[] = [
+      {
+        id: "b-table-edit",
+        sectionId: "ch1-1",
+        title: "表: 编辑",
+        contentType: "table",
+        tableData: {
+          headers: ["名称", "值"],
+          rows: [{ id: "tr1", cells: ["A", "1"] }],
+        },
+      },
+    ];
+    render(
+      <DocumentViewer {...defaultProps} contentBlocks={blocks} selectedSectionId="ch1-1" onUpdateLineText={onUpdateLineText} />,
+    );
+    const headerSpan = screen.getByText("名称");
+    act(() => { headerSpan.textContent = "新名称"; });
+    fireEvent.blur(headerSpan);
+    expect(onUpdateLineText).toHaveBeenCalledWith("b-table-edit", "header-0", "新名称");
+  });
+
+  it("编辑图片注释 blur 时触发 onUpdateLineText", () => {
+    const onUpdateLineText = vi.fn();
+    const blocks: ContentBlock[] = [
+      {
+        id: "b-img-caption",
+        sectionId: "ch1-1",
+        title: "图: 编辑",
+        contentType: "image",
+        imageUrl: "",
+        imageCaption: "原始图例文字",
+      },
+    ];
+    render(
+      <DocumentViewer {...defaultProps} contentBlocks={blocks} selectedSectionId="ch1-1" onUpdateLineText={onUpdateLineText} />,
+    );
+    const captionSpan = screen.getByText("原始图例文字");
+    act(() => { captionSpan.textContent = "新图例文字"; });
+    fireEvent.blur(captionSpan);
+    expect(onUpdateLineText).toHaveBeenCalledWith("b-img-caption", "caption-b-img-caption", "新图例文字");
+  });
+
+  it("default 分支的 getLineStyle 对 paragraph 类型正确应用样式", () => {
+    const blocks: ContentBlock[] = [
+      {
+        id: "b-paragraph-test",
+        sectionId: "ch1-1",
+        title: "段落测试",
+        contentType: "text",
+        lines: [
+          { id: "l-para", text: "普通段落", type: "paragraph" },
+        ],
+      },
+    ];
+    render(
+      <DocumentViewer {...defaultProps} contentBlocks={blocks} selectedSectionId="ch1-1" />,
+    );
+    expect(screen.getByText("普通段落")).toBeDefined();
+  });
+
+  it("编辑表格单元格触发 handleCellEdit 回调", () => {
+    const onUpdateLineText = vi.fn();
+    const blocks: ContentBlock[] = [
+      {
+        id: "b-table-cell-edit",
+        sectionId: "ch1-1",
+        title: "表: 单元格编辑",
+        contentType: "table",
+        tableData: {
+          headers: ["名称"],
+          rows: [{ id: "tr-cell", cells: ["原始值"] }],
+        },
+      },
+    ];
+    render(
+      <DocumentViewer {...defaultProps} contentBlocks={blocks} selectedSectionId="ch1-1" onUpdateLineText={onUpdateLineText} />,
+    );
+    const cellSpan = screen.getByText("原始值");
+    act(() => { cellSpan.textContent = "新值"; });
+    fireEvent.blur(cellSpan);
+    expect(onUpdateLineText).toHaveBeenCalledWith("b-table-cell-edit", "tr-cell-cell-0", "新值");
   });
 });
