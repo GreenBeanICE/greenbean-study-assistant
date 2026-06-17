@@ -228,17 +228,21 @@ pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tessera
 cd backend-python
 pytest
 
+# 按测试层级运行
+pytest tests/unit -v
+pytest tests/integration -v
+
 # 按 User Story 筛选运行
 pytest -m us25 -v
 
 # 运行特定测试文件
-pytest tests/test_ppt_parser.py -v
+pytest tests/unit/parsers/test_ppt_parser.py -v
 
 # 运行特定测试类
-pytest tests/test_parser_factory.py::TestParserFactory -v
+pytest tests/unit/parsers/test_parser_factory.py::TestParserFactory -v
 
 # 运行特定测试方法
-pytest tests/test_parser_factory.py::TestParserFactory::test_factory_returns_ppt_parser -v
+pytest tests/unit/parsers/test_parser_factory.py::TestParserFactory::test_factory_returns_ppt_parser -v
 ```
 
 ### 6.2 覆盖率报告
@@ -254,27 +258,29 @@ pytest --cov=app --cov-report=html:../coverage/python/html
 
 ### 6.3 测试数据
 
-测试文件位于 `tests/` 目录下，使用内存生成的方式创建测试数据：
+测试文件按层级放在 `tests/unit/` 和 `tests/integration/`，固定输入样本放在
+`tests/fixtures/`：
 
 - `test_ppt_parser.py`: 使用 `python-pptx` 库动态生成 `.pptx` 文件
 - `test_word_parser.py`: 使用 `python-docx` 库动态生成 `.docx` 文件
-- `test_pdf_parser.py`: 使用 `PyMuPDF` 库动态生成 `.pdf` 文件
+- `test_pdf_parser.py`: mock PyMuPDF 文档对象，隔离验证逐页输出契约
 - `test_image_ocr_parser.py`: 使用 `Pillow` 库动态生成测试图片
 
-### 6.4 真实 PDF 端到端测试
+### 6.4 真实 PDF 集成测试
 
-除了使用内存数据运行的单元测试外，项目还提供基于真实 PDF 文件的三层验证脚本，用于快速确认 parser 流水线在生产条件下的正确性。
+除了使用内存数据运行的单元测试外，项目还提供基于真实 PDF 文件的三层集成测试，用于确认 parser 流水线的模块协作结果。
 
-#### 测试脚本
+#### 测试命令
 
 ```bash
 cd backend-python
-python scripts/test_real_pdf.py
+pytest tests/integration/document/test_pdf_ingest_pipeline.py -v
 ```
 
 #### 测试用 PDF
 
-`tests/pdf/test.pdf` — 一份 2 页、约 70KB 的法语 M1 MIAGE 项目文档，作为标准测试样本。
+`tests/fixtures/pdf/text_two_pages.pdf` — 一份 2 页、约 70KB 的法语 M1 MIAGE
+项目文档，作为标准文本型 PDF 测试样本。
 
 #### 三层验证内容
 
@@ -303,7 +309,7 @@ PDFParser 测试结果: ✅ 全部通过
 ✅ ParserFactory 正确返回 PDFParser，解析结果与直接调用一致
 
 第 3 层：DocumentIngestService 完整流水线
-文件名: test.pdf
+文件名: text_two_pages.pdf
 总页数: 2
 状态: parsed_successfully
 DocumentUnits 数量: 2
@@ -320,7 +326,7 @@ PageIndex 预览:
 | 问题 | 原因 | 解决 |
 |------|------|------|
 | `ModuleNotFoundError: No module named 'fitz'` | 未安装 PyMuPDF | `pip install pymupdf>=1.24` |
-| `FileNotFoundError: 测试 PDF 未找到` | `tests/pdf/test.pdf` 不存在 | 放入一个标准 PDF 文件到该路径，或修改脚本中的 `PDF_PATH` |
+| `FileNotFoundError: 测试 PDF 未找到` | `tests/fixtures/pdf/text_two_pages.pdf` 不存在 | 恢复固定测试样本，或更新 `conftest.py` 中的 fixture 路径 |
 | 部分页面 `char_count = 0` | PDF 为扫描件，无文字层 | 扫描件需通过 `ImageOCRParser` 处理，不在 `PDFParser` 范围内 |
 
 ### 6.5 测试标记（Markers）
@@ -335,22 +341,14 @@ pytest -m us25 -v
 pytest -m "not us25" -v
 ```
 
-涉及标记的测试文件及数量：
+当前测试统计：
 
-| 测试文件 | 标记数 |
-|----------|--------|
-| `test_document_controller.py` | 13 |
-| `test_document_ingest_service.py` | 21 |
-| `test_file_utils.py` | 13 |
-| `test_text_utils.py` | 30 |
-| `test_image_preprocessor.py` | 17 |
-| `test_image_ocr_parser.py` | 8 |
-| `test_parser_factory.py` | 12 |
-| `test_text_parser.py` | 7 |
-| `test_ppt_parser.py` | 6 |
-| `test_pdf_parser.py` | 1 |
-| `test_word_parser.py` | 5 |
-| **合计** | **133** |
+| 测试范围 | 数量 |
+|----------|------|
+| `tests/unit/` | 139 |
+| `tests/integration/` | 36 |
+| `pytest -m us25` | 88 |
+| **全部 Python 测试** | **175** |
 
 ---
 

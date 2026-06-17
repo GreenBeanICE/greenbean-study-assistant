@@ -404,19 +404,20 @@ class ImagePreprocessor:
 
 ### 6.1 测试文件
 
-| 测试文件 | 测试数 | 覆盖率 |
-|----------|--------|--------|
-| `tests/test_document_controller.py` | 13 | 100% |
-| `tests/test_document_ingest_service.py` | 21 | 100% |
-| `tests/test_file_utils.py` | 13 | 100% |
-| `tests/test_text_utils.py` | 30 | 100% |
-| `tests/test_image_preprocessor.py` | 17 | 100% |
-| `tests/test_image_ocr_parser.py` | 8 | 100% |
-| `tests/test_parser_factory.py` | 12 | 100% |
-| `tests/test_text_parser.py` | 7 | 100% |
-| `tests/test_ppt_parser.py` | 6 | 100% |
-| `tests/test_pdf_parser.py` | 1 | 100% |
-| `tests/test_word_parser.py` | 5 | 100% |
+| 测试文件 | 测试职责 |
+|----------|----------|
+| `tests/integration/api/test_document_controller.py` | API 集成测试 |
+| `tests/integration/document/test_pdf_ingest_pipeline.py` | 真实 PDF 摄取流水线 |
+| `tests/unit/services/test_document_ingest_service.py` | 文档摄取服务单元测试 |
+| `tests/unit/utils/test_file_utils.py` | 文件工具单元测试 |
+| `tests/unit/utils/test_text_utils.py` | 文本工具单元测试 |
+| `tests/unit/parsers/test_image_preprocessor.py` | 图片预处理单元测试 |
+| `tests/unit/parsers/test_image_ocr_parser.py` | OCR 解析器单元测试 |
+| `tests/unit/parsers/test_parser_factory.py` | 解析器工厂单元测试 |
+| `tests/unit/parsers/test_text_parser.py` | 文本解析器单元测试 |
+| `tests/unit/parsers/test_ppt_parser.py` | PPT 解析器单元测试 |
+| `tests/unit/parsers/test_pdf_parser.py` | PDF 解析器单元测试 |
+| `tests/unit/parsers/test_word_parser.py` | Word 解析器单元测试 |
 
 ### 6.2 运行测试
 

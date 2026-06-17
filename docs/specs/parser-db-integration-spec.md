@@ -77,7 +77,8 @@
 | `file_utils` | ✅ 完成 | 扩展名检测/MIME 映射，`.doc` 已移除 |
 | `text_utils` | ✅ 完成 | 清洗/截断/分词/语言检测，所有函数已测试 |
 
-**测试汇总**：US #25 相关的 11 个测试文件，**133 个测试用例，0 失败**。
+**测试汇总**：当前 Python 测试套件共 **175 个测试用例，0 失败**，其中
+US #25 标记测试 88 个。
 
 ### 2.2 Database 层状态
 
@@ -624,7 +625,9 @@ class EmbeddingRepository:
 
 ### 6.3 测试要求
 
-DB 团队需为以下场景编写集成测试（参照 [`test_sqlite_repositories.py`](backend-python/tests/test_sqlite_repositories.py:83) 的模式）：
+DB 团队需为以下场景编写集成测试（参照
+[`test_sqlite_repositories.py`](../../backend-python/tests/integration/persistence/test_sqlite_repositories.py)
+的模式）：
 
 - `test_section_unit_link_save_and_retrieve` — 基本 CRUD
 - `test_section_unit_link_unique_violation` — 同 Section 内重复关联应报错
@@ -947,7 +950,7 @@ Database 团队:
 
 **Phase 1 验收标准**：
 
-- [x] Parser 团队：所有 133 个现有测试 100% 绿灯
+- [x] Python 测试套件：175 个测试全部通过，覆盖率 100%
 - [x] Parser 团队：5 个 Parser 全部补全 `parser_name`/`parser_version`/`metadata`
 - [x] Parser 团队：`file_utils.py` 已移除 `.doc`
 - [x] Parser 团队：`DocumentIngestService` 实体化（解析 + 实体构建）完成
@@ -994,14 +997,14 @@ Database 团队:
 
 | 测试类型 | 要求 | 现有状态 |
 |---------|------|---------|
-| 单元测试 | 每个 Parser 独立测试，mock 外部依赖 | ✅ 133 个测试全绿 |
+| 单元测试 | 每个 Parser 独立测试，mock 外部依赖 | ✅ Parser 单元测试全绿 |
 | 契约测试 | 验证每个 Parser 输出符合 PageIndex 数据契约 | ❌ 需新增（基于 §3 的契约） |
 | 边界测试 | 空文件、超大文件、损坏文件、OCR 失败 | ✅ 已覆盖 |
 
 **需新增的契约测试**（Parser 团队）：
 
 ```python
-# tests/test_parser_output_contract.py
+# tests/unit/parsers/test_parser_output_contract.py
 @pytest.mark.parametrize("parser_class,expected_source_type", [
     (PDFParser, "pdf"),
     (WordParser, "word"),
@@ -1030,16 +1033,10 @@ def test_parser_output_conforms_to_pageindex_contract(parser_class, expected_sou
 ```bash
 # Parser 层测试（当前全绿）
 cd backend-python
-python -m pytest tests/test_parser_factory.py tests/test_pdf_parser.py \
-  tests/test_word_parser.py tests/test_ppt_parser.py tests/test_text_parser.py \
-  tests/test_image_ocr_parser.py tests/test_image_preprocessor.py \
-  tests/test_document_controller.py tests/test_document_ingest_service.py \
-  tests/test_file_utils.py tests/test_text_utils.py -v
+python -m pytest tests/unit -v
 
 # Database 层测试
-python -m pytest tests/test_sqlite_repositories.py \
-  tests/test_sqlalchemy_persistence.py \
-  tests/test_database_initialization.py -v
+python -m pytest tests/integration/persistence -v
 
 # 全量测试
 python -m pytest tests/ -v --tb=short
