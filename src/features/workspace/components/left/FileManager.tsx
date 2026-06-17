@@ -102,9 +102,6 @@ export default function FileManager({
   // 重命名状态
   const [renaming, setRenaming] = useState<{ fileId: string; name: string } | null>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
-  // 拖拽状态
-  const [dragOverFolder, setDragOverFolder] = useState<string | null>(null);
-  const draggedFileRef = useRef<string | null>(null);
 
   const folders = externalFolders ?? DEFAULT_FOLDERS;
   const allFiles = externalFiles ?? internalFiles;
@@ -215,46 +212,6 @@ export default function FileManager({
     onFileSelectWithName?.(fileId, fileName);
   }, [onFileSelect, onFileSelectWithName]);
 
-  /** 文件拖拽开始 */
-  const handleDragStart = useCallback((e: React.DragEvent, fileId: string) => {
-    draggedFileRef.current = fileId;
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", fileId);
-  }, []);
-
-  /** 文件拖拽结束 */
-  const handleDragEnd = useCallback(() => {
-    draggedFileRef.current = null;
-    setDragOverFolder(null);
-  }, []);
-
-  /** 文件夹拖拽悬停 */
-  const handleFolderDragOver = useCallback((e: React.DragEvent, key: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = "move";
-    setDragOverFolder(key);
-  }, []);
-
-  /** 文件夹拖拽离开 */
-  const handleFolderDragLeave = useCallback(() => {
-    setDragOverFolder(null);
-  }, []);
-
-  /** 文件夹放置文件 */
-  const handleFolderDrop = useCallback((e: React.DragEvent, key: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const fileId = draggedFileRef.current;
-    if (fileId) {
-      setInternalFiles((prev) => prev.map((f) =>
-        f.id === fileId ? { ...f, category: key } : f
-      ));
-    }
-    draggedFileRef.current = null;
-    setDragOverFolder(null);
-  }, []);
-
   /** 渲染单个文件按钮（共用） */
   const renderFileButton = (file: FileItem, compact = false) => {
     const isSelected = selectedFileId === file.id;
@@ -276,9 +233,6 @@ export default function FileManager({
           </div>
         ) : (
           <button
-            draggable
-            onDragStart={(e) => handleDragStart(e, file.id)}
-            onDragEnd={handleDragEnd}
             onClick={() => handleFileClick(file.id, file.name)}
             onContextMenu={(e) => handleContextMenu(e, file.id)}
             className={`cursor-pointer w-full flex items-center gap-2 text-left transition-all duration-200 ${
@@ -367,17 +321,10 @@ export default function FileManager({
               const folderFiles = getFolderFiles(folder.key);
               const isExpanded = expandedFolders.has(folder.key);
               return (
-                <div key={folder.key}
-                  onDragOver={(e) => handleFolderDragOver(e, folder.key)}
-                  onDragLeave={handleFolderDragLeave}
-                  onDrop={(e) => handleFolderDrop(e, folder.key)}>
+                <div key={folder.key}>
                   <button
                     onClick={() => toggleFolder(folder.key)}
-                    className={`cursor-pointer w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-left text-neutral-600 transition-all duration-200 ${
-                      dragOverFolder === folder.key
-                        ? "bg-blue-100 ring-2 ring-blue-400"
-                        : "hover:bg-black/5"
-                    }`}>
+                    className="cursor-pointer w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-left text-neutral-600 hover:bg-black/5 transition-all duration-200">
                     <motion.span animate={{ rotate: isExpanded ? 90 : 0 }} transition={{ duration: 0.15 }}
                       className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
@@ -393,12 +340,8 @@ export default function FileManager({
                       <motion.div
                         initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
-                        onDragOver={(e) => handleFolderDragOver(e, folder.key)}
-                        onDrop={(e) => handleFolderDrop(e, folder.key)}>
-                        <div className="ml-5 border-l border-black/10 pl-2 space-y-0.5"
-                          onDragOver={(e) => handleFolderDragOver(e, folder.key)}
-                          onDrop={(e) => handleFolderDrop(e, folder.key)}>
+                        className="overflow-hidden">
+                        <div className="ml-5 border-l border-black/10 pl-2 space-y-0.5">
                           {folderFiles.map((file) => renderFileButton(file, true))}
                           {folderFiles.length === 0 && (
                             <p className="text-[10px] text-neutral-400 px-2 py-1">暂无文件</p>

@@ -50,16 +50,10 @@ describe("App", () => {
     expect(screen.getByText("GreenBean Study Assistant")).toBeDefined();
   });
 
-  it("renders skip button on splash", () => {
+  it("shows workspace after splash auto-dismiss", () => {
     render(<App />);
-    expect(screen.getByText("跳过")).toBeDefined();
-  });
-
-  it("shows workspace after skipping splash", () => {
-    render(<App />);
-    const skipBtn = screen.getByText("跳过");
-    fireEvent.click(skipBtn);
+    act(() => { vi.advanceTimersByTime(3800); });
     expect(screen.getByText("我的文档")).toBeDefined();
-    expect(screen.queryByText("跳过")).toBeNull();
+    expect(screen.queryByText("GreenBean Study Assistant")).toBeNull();
   });
 });

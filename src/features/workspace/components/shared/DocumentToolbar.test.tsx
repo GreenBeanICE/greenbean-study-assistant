@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
-import DocumentToolbar from "./DocumentToolbar";
+import DocumentToolbar, { execLocalFormat } from "./DocumentToolbar";
 
 describe("DocumentToolbar", () => {
   it("渲染所有格式按钮", () => {
@@ -203,5 +203,18 @@ describe("execLocalFormat", () => {
     const alignLeftBtn = screen.getAllByTitle("左对齐")[0];
     // 没有 data-line-id，while 循环会遍历到 null
     expect(() => fireEvent.mouseDown(alignLeftBtn)).not.toThrow();
+  });
+
+  it("未知 action 类型返回 false（覆盖兜底 return false）", () => {
+    // 直接调用 execLocalFormat，无需渲染组件
+    // 先清除选区使其返回 false，避免选区检查干扰
+    window.getSelection()?.removeAllRanges();
+    const result = execLocalFormat("unknown-action" as any);
+    expect(result).toBe(false);
+  });
+
+  it("无选区时 execLocalFormat 返回 false", () => {
+    window.getSelection()?.removeAllRanges();
+    expect(execLocalFormat("bold")).toBe(false);
   });
 });

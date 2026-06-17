@@ -43,10 +43,6 @@ describe("MungBeanSplash", () => {
     vi.useRealTimers();
   });
 
-  it("renders skip button", () => {
-    render(<MungBeanSplash onSkip={() => {}} />);
-    expect(screen.getByText("跳过")).toBeDefined();
-  });
 
   it("renders welcome text after initial delay", () => {
     render(<MungBeanSplash onSkip={() => {}} />);
@@ -72,13 +68,6 @@ describe("MungBeanSplash", () => {
     expect(screen.queryByText("GreenBean Study Assistant")).toBeNull();
   });
 
-  it("calls onSkip when skip button is clicked", () => {
-    const onSkip = vi.fn();
-    render(<MungBeanSplash onSkip={onSkip} />);
-    fireEvent.click(screen.getByText("跳过"));
-    expect(onSkip).toHaveBeenCalledTimes(1);
-  });
-
   it("auto-dismisses after 3.8 seconds", () => {
     const onSkip = vi.fn();
     render(<MungBeanSplash onSkip={onSkip} />);
@@ -93,11 +82,6 @@ describe("MungBeanSplash", () => {
     act(() => { vi.advanceTimersByTime(3800); });
     // No onSkip means no auto-dismiss callback to check; just ensure no error
     expect(screen.getByText("欢迎")).toBeDefined();
-  });
-
-  it("does not render skip button when onSkip is not provided", () => {
-    render(<MungBeanSplash />);
-    expect(screen.queryByText("跳过")).toBeNull();
   });
 
   it("applies custom className", () => {

@@ -38,19 +38,6 @@ export default function MungBeanSplash({ onSkip, className = "" }: MungBeanSplas
       transition={{ duration: 0.6 }}
       className={combinedClassName}
     >
-      {onSkip && (
-        <button
-          onClick={onSkip}
-          className="fixed top-5 right-5 z-10 px-5 py-2 rounded-full text-sm font-medium
-                     text-neutral-400
-                     border border-neutral-300
-                     hover:text-neutral-600
-                     hover:border-neutral-400
-                     transition-colors duration-200 cursor-pointer"
-        >
-          跳过
-        </button>
-      )}
 
       <div className="flex flex-col items-center" style={{ transform: "translateY(-2rem)" }}>
         <div className="relative w-80 h-48 flex items-center justify-center">

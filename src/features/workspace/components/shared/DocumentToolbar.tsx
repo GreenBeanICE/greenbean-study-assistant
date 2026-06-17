@@ -72,7 +72,7 @@ interface DocumentToolbarProps {
 }
 
 /** 选中文字用指定标签包裹（直接 DOM 操作，保留选中高亮） */
-function execLocalFormat(action: TextFormatAction): boolean {
+export function execLocalFormat(action: TextFormatAction): boolean {
   const sel = window.getSelection();
   if (!sel || !sel.rangeCount || sel.toString().trim().length === 0) return false;
   const range = sel.getRangeAt(0);
