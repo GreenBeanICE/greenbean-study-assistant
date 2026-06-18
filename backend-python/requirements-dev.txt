@@ -1,3 +1,11 @@
 pytest
 pytest-cov
+pymupdf
 pytest-asyncio
+python-docx
+python-pptx
+pytesseract
+Pillow
+httpx
+httpx2
+python-multipart

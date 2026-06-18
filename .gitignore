@@ -80,8 +80,6 @@ tmp/
 temp/
 *.tmp
 
-
-# 忽略后端目录下的机密文件
-backend-python/api_key.json
 # Codex local UI assets
 .codex-pets/
+backend-python/api_key.json
