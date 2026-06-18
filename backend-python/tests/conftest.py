@@ -45,6 +45,25 @@ def word_fixtures_dir() -> Path:
     return WORD_FIXTURES_ROOT
 
 
+@pytest.fixture
+def provider_config_factory():
+    from app.entities.provider_config import ProviderConfig
+    from app.enums.api_mode import ApiMode
+
+    def make_config(name: str = "test-cfg", is_active: bool = False) -> ProviderConfig:
+        return ProviderConfig(
+            name=name,
+            api_mode=ApiMode.OPENAI_COMPAT,
+            api_key="sk-test",
+            api_host="https://api.test.com",
+            model_id="test-model",
+            display_name=name,
+            is_active=is_active,
+        )
+
+    return make_config
+
+
 @pytest.fixture(scope="session")
 def text_two_pages_pdf_path(pdf_fixtures_dir: Path) -> Path:
     return pdf_fixtures_dir / "text_two_pages.pdf"
