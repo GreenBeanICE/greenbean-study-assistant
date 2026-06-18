@@ -14,6 +14,8 @@
     "test:rust:coverage:html": "node -e \"require('fs').mkdirSync('coverage/rust/html', { recursive: true })\" && cd src-tauri && cargo llvm-cov --html --output-dir ../coverage/rust/html",
     "test:rust:coverage": "node -e \"require('fs').mkdirSync('coverage/rust/html', { recursive: true })\" && cd src-tauri && cargo llvm-cov --lcov --output-path ../coverage/rust/lcov.info && cargo llvm-cov --html --output-dir ../coverage/rust/html",
     "test:python": "cd backend-python && node ../scripts/run-pytest.cjs",
+    "test:python:unit": "cd backend-python && node ../scripts/run-pytest.cjs tests/unit",
+    "test:python:integration": "cd backend-python && node ../scripts/run-pytest.cjs tests/integration",
     "test:python:coverage:xml": "node -e \"require('fs').mkdirSync('coverage/python', { recursive: true })\" && cd backend-python && node ../scripts/run-pytest.cjs --cov=app --cov-config=tests/.coveragerc --cov-report=term-missing --cov-report=xml:../coverage/python/coverage.xml",
     "test:python:coverage:html": "node -e \"require('fs').mkdirSync('coverage/python/html', { recursive: true })\" && cd backend-python && node ../scripts/run-pytest.cjs --cov=app --cov-config=tests/.coveragerc --cov-report=html:../coverage/python/html",
     "test:python:coverage": "node -e \"require('fs').mkdirSync('coverage/python/html', { recursive: true })\" && cd backend-python && node ../scripts/run-pytest.cjs --cov=app --cov-config=tests/.coveragerc --cov-report=term-missing --cov-report=xml:../coverage/python/coverage.xml --cov-report=html:../coverage/python/html",
