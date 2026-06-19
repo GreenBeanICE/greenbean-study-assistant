@@ -16,7 +16,6 @@ export default defineConfig({
         "build/",
         "src/main.tsx",
         "src/**/*.d.ts",
-        "src/components/ui/**",
       ],
     },
   },
