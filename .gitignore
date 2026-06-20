@@ -82,4 +82,7 @@ temp/
 
 # Codex local UI assets
 .codex-pets/
-backend-python/api_key.json
+
+# API keys and secrets
+backend-python/secrets/*
+!backend-python/secrets/.gitkeep

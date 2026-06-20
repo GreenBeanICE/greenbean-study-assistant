@@ -4,6 +4,7 @@ fastapi>=0.115,<1
 uvicorn>=0.34,<1
 openai
 anthropic
+google-genai>=2,<3
 pymupdf>=1.24
 python-docx>=1.0
 python-pptx>=0.6
