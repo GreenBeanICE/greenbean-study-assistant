@@ -36,9 +36,10 @@ describe("ChatPanel", () => {
     expect(screen.getByText("AI 助手")).toBeDefined();
   });
 
-  it("空消息列表显示空状态提示", () => {
+  it("空消息列表显示上传引导文案", () => {
     render(<ChatPanel {...defaultProps} />);
-    expect(screen.getByText("有什么可以帮你？")).toBeDefined();
+    expect(screen.getByText("上传一份文档后，我在这里帮你答疑")).toBeDefined();
+    expect(screen.queryByText("有什么可以帮你？")).toBeNull();
   });
 
   it("空白输入时发送按钮禁用", () => {

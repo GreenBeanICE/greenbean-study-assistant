@@ -108,7 +108,7 @@ describe("WorkspacePage", () => {
   it("点击章节后中间区域显示对应的内容", () => {
     render(<WorkspacePage />);
     fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
-    expect(screen.getByText("选择章节查看内容")).toBeDefined();
+    expect(screen.getByText("从左侧上传一份文档开始")).toBeDefined();
     fireEvent.click(screen.getByText((c) => c.includes("1.1 背景介绍")));
     const elements = screen.getAllByText((c) => c.includes("1.1 背景介绍"));
     expect(elements.length).toBeGreaterThanOrEqual(1);
@@ -138,7 +138,7 @@ describe("WorkspacePage", () => {
 
   it("右侧聊天面板显示默认欢迎语", () => {
     render(<WorkspacePage />);
-    expect(screen.getByText("有什么可以帮你？")).toBeDefined();
+    expect(screen.getByText("上传一份文档后，我在这里帮你答疑")).toBeDefined();
   });
 
   it("中间区域文档查看器存在", () => {
@@ -176,13 +176,12 @@ describe("WorkspacePage", () => {
 
   it("未选择章节时显示空状态提示", () => {
     render(<WorkspacePage />);
-    expect(screen.getByText("选择章节查看内容")).toBeDefined();
-    expect(screen.getByText("点击左侧章节列表，解析内容将在此处展示")).toBeDefined();
+    expect(screen.getByText("从左侧上传一份文档开始")).toBeDefined();
   });
 
   it("未选择章节时显示空状态SVG图标", () => {
     const { container } = render(<WorkspacePage />);
-    expect(screen.getByText("选择章节查看内容")).toBeDefined();
+    expect(screen.getByText("从左侧上传一份文档开始")).toBeDefined();
     const svgs = container.querySelectorAll("svg");
     expect(svgs.length).toBeGreaterThan(0);
   });
@@ -614,7 +613,7 @@ describe("WorkspacePage", () => {
     fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
     fireEvent.click(screen.getByText((c) => c.includes("1.1 背景介绍")));
     fireEvent.click(screen.getByText((c) => c.includes("2.1 概念定义")));
-    expect(screen.queryByText("选择章节查看内容")).toBeNull();
+    expect(screen.queryByText("从左侧上传一份文档开始")).toBeNull();
   });
 
   it("右侧面板折叠时调整宽度触发 SET_RIGHT_WIDTH rightCollapsed 分支并取消折叠", () => {

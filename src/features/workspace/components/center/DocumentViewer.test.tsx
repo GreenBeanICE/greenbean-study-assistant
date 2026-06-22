@@ -108,10 +108,19 @@ describe("DocumentViewer", () => {
     vi.clearAllMocks();
   });
 
-  it("未选择章节时显示空状态", () => {
+  it("未选择章节且无 pendingFileName 时显示初始空状态文案", () => {
     render(<DocumentViewer {...defaultProps} />);
-    expect(screen.getByText("选择章节查看内容")).toBeDefined();
-    expect(screen.getByText("点击左侧章节列表，解析内容将在此处展示")).toBeDefined();
+    expect(screen.getByText("从左侧上传一份文档开始")).toBeDefined();
+  });
+
+  it("pendingFileName 有值时显示等待解析状态", () => {
+    render(<DocumentViewer {...defaultProps} pendingFileName="lecture.pdf" />);
+    expect(screen.getByText("《lecture.pdf》已上传，等待解析")).toBeDefined();
+  });
+
+  it("pendingFileName 有值时显示解析未接入提示", () => {
+    render(<DocumentViewer {...defaultProps} pendingFileName="lecture.pdf" />);
+    expect(screen.getByText("解析能力尚未接入，刷新后需要重新上传")).toBeDefined();
   });
 
   it("选择章节后显示内容块", () => {

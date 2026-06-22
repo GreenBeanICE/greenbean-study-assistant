@@ -32,6 +32,18 @@ class DocumentRepository:
         model = self.session.get(DocumentRecordModel, document_id)
         if model is None:
             return None
+        return self._to_entity(model)
+
+    def list_by_workspace(self, workspace_id: str) -> list[DocumentRecord]:
+        models = (
+            self.session.query(DocumentRecordModel)
+            .filter(DocumentRecordModel.workspace_id == workspace_id)
+            .order_by(DocumentRecordModel.created_at, DocumentRecordModel.id)
+            .all()
+        )
+        return [self._to_entity(model) for model in models]
+
+    def _to_entity(self, model: DocumentRecordModel) -> DocumentRecord:
         return DocumentRecord(
             id=model.id,
             workspace_id=model.workspace_id,

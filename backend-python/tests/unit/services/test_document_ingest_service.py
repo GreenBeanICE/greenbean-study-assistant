@@ -397,3 +397,71 @@ def test_ingest_first_page_no_metadata_falls_back_to_other():
         result = service.ingest_document("test.pdf", b"content")
 
         assert result["document_record"].file_type == DocumentFileType.OTHER
+
+
+# ========== 新增：UOW 持久化测试 ==========
+
+
+def _fake_sqlite_vec_loader(connection):
+    connection.create_function("vec_version", 0, lambda: "test-sqlite-vec")
+
+
+@pytest.fixture
+def uow_factory(tmp_path):
+    """创建基于文件数据库的 UOW factory，用于验证 service 持久化行为。"""
+    from app.db.connection import create_app_session_factory
+    from app.db.unit_of_work import SqlAlchemyUnitOfWork
+
+    database_path = tmp_path / "data" / "test.sqlite3"
+    session_factory = create_app_session_factory(
+        database_path=database_path,
+        embedding_dimension=8,
+        sqlite_vec_loader=_fake_sqlite_vec_loader,
+    )
+    return lambda: SqlAlchemyUnitOfWork(session_factory)
+
+
+@pytest.mark.us25
+def test_ingest_persists_document_and_units_when_uow_provided(uow_factory):
+    """注入 UOW 后摄取文档会持久化 record 和 units，返回结构仍完整。"""
+    from app.repositories.document_repository import DocumentRepository
+    from app.repositories.document_unit_repository import DocumentUnitRepository
+
+    service = DocumentIngestService(uow_factory=uow_factory)
+
+    with patch("app.parsers.parser_factory.ParserFactory.get_parser") as mock_get_parser:
+        mock_parser = MagicMock()
+        mock_parser.parse.return_value = [
+            _make_page(page_number=1, content="Page 1", char_count=6, source_type="pdf"),
+            _make_page(page_number=2, content="Page 2", char_count=6, source_type="pdf"),
+        ]
+        mock_get_parser.return_value = mock_parser
+
+        result = service.ingest_document("test.pdf", b"content", workspace_id="ws-1")
+
+    record = result["document_record"]
+    assert record is not None
+    assert len(result["document_units"]) == 2
+
+    with uow_factory() as uow:
+        assert DocumentRepository(uow.session).get_by_id(record.id) is not None
+        units = DocumentUnitRepository(uow.session).list_by_document(record.id)
+        assert len(units) == 2
+        assert [u.sequence_index for u in units] == [0, 1]
+
+
+@pytest.mark.us25
+def test_ingest_failure_does_not_persist_when_uow_provided(uow_factory):
+    """parser 抛异常时不持久化，异常向上抛出，数据库无残留数据。"""
+    from app.repositories.document_repository import DocumentRepository
+
+    service = DocumentIngestService(uow_factory=uow_factory)
+
+    with patch("app.parsers.parser_factory.ParserFactory.get_parser") as mock_get_parser:
+        mock_get_parser.side_effect = ValueError("parse error")
+
+        with pytest.raises(ValueError, match="parse error"):
+            service.ingest_document("bad.pdf", b"content", workspace_id="ws-1")
+
+    with uow_factory() as uow:
+        assert DocumentRepository(uow.session).list_by_workspace("ws-1") == []

@@ -23,22 +23,16 @@ SOURCE_TYPE_TO_FILE_TYPE: dict[str, DocumentFileType] = {
 
 
 class DocumentIngestService:
-    """安全文档摄取流水线：解析 → 实体构建 → 持久化（Phase 1 为纯内存模式）。"""
+    """安全文档摄取流水线：解析 → 实体构建 → 持久化。"""
 
-    def __init__(self, document_repository=None, document_unit_repository=None):
+    def __init__(self, uow_factory=None):
         """
-        服务初始化。DB 仓库在 Phase 1 为可选注入，Phase 2 起变为必需。
-        
-        :param document_repository: DocumentRepository 实例，DB 团队交付后注入
-        :param document_unit_repository: DocumentUnitRepository 实例，DB 团队交付后注入
-        """
-        # ---- 由 DB 团队交付后注入 ----
-        self.document_repository = document_repository
-        self.document_unit_repository = document_unit_repository
+        服务初始化。
 
-        # ---- Phase 3 依赖（待 ChunkService / EmbeddingService 就绪后取消注释） ----
-        # self.chunk_service = ChunkService()
-        # self.embedding_service = EmbeddingService()
+        :param uow_factory: 可选的 UOW 工厂 callable，生产路径必需；
+                            未传入时为内存模式，仅返回实体不写库（用于单元测试）。
+        """
+        self.uow_factory = uow_factory
 
     def ingest_document(
         self,
@@ -92,9 +86,6 @@ class DocumentIngestService:
             page_count=len(parsed_pages),
         )
 
-        # ---- Phase 2: DB 团队交付 DocumentRepository 后取消注释 ----
-        # self.document_repository.save(document_record)
-
         # ---- Step 3: 基于 PageIndex 构造 DocumentUnit 列表 ----
         document_units: list[DocumentUnit] = []
         cumulative_offset = 0
@@ -121,12 +112,20 @@ class DocumentIngestService:
             document_units.append(unit)
             cumulative_offset += content_len
 
-            # ---- Phase 2: DB 团队交付 DocumentUnitRepository 后取消注释 ----
-            # self.document_unit_repository.save(unit)
+        # ---- Step 4: 持久化（有 UOW 时在同一 session 内保存 document 和 units） ----
+        if self.uow_factory is not None:
+            from app.repositories.document_repository import DocumentRepository
+            from app.repositories.document_unit_repository import DocumentUnitRepository
 
-        # ---- Step 4 & 5: （Phase 3 占位，ChunkService / EmbeddingService 就绪后启用） ----
-        # chunks = self.chunk_service.split_pages_into_chunks(parsed_pages)
-        # embedded_chunks = await self.embedding_service.gen_embeddings(chunks)
+            with self.uow_factory() as uow:
+                document_repo = DocumentRepository(uow.session)
+                unit_repo = DocumentUnitRepository(uow.session)
+
+                document_repo.save(document_record)
+                for unit in document_units:
+                    unit_repo.save(unit)
+
+                uow.commit()
 
         # ---- 构造返回结果 ----
         page_index_preview: list[dict[str, object]] = []

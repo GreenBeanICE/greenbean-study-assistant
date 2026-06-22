@@ -35,6 +35,18 @@ class DocumentUnitRepository:
         model = self.session.get(DocumentUnitModel, unit_id)
         if model is None:
             return None
+        return self._to_entity(model)
+
+    def list_by_document(self, document_id: str) -> list[DocumentUnit]:
+        models = (
+            self.session.query(DocumentUnitModel)
+            .filter(DocumentUnitModel.document_id == document_id)
+            .order_by(DocumentUnitModel.sequence_index)
+            .all()
+        )
+        return [self._to_entity(model) for model in models]
+
+    def _to_entity(self, model: DocumentUnitModel) -> DocumentUnit:
         return DocumentUnit(
             id=model.id,
             document_id=model.document_id,

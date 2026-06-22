@@ -282,3 +282,109 @@ def test_provider_config_repository_update(session_factory):
     with session_factory() as session:
         assert ProviderConfigRepository(session).get_by_id(config.id).name == "updated"
 
+
+def test_document_repository_list_by_workspace_filters_by_workspace(session_factory):
+    document_a = DocumentRecord(
+        workspace_id="workspace_1",
+        title="Course A",
+        original_filename="a.pdf",
+        file_type=DocumentFileType.PDF,
+        file_path="data/uploads/a.pdf",
+        page_count=10,
+    )
+    document_b = DocumentRecord(
+        workspace_id="workspace_2",
+        title="Course B",
+        original_filename="b.pdf",
+        file_type=DocumentFileType.PDF,
+        file_path="data/uploads/b.pdf",
+        page_count=5,
+    )
+
+    with session_factory() as session:
+        DocumentRepository(session).save(document_a)
+        DocumentRepository(session).save(document_b)
+        session.commit()
+
+    with session_factory() as session:
+        results = DocumentRepository(session).list_by_workspace("workspace_1")
+
+    assert len(results) == 1
+    assert results[0].id == document_a.id
+    assert all(doc.workspace_id == "workspace_1" for doc in results)
+
+
+def test_document_repository_list_by_workspace_returns_empty_when_no_match(session_factory):
+    with session_factory() as session:
+        results = DocumentRepository(session).list_by_workspace("nonexistent")
+    assert results == []
+
+
+def test_document_unit_repository_list_by_document_orders_by_sequence_index(session_factory):
+    document = DocumentRecord(
+        workspace_id="workspace_1",
+        title="Course",
+        original_filename="course.pdf",
+        file_type=DocumentFileType.PDF,
+        file_path="data/uploads/course.pdf",
+        page_count=3,
+    )
+    units_in_random_order = [
+        DocumentUnit(document_id=document.id, sequence_index=2, text_content="page 3"),
+        DocumentUnit(document_id=document.id, sequence_index=0, text_content="page 1"),
+        DocumentUnit(document_id=document.id, sequence_index=1, text_content="page 2"),
+    ]
+
+    with session_factory() as session:
+        DocumentRepository(session).save(document)
+        for unit in units_in_random_order:
+            DocumentUnitRepository(session).save(unit)
+        session.commit()
+
+    with session_factory() as session:
+        results = DocumentUnitRepository(session).list_by_document(document.id)
+
+    assert [unit.sequence_index for unit in results] == [0, 1, 2]
+
+
+def test_document_unit_repository_list_by_document_returns_empty_when_no_match(session_factory):
+    with session_factory() as session:
+        results = DocumentUnitRepository(session).list_by_document("nonexistent")
+    assert results == []
+
+
+def test_document_repository_list_by_workspace_stable_order_with_same_timestamp(session_factory):
+    from datetime import datetime, timezone
+
+    same_time = datetime.now(timezone.utc)
+    document_a = DocumentRecord(
+        workspace_id="ws-1",
+        title="A",
+        original_filename="a.pdf",
+        file_type=DocumentFileType.PDF,
+        file_path="data/uploads/a.pdf",
+        page_count=1,
+        created_at=same_time,
+    )
+    document_b = DocumentRecord(
+        workspace_id="ws-1",
+        title="B",
+        original_filename="b.pdf",
+        file_type=DocumentFileType.PDF,
+        file_path="data/uploads/b.pdf",
+        page_count=1,
+        created_at=same_time,
+    )
+
+    with session_factory() as session:
+        DocumentRepository(session).save(document_a)
+        DocumentRepository(session).save(document_b)
+        session.commit()
+
+    with session_factory() as session:
+        results = DocumentRepository(session).list_by_workspace("ws-1")
+
+    assert len(results) == 2
+    ids = [doc.id for doc in results]
+    assert ids == sorted(ids)
+
