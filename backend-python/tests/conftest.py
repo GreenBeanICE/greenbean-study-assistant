@@ -49,8 +49,14 @@ def word_fixtures_dir() -> Path:
 def provider_config_factory():
     from app.entities.provider_config import ProviderConfig
     from app.enums.api_mode import ApiMode
+    from app.enums.purpose import Purpose
 
-    def make_config(name: str = "test-cfg", is_active: bool = False) -> ProviderConfig:
+    def make_config(
+        name: str = "test-cfg",
+        is_active: bool = False,
+        purpose: Purpose = Purpose.CHAT,
+        embedding_dimension: int | None = None,
+    ) -> ProviderConfig:
         return ProviderConfig(
             name=name,
             api_mode=ApiMode.OPENAI_COMPAT,
@@ -59,6 +65,8 @@ def provider_config_factory():
             model_id="test-model",
             display_name=name,
             is_active=is_active,
+            purpose=purpose,
+            embedding_dimension=embedding_dimension,
         )
 
     return make_config

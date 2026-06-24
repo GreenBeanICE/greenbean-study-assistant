@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.enums.api_mode import ApiMode
+from app.enums.purpose import Purpose
 from app.providers.registry import ProviderRegistry
 from app.repositories.provider_config_repository import ProviderConfigRepository
 from app.services.provider_service import ProviderService
@@ -33,6 +34,7 @@ class TestProviderService:
                 "api_host": "https://api.new.com",
                 "model_id": "new-model",
                 "display_name": "New",
+                "purpose": Purpose.CHAT,
             }
         )
         assert result.name == "new-cfg"

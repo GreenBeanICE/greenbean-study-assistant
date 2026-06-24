@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.enums.api_mode import ApiMode
+from app.enums.purpose import Purpose
 
 
 class ProviderConfig(BaseModel):
@@ -18,5 +19,16 @@ class ProviderConfig(BaseModel):
     context_window: int = Field(default=65536, description="上下文窗口大小（token 数）。")
     max_output_tokens: int = Field(default=8192, description="最大输出 token 数。")
     is_active: bool = Field(default=False, description="是否为当前激活的 provider。")
+    purpose: Purpose = Field(..., description="用途：chat 或 embedding。")
+    embedding_dimension: int | None = Field(default=None, description="向量维度，仅 embedding 用。")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="创建时间。")
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="最后更新时间。")
+
+    @model_validator(mode="after")
+    def _validate_dimension_by_purpose(self) -> "ProviderConfig":
+        if self.purpose == Purpose.EMBEDDING:
+            if self.embedding_dimension is None or self.embedding_dimension <= 0:
+                raise ValueError("embedding 配置必须提供正整数 embedding_dimension")
+        elif self.purpose == Purpose.CHAT and self.embedding_dimension is not None:
+            raise ValueError("chat 配置不能设置 embedding_dimension")
+        return self
