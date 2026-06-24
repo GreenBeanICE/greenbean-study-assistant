@@ -69,6 +69,8 @@ class ProviderController:
             display_name=config.display_name,
             context_window=config.context_window,
             max_output_tokens=config.max_output_tokens,
+            purpose=config.purpose,
+            embedding_dimension=config.embedding_dimension,
             is_active=config.is_active,
             created_at=config.created_at.isoformat(),
             updated_at=config.updated_at.isoformat(),

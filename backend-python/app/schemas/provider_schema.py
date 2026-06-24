@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 
 from app.enums.api_mode import ApiMode
+from app.enums.purpose import Purpose
 
 
 class ProviderConfigCreateRequest(BaseModel):
@@ -13,6 +14,8 @@ class ProviderConfigCreateRequest(BaseModel):
     display_name: str = Field(..., description="前端展示名称。")
     context_window: int = Field(default=65536, description="上下文窗口大小。")
     max_output_tokens: int = Field(default=8192, description="最大输出 token 数。")
+    purpose: Purpose = Field(..., description="用途：chat 或 embedding。")
+    embedding_dimension: int | None = Field(default=None, description="向量维度，仅 embedding 用。")
 
 
 class ProviderConfigUpdateRequest(BaseModel):
@@ -25,6 +28,8 @@ class ProviderConfigUpdateRequest(BaseModel):
     display_name: str | None = Field(default=None, description="前端展示名称。")
     context_window: int | None = Field(default=None, description="上下文窗口大小。")
     max_output_tokens: int | None = Field(default=None, description="最大输出 token 数。")
+    purpose: Purpose | None = Field(default=None, description="用途。")
+    embedding_dimension: int | None = Field(default=None, description="向量维度。")
 
 
 class ProviderConfigResponse(BaseModel):
@@ -37,6 +42,8 @@ class ProviderConfigResponse(BaseModel):
     display_name: str = Field(..., description="展示名称。")
     context_window: int = Field(..., description="上下文窗口大小。")
     max_output_tokens: int = Field(..., description="最大输出 token 数。")
+    purpose: Purpose = Field(..., description="用途。")
+    embedding_dimension: int | None = Field(default=None, description="向量维度。")
     is_active: bool = Field(..., description="是否当前激活。")
     created_at: str = Field(..., description="创建时间。")
     updated_at: str = Field(..., description="最后更新时间。")

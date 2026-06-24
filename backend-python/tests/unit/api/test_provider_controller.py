@@ -4,6 +4,7 @@ import pytest
 
 from app.api.provider_controller import ProviderController
 from app.enums.api_mode import ApiMode
+from app.enums.purpose import Purpose
 from app.schemas.provider_schema import (
     ProviderActivateResponse,
     ProviderConfigCreateRequest,
@@ -56,7 +57,9 @@ class TestProviderController:
             api_host="https://api.test.com",
             model_id="test-model",
             display_name="New",
+            purpose=Purpose.CHAT,
         )
+        assert request.purpose == Purpose.CHAT
         result = await controller.create_provider(request)
         assert result.name == "new-cfg"
 
