@@ -95,3 +95,23 @@ class TestOpenAICompatibleProvider:
         kwargs = mock_client.embeddings.create.call_args[1]
         assert kwargs["input"] == ["hello", "world"]
         assert kwargs["model"] == "embed-small"
+
+    @patch("app.providers.openai_compat_provider.AsyncOpenAI")
+    @pytest.mark.asyncio
+    async def test_create_embedding_defaults_to_config_model_id(
+        self, MockAsyncOpenAI, provider_config_factory
+    ):
+        mock_client = MockAsyncOpenAI.return_value
+        mock_client.embeddings.create = AsyncMock(
+            return_value=SimpleNamespace(
+                data=[SimpleNamespace(embedding=[0.1, 0.2])],
+                model="test-model",
+            )
+        )
+
+        config = provider_config_factory()
+        provider = OpenAICompatibleProvider(config)
+        await provider.create_embedding("hello")
+
+        kwargs = mock_client.embeddings.create.call_args[1]
+        assert kwargs["model"] == "test-model"

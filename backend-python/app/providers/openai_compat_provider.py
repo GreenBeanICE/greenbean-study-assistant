@@ -41,10 +41,8 @@ class OpenAICompatibleProvider(AIProvider):
         input: str | list[str],
         model: str | None = None,
     ) -> EmbeddingResult:
-        if model is None:
-            raise ValueError("Embedding model is required")
-
-        response = await self._client.embeddings.create(model=model, input=input)
+        effective_model = model or self.config.model_id
+        response = await self._client.embeddings.create(model=effective_model, input=input)
         return EmbeddingResult(
             embeddings=[item.embedding for item in response.data],
             model=response.model,
