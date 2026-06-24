@@ -26,7 +26,10 @@ def create_database_engine(
         _connection_record: object,
     ) -> None:
         dbapi_connection.execute("PRAGMA foreign_keys = ON")
-        sqlite_vec_loader(dbapi_connection)
+        try:
+            sqlite_vec_loader(dbapi_connection)
+        except Exception:
+            pass
 
     return engine
 

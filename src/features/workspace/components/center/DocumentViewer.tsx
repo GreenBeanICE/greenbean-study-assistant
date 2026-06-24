@@ -224,7 +224,7 @@ function BlockContent({ block, onViewFootnote, onLineHtmlChange }: {
 }
 
 function DocumentViewer({
-  contentBlocks, selectedSectionId, pendingFileName, footnotes, expandedFootnoteId,
+  contentBlocks, selectedSectionId, viewerStatus = "idle", pendingFileName, errorMessage, footnotes, expandedFootnoteId,
   showSelectionMenu, selectionMenuPos,
   onUpdateLineText, onToggleFootnote,
   onShowSelectionMenu, onQuoteSelection,
@@ -234,7 +234,10 @@ function DocumentViewer({
   const filteredBlocks = selectedSectionId
     ? contentBlocks.filter((block) => block.sectionId === selectedSectionId)
     : [];
-  const showEmptyState = !selectedSectionId;
+  const effectiveViewerStatus = viewerStatus === "idle" && selectedSectionId && filteredBlocks.length > 0
+    ? "ready"
+    : viewerStatus;
+  const showEmptyState = effectiveViewerStatus !== "ready" || !selectedSectionId;
 
   // 监听选中变化，同步 hasSelection 状态用于工具栏按钮启用
   const [hasSelection, setHasSelection] = useState(false);
@@ -277,6 +280,34 @@ function DocumentViewer({
 
   const showSelectionMenuVisible = showSelectionMenu && selectionMenuPos;
 
+  const emptyStateCopy = (() => {
+    if (effectiveViewerStatus === "parsing") {
+      return {
+        title: pendingFileName ? `《${pendingFileName}》已上传，等待解析` : "文档解析中",
+        subtitle: "解析中，请稍候…",
+      };
+    }
+
+    if (effectiveViewerStatus === "empty") {
+      return {
+        title: pendingFileName ? `《${pendingFileName}》解析完成，但暂时没有可展示文本` : "解析完成，但暂时没有可展示文本",
+        subtitle: "可以稍后补充 OCR / 版面解析能力",
+      };
+    }
+
+    if (effectiveViewerStatus === "error") {
+      return {
+        title: "文档上传失败",
+        subtitle: errorMessage ?? "请稍后重试",
+      };
+    }
+
+    return {
+      title: "从左侧上传一份文档开始",
+      subtitle: "支持 PDF、Word、PPT、图片、TXT 和 Markdown",
+    };
+  })();
+
   return (
     <div className="flex flex-col h-full">
       {/* 顶部栏：文档解析永远横向排列且保证最小显示宽度，按钮必要时移至第二行 */}
@@ -313,10 +344,10 @@ function DocumentViewer({
               </svg>
             </div>
             <p className="text-sm text-neutral-500 font-medium">
-              {pendingFileName ? `《${pendingFileName}》已上传，等待解析` : "从左侧上传一份文档开始"}
+              {emptyStateCopy.title}
             </p>
             <p className="text-xs text-neutral-400 mt-1">
-              {pendingFileName ? "解析能力尚未接入，刷新后需要重新上传" : "支持 PDF、Word、PPT、图片、TXT 和 Markdown"}
+              {emptyStateCopy.subtitle}
             </p>
           </div>
         ) : (

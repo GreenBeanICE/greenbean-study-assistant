@@ -7,8 +7,10 @@ import ChatPanel from "../components/right/ChatPanel";
 import ResizableHandle from "../components/shared/ResizableHandle";
 import type { FileItem, WorkspaceState, WorkspaceAction, WorkspacePageProps } from "../type";
 import { createFileId, DEFAULT_FOLDERS, formatFileSize, getFileType } from "../workspaceFiles";
-import type { SectionNode, ContentLine } from "../../../types/section";
+import type { SectionNode, ContentLine, ContentBlock } from "../../../types/section";
 import type { ChatMessage } from "../../../types/chat";
+import { uploadDocument, getDocumentDetail } from "../../document/api/documentApi";
+import { unitsToContentBlocks, UPLOADED_CONTENT_SECTION_ID } from "../../document/unitsToContentBlocks";
 
 export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction): WorkspaceState {
   switch (action.type) {
@@ -68,7 +70,7 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
   }
 }
 
-function WorkspacePage({ initialFiles = [], initialFolders = DEFAULT_FOLDERS, initialSections = [], initialContentBlocks = [], initialFootnotes = [] }: WorkspacePageProps) {
+function WorkspacePage({ workspaceId, initialFiles = [], initialFolders = DEFAULT_FOLDERS, initialSections = [], initialContentBlocks = [], initialFootnotes = [] }: WorkspacePageProps) {
   const rightDragRef = useRef(false);
   const rightWidthRef = useRef(302);
   const rightDragClientXRef = useRef(0);
@@ -77,6 +79,9 @@ function WorkspacePage({ initialFiles = [], initialFolders = DEFAULT_FOLDERS, in
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [selectedFileName, setSelectedFileName] = useState<string>("");
   const [files, setFiles] = useState<FileItem[]>(initialFiles);
+  const [documentBlocksByFileId, setDocumentBlocksByFileId] = useState<Record<string, ContentBlock[]>>({});
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [viewerStatus, setViewerStatus] = useState<"idle" | "parsing" | "ready" | "empty" | "error">("idle");
 
   const [state, dispatch] = useReducer(workspaceReducer, {
     sections: initialSections, selectedSectionId: null, contentBlocks: initialContentBlocks,
@@ -166,27 +171,107 @@ function WorkspacePage({ initialFiles = [], initialFolders = DEFAULT_FOLDERS, in
     return () => window.removeEventListener("resize", handleResize);
   }, [state.rightCollapsed, state.leftCollapsed, state.leftPanelWidth]);
 
+  const applyFileContent = useCallback((fileId: string | null) => {
+    if (!fileId) {
+      dispatch({ type: "SET_LANG_DATA", sections: [], contentBlocks: [] });
+      dispatch({ type: "SELECT_SECTION", sectionId: null });
+      setViewerStatus("idle");
+      return;
+    }
+
+    const selectedFile = files.find((file) => file.id === fileId);
+    const hasUploadedContent = !!selectedFile && (
+      Object.prototype.hasOwnProperty.call(documentBlocksByFileId, fileId)
+      || selectedFile.viewerStatus !== undefined
+      || selectedFile.documentId !== undefined
+    );
+
+    if (!hasUploadedContent) {
+      setViewerStatus("ready");
+      return;
+    }
+
+    const blocks = documentBlocksByFileId[fileId] ?? [];
+    setViewerStatus(selectedFile?.viewerStatus ?? (blocks.length > 0 ? "ready" : "idle"));
+    dispatch({ type: "SET_LANG_DATA", sections: [], contentBlocks: blocks });
+
+    if (selectedFile?.viewerStatus === "ready" && blocks.length > 0) {
+      dispatch({ type: "SELECT_SECTION", sectionId: UPLOADED_CONTENT_SECTION_ID });
+      return;
+    }
+
+    dispatch({ type: "SELECT_SECTION", sectionId: null });
+  }, [documentBlocksByFileId, files]);
+
   const handleFileSelect = useCallback((fileId: string, fileName: string) => {
     setSelectedFileId(fileId);
     setSelectedFileName(fileName);
     setLeftMode("sections");
-  }, []);
+    setUploadError(null);
+    applyFileContent(fileId);
+  }, [applyFileContent]);
 
-  const handleUpload = useCallback((file: File) => {
+  // 上传文件并调用后端解析流水线。
+  // 开发期通过 vite proxy（/api → localhost:8000）访问后端，
+  // 生产环境需由部署层或 Tauri 桥接处理路由。
+  const handleUpload = useCallback(async (file: File) => {
+    const fileId = createFileId();
     const newFile: FileItem = {
-      id: createFileId(),
+      id: fileId,
       name: file.name,
       type: getFileType(file.name),
       category: "",
       size: formatFileSize(file.size),
       date: new Date().toISOString().split("T")[0],
-      status: "pending",
+      status: "parsing",
+      viewerStatus: "parsing",
     };
     setFiles((prev) => [newFile, ...prev]);
-    setSelectedFileId(newFile.id);
-    setSelectedFileName(newFile.name);
+    setSelectedFileId(fileId);
+    setSelectedFileName(file.name);
     setLeftMode("sections");
-  }, []);
+    setUploadError(null);
+    setViewerStatus("parsing");
+    dispatch({ type: "SET_LANG_DATA", sections: [], contentBlocks: [] });
+    dispatch({ type: "SELECT_SECTION", sectionId: null });
+
+    try {
+      const uploadResult = await uploadDocument(file, workspaceId ?? "workspace_1");
+      const detail = await getDocumentDetail(uploadResult.id);
+      const blocks = unitsToContentBlocks(detail.units);
+      setDocumentBlocksByFileId((prev) => ({
+        ...prev,
+        [fileId]: blocks,
+      }));
+      dispatch({ type: "SET_LANG_DATA", sections: [], contentBlocks: blocks });
+      // 自动选中内容区域，让 DocumentViewer 立即渲染解析结果
+      if (blocks.length > 0) {
+        dispatch({ type: "SELECT_SECTION", sectionId: UPLOADED_CONTENT_SECTION_ID });
+        setViewerStatus("ready");
+      } else {
+        dispatch({ type: "SELECT_SECTION", sectionId: null });
+        setViewerStatus("empty");
+      }
+      setFiles((prev) =>
+        prev.map((f) => (f.id === fileId ? {
+          ...f,
+          status: "parsed",
+          documentId: uploadResult.id,
+          viewerStatus: blocks.length > 0 ? "ready" : "empty",
+        } : f)),
+      );
+    } catch (err) {
+      dispatch({ type: "SET_LANG_DATA", sections: [], contentBlocks: [] });
+      dispatch({ type: "SELECT_SECTION", sectionId: null });
+      setViewerStatus("error");
+      setFiles((prev) =>
+        prev.map((f) => (f.id === fileId ? { ...f, status: "pending", viewerStatus: "error" } : f)),
+      );
+      setUploadError(
+        err instanceof Error ? err.message : "未知错误",
+      );
+    }
+  }, [workspaceId]);
 
   const handleDeleteFile = useCallback((fileId: string) => {
     setFiles((prev) => prev.filter((file) => file.id !== fileId));
@@ -211,7 +296,8 @@ function WorkspacePage({ initialFiles = [], initialFolders = DEFAULT_FOLDERS, in
   const handleBackToFiles = useCallback(() => {
     setLeftMode("files");
     setSelectedFileId(null);
-  }, []);
+    applyFileContent(null);
+  }, [applyFileContent]);
 
   const handleSectionSelect = useCallback((id: string) => {
     selectSection(id);
@@ -293,8 +379,15 @@ function WorkspacePage({ initialFiles = [], initialFolders = DEFAULT_FOLDERS, in
         {showLeftPanel && <ResizableHandle onResize={setLeftW} position="left" />}
 
         <main className="flex-1 min-w-0 min-h-0">
+          {uploadError && (
+            <div className="bg-red-50 border-b border-red-200 text-red-700 text-xs px-4 py-2">
+              上传失败：{uploadError}
+            </div>
+          )}
           <DocumentViewer contentBlocks={state.contentBlocks} selectedSectionId={state.selectedSectionId}
-            pendingFileName={selectedFileId && state.sections.length === 0 ? selectedFileName : undefined}
+            viewerStatus={viewerStatus}
+            pendingFileName={selectedFileId ? selectedFileName : undefined}
+            errorMessage={uploadError}
             footnotes={state.footnotes} expandedFootnoteId={state.expandedFootnoteId}
             showSelectionMenu={state.showSelectionMenu} selectionMenuPos={state.selectionMenuPos}
             onUpdateLineText={updateLineText}

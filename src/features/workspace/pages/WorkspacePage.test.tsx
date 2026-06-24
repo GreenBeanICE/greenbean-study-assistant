@@ -1,7 +1,8 @@
 import React from "react";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, cleanup, act } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
+import { render, screen, fireEvent, cleanup, act, waitFor } from "@testing-library/react";
 import WorkspacePage, { workspaceReducer } from "./WorkspacePage";
+import { uploadDocument, getDocumentDetail } from "../../document/api/documentApi";
 import type { FileItem, Folder, WorkspaceState } from "../type";
 import type { ContentBlock, FootnoteReference, SectionNode } from "../../../types/section";
 
@@ -66,6 +67,23 @@ function createTestState(): WorkspaceState {
   };
 }
 
+async function uploadPdf(fileName: string) {
+  let uploadLabel = screen.queryByTitle("上传新文件");
+  if (!uploadLabel) {
+    fireEvent.click(screen.getByTitle("文件管理"));
+    uploadLabel = await screen.findByTitle("上传新文件");
+  }
+
+  const fileInput = uploadLabel.querySelector('input[type="file"]') as HTMLInputElement;
+  const file = new File([fileName], fileName, { type: "application/pdf" });
+  Object.defineProperty(fileInput, "files", { value: [file], configurable: true });
+  fireEvent.change(fileInput);
+
+  await waitFor(() => {
+    expect(uploadDocument).toHaveBeenCalled();
+  });
+}
+
 // Mock framer-motion
 vi.mock("framer-motion", () => {
   const createMotionComponent = (tag: string) => {
@@ -89,6 +107,13 @@ vi.mock("framer-motion", () => {
     AnimatePresence: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
   };
 });
+
+// 上传解析依赖 documentApi，测试中 mock 为本地函数，验证调用契约与展示结果。
+vi.mock("../../document/api/documentApi", () => ({
+  uploadDocument: vi.fn(),
+  getDocumentDetail: vi.fn(),
+  listDocuments: vi.fn(),
+}));
 
 describe("WorkspacePage", () => {
   beforeEach(() => {
@@ -199,15 +224,101 @@ describe("WorkspacePage", () => {
     expect(screen.getByText("有什么可以帮你？")).toBeDefined();
   });
 
-  it("上传文档后进入等待解析态", () => {
+  it("上传 PDF 成功后展示解析出的分页文本", async () => {
+    (uploadDocument as Mock).mockResolvedValue({ id: "doc1" });
+    (getDocumentDetail as Mock).mockResolvedValue({
+      document: { id: "doc1" },
+      units: [
+        { id: "u1", sequence_index: 0, page_number: 1, text_content: "第一页内容" },
+        { id: "u2", sequence_index: 1, page_number: 2, text_content: "第二页内容" },
+      ],
+    });
+
     render(<WorkspacePage />);
     const uploadLabel = screen.getByTitle("上传新文件");
     const fileInput = uploadLabel.querySelector('input[type="file"]') as HTMLInputElement;
     const file = new File(["lecture"], "lecture.pdf", { type: "application/pdf" });
     Object.defineProperty(fileInput, "files", { value: [file] });
     fireEvent.change(fileInput);
-    expect(screen.getByText("暂无章节数据")).toBeDefined();
-    expect(screen.getByText("《lecture.pdf》已上传，等待解析")).toBeDefined();
+
+    // 等待 async 流程完成：uploadDocument 和 getDocumentDetail 都应被调用
+    await waitFor(() => {
+      expect(uploadDocument).toHaveBeenCalled();
+    });
+    expect(getDocumentDetail).toHaveBeenCalledWith("doc1");
+
+    // 解析完成后，中间文档区应展示每个解析出的内容块
+    expect(await screen.findByText("第 1 页", {}, { timeout: 2000 })).toBeDefined();
+    expect(screen.getByText("第 2 页")).toBeDefined();
+  });
+
+  it("上传失败时显示可读的错误提示", async () => {
+    (uploadDocument as Mock).mockRejectedValue(new Error("网络错误"));
+
+    render(<WorkspacePage />);
+    const uploadLabel = screen.getByTitle("上传新文件");
+    const fileInput = uploadLabel.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(["lecture"], "lecture.pdf", { type: "application/pdf" });
+    Object.defineProperty(fileInput, "files", { value: [file] });
+    fireEvent.change(fileInput);
+
+    expect(await screen.findByText("上传失败：网络错误")).toBeDefined();
+  });
+
+  it("连续上传两份文档后，重新选择旧文件时显示该文件自己的解析内容", async () => {
+    (uploadDocument as Mock)
+      .mockResolvedValueOnce({ id: "doc-a" })
+      .mockResolvedValueOnce({ id: "doc-b" });
+
+    (getDocumentDetail as Mock)
+      .mockResolvedValueOnce({
+        document: { id: "doc-a", title: "A" },
+        units: [{ id: "ua-1", sequence_index: 0, page_number: 1, text_content: "A 的第一页" }],
+      })
+      .mockResolvedValueOnce({
+        document: { id: "doc-b", title: "B" },
+        units: [{ id: "ub-1", sequence_index: 0, page_number: 1, text_content: "B 的第一页" }],
+      });
+
+    render(<WorkspacePage />);
+
+    await uploadPdf("a.pdf");
+    expect(await screen.findByText("A 的第一页")).toBeDefined();
+
+    await uploadPdf("b.pdf");
+    expect(await screen.findByText("B 的第一页")).toBeDefined();
+
+    fireEvent.click(screen.getByTitle("文件管理"));
+    fireEvent.click(screen.getByText("a.pdf"));
+    expect(await screen.findByText("A 的第一页")).toBeDefined();
+    expect(screen.queryByText("B 的第一页")).toBeNull();
+  });
+
+  it("上传失败后清空中央区域旧内容并显示错误提示", async () => {
+    renderDemoWorkspace();
+
+    fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
+    fireEvent.click(screen.getByText((c) => c.includes("1.1 背景介绍")));
+    expect(screen.getByText("近年来，人工智能技术取得了飞速发展。")).toBeDefined();
+
+    (uploadDocument as Mock).mockRejectedValue(new Error("网络错误"));
+    await uploadPdf("broken.pdf");
+
+    expect(await screen.findByText(/上传失败：网络错误/)).toBeDefined();
+    expect(screen.queryByText("近年来，人工智能技术取得了飞速发展。")).toBeNull();
+  });
+
+  it("解析成功但 units 为空时显示空结果提示", async () => {
+    (uploadDocument as Mock).mockResolvedValue({ id: "doc-empty" });
+    (getDocumentDetail as Mock).mockResolvedValue({
+      document: { id: "doc-empty", title: "empty" },
+      units: [],
+    });
+
+    render(<WorkspacePage />);
+    await uploadPdf("empty.pdf");
+
+    expect(await screen.findByText("《empty.pdf》解析完成，但暂时没有可展示文本")).toBeDefined();
   });
 
   it("中间区域文档查看器存在", () => {

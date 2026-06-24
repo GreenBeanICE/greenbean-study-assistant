@@ -21,6 +21,10 @@ def _noop_loader(_connection: sqlite3.Connection) -> None:
     pass
 
 
+def _missing_extension_loader(_connection: sqlite3.Connection) -> None:
+    raise RuntimeError("sqlite-vec extension missing")
+
+
 @pytest.mark.unit
 def test_file_mode_factory_opens_usable_session(tmp_path):
     database_path = tmp_path / "data" / "test.sqlite3"
@@ -66,3 +70,18 @@ def test_create_app_uow_returns_sqlalchemy_unit_of_work():
     uow = create_app_uow(factory)
 
     assert isinstance(uow, SqlAlchemyUnitOfWork)
+
+
+@pytest.mark.unit
+def test_file_mode_factory_still_works_when_sqlite_vec_missing(tmp_path):
+    database_path = tmp_path / "data" / "fallback.sqlite3"
+
+    factory = create_app_session_factory(
+        database_path=database_path,
+        embedding_dimension=8,
+        sqlite_vec_loader=_missing_extension_loader,
+    )
+
+    with factory() as session:
+        assert session is not None
+    assert database_path.exists()

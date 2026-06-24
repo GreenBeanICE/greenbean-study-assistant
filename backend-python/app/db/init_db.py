@@ -16,7 +16,7 @@ class SQLiteVecInitializationError(RuntimeError):
 class DatabaseInitializationResult:
     database_path: Path
     persistence_ready: bool
-    sqlite_vec_version: str
+    sqlite_vec_version: str | None
 
 
 def load_sqlite_vec_extension(connection: sqlite3.Connection) -> None:
@@ -38,17 +38,20 @@ def initialize_database(
     data_path.mkdir(parents=True, exist_ok=True)
     database_path = data_path / database_name
 
-    try:
-        with closing(sqlite3.connect(database_path)) as connection:
-            connection.execute("PRAGMA foreign_keys = ON")
+    sqlite_vec_version: str | None = None
+
+    with closing(sqlite3.connect(database_path)) as connection:
+        connection.execute("PRAGMA foreign_keys = ON")
+        try:
             sqlite_vec_loader(connection)
             sqlite_vec_version = _check_sqlite_vec(connection)
-            _create_schema(connection, embedding_dimension)
-            connection.commit()
-    except SQLiteVecInitializationError:
-        raise
-    except Exception as exc:
-        raise SQLiteVecInitializationError(f"sqlite-vec initialization failed: {exc}") from exc
+        except SQLiteVecInitializationError:
+            sqlite_vec_version = None
+        except Exception:
+            sqlite_vec_version = None
+
+        _create_schema(connection, embedding_dimension)
+        connection.commit()
 
     return DatabaseInitializationResult(
         database_path=database_path,

@@ -5,6 +5,7 @@ export type TextFormatAction = "bold" | "italic" | "underline" | "strikethrough"
 
 export type FileType = "PDF" | "DOC" | "PPT" | "IMG" | "TXT" | "MD";
 export type FileStatus = "parsed" | "parsing" | "pending";
+export type ViewerStatus = "idle" | "parsing" | "ready" | "empty" | "error";
 
 export interface FileItem {
   id: string;
@@ -14,6 +15,8 @@ export interface FileItem {
   size: string;
   date: string;
   status: FileStatus;
+  documentId?: string;
+  viewerStatus?: ViewerStatus;
 }
 
 export interface Folder {
@@ -43,7 +46,7 @@ export interface WorkspaceState {
 }
 
 export type WorkspaceAction =
-  | { type: "SELECT_SECTION"; sectionId: string }
+  | { type: "SELECT_SECTION"; sectionId: string | null }
   | { type: "TOGGLE_SECTION_EXPAND"; sectionId: string }
   | { type: "TOGGLE_HIGHLIGHT"; blockId: string; lineId: string }
   | { type: "UPDATE_LINE_TEXT"; blockId: string; lineId: string; text: string }
@@ -74,7 +77,9 @@ export interface SectionTreeProps {
 export interface DocumentViewerProps {
   contentBlocks: ContentBlock[];
   selectedSectionId: string | null;
+  viewerStatus?: ViewerStatus;
   pendingFileName?: string;
+  errorMessage?: string | null;
   footnotes: FootnoteReference[];
   expandedFootnoteId: string | null;
   showSelectionMenu: boolean;

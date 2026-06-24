@@ -28,5 +28,14 @@ export default defineConfig(async () => ({
       // 3. tell Vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
     },
+    // 【开发期】将 /api 请求代理到 Python 后端（uvicorn 默认 8000 端口）。
+    // 仅 `npm run dev` 时生效；生产构建不走此代理。
+    // Tauri 桌面端生产环境需由部署层处理 /api 路由，或替换前端 API_BASE 常量。
+    proxy: {
+      "/api": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+    },
   },
 }));

@@ -110,13 +110,13 @@ describe("DocumentViewer", () => {
   });
 
   it("pendingFileName 有值时显示等待解析状态", () => {
-    render(<DocumentViewer {...defaultProps} pendingFileName="lecture.pdf" />);
+    render(<DocumentViewer {...defaultProps} viewerStatus="parsing" pendingFileName="lecture.pdf" />);
     expect(screen.getByText("《lecture.pdf》已上传，等待解析")).toBeDefined();
   });
 
-  it("pendingFileName 有值时显示解析未接入提示", () => {
-    render(<DocumentViewer {...defaultProps} pendingFileName="lecture.pdf" />);
-    expect(screen.getByText("解析能力尚未接入，刷新后需要重新上传")).toBeDefined();
+  it("pendingFileName 有值时显示解析中提示", () => {
+    render(<DocumentViewer {...defaultProps} viewerStatus="parsing" pendingFileName="lecture.pdf" />);
+    expect(screen.getByText("解析中，请稍候…")).toBeDefined();
   });
 
   it("选择章节后显示内容块", () => {
