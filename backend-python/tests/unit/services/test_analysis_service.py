@@ -18,7 +18,7 @@ async def test_generate_analysis_success(MockRegistry):
         "highlights": ["重点是理解传递依赖"],
         "source_refs": [{"page": 5, "title": "Normalisation"}]
     }"""))
-    MockRegistry.get_active.return_value = mock_provider
+    MockRegistry.get_active_chat.return_value = mock_provider
 
     agent = AnalysisAgent()
     result = await agent.generate_analysis("Chaque déterminant non clé doit être une clé primaire...")
@@ -39,7 +39,7 @@ async def test_generate_analysis_success(MockRegistry):
 async def test_generate_analysis_json_error(MockRegistry):
     mock_provider = MagicMock()
     mock_provider.chat_completion = AsyncMock(return_value=ChatResult(content='{"summary": "残缺的JSON"'))
-    MockRegistry.get_active.return_value = mock_provider
+    MockRegistry.get_active_chat.return_value = mock_provider
 
     agent = AnalysisAgent()
 

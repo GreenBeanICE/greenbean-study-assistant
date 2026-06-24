@@ -15,7 +15,7 @@ async def test_classification_tests_with_mock(MockRegistry):
             content='{"route": "CONCEPT", "reason": "这是 Mock 测试模拟的判决理由"}'
         )
     )
-    MockRegistry.get_active.return_value = mock_provider
+    MockRegistry.get_active_chat.return_value = mock_provider
 
     agent = RouterAgent()
 
@@ -41,7 +41,7 @@ async def test_classification_tests_with_mock(MockRegistry):
 async def test_classification_falls_back_when_model_call_fails(MockRegistry):
     mock_provider = MagicMock()
     mock_provider.chat_completion.side_effect = RuntimeError("model unavailable")
-    MockRegistry.get_active.return_value = mock_provider
+    MockRegistry.get_active_chat.return_value = mock_provider
 
     agent = RouterAgent()
     decision = await agent.route_question("这份课件主要讲什么？")

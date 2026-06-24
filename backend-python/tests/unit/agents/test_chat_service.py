@@ -19,7 +19,7 @@ async def test_chat_agent_with_mock(MockClassifyRegistry, MockChatRegistry):
             content='{"route": "CONCEPT", "reason": "test"}'
         )
     )
-    MockClassifyRegistry.get_active.return_value = mock_router_provider
+    MockClassifyRegistry.get_active_chat.return_value = mock_router_provider
 
     mock_chat_provider = MagicMock()
     mock_chat_provider.chat_completion = AsyncMock(
@@ -27,7 +27,7 @@ async def test_chat_agent_with_mock(MockClassifyRegistry, MockChatRegistry):
             content="中法双语回复：这是一个Mock测试。\nExplication : C'est un test mock."
         )
     )
-    MockChatRegistry.get_active.return_value = mock_chat_provider
+    MockChatRegistry.get_active_chat.return_value = mock_chat_provider
 
     from app.agents.chat_agent import ChatAgent
     agent = ChatAgent()

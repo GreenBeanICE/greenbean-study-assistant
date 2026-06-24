@@ -19,7 +19,7 @@ class ChatAgent:
             "d'être traités comme des objets d'une classe commune."
         )
 
-        provider = ProviderRegistry.get_active()
+        provider = ProviderRegistry.get_active_chat()
         response = await provider.chat_completion(
             messages=[
                 {"role": "system", "content": CHAT_SYSTEM_PROMPT},

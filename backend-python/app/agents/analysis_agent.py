@@ -9,7 +9,7 @@ from app.schemas.analysis_schema import AnalysisOutput
 class AnalysisAgent:
     async def generate_analysis(self, document_context: str) -> Dict[str, Any]:
         try:
-            provider = ProviderRegistry.get_active()
+            provider = ProviderRegistry.get_active_chat()
             response = await provider.chat_completion(
                 messages=[
                     {"role": "system", "content": ANALYSIS_SYSTEM_PROMPT},
