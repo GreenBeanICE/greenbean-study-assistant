@@ -1,1 +1,4 @@
-﻿# 配置占位文件，后续用于集中维护 Python 后端环境变量和运行配置。
+﻿"""应用运行配置常量。"""
+from pathlib import Path
+
+PROVIDER_CONFIGS_PATH = Path("data") / "provider_configs.json"

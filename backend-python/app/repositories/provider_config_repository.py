@@ -1,89 +1,88 @@
-from sqlalchemy.orm import Session
+"""Provider 配置的 JSON 文件仓库。
 
-from app.db.models import ProviderConfigModel
+负责 provider_configs.json 的读写、序列化与原子替换。
+不依赖业务 SQLite，避免与应用数据耦合。
+"""
+import json
+import os
+import threading
+from pathlib import Path
+
 from app.entities.provider_config import ProviderConfig
-from app.repositories.sqlite_helpers import datetime_value
+from app.enums.purpose import Purpose
 
 
 class ProviderConfigRepository:
-    def __init__(self, session: Session) -> None:
-        self.session = session
+    def __init__(self, file_path: str | os.PathLike) -> None:
+        self._path = Path(file_path)
+        self._lock = threading.Lock()
 
-    def save(self, config: ProviderConfig) -> ProviderConfig:
-        model = self.session.get(ProviderConfigModel, config.id)
-        if model is None:
-            model = ProviderConfigModel(
-                id=config.id,
-                created_at=datetime_value(config.created_at),
-            )
-            self.session.add(model)
-        model.name = config.name
-        model.api_mode = config.api_mode.value
-        model.api_key = config.api_key
-        model.api_host = config.api_host
-        model.api_path = config.api_path
-        model.model_id = config.model_id
-        model.display_name = config.display_name
-        model.context_window = config.context_window
-        model.max_output_tokens = config.max_output_tokens
-        model.is_active = 1 if config.is_active else 0
-        model.updated_at = datetime_value(config.updated_at)
-        return config
+    def _read(self) -> list[ProviderConfig]:
+        if not self._path.exists():
+            return []
+        with self._path.open("r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+        items = payload.get("providers", []) if isinstance(payload, dict) else []
+        return [ProviderConfig(**item) for item in items]
 
-    def get_by_id(self, config_id: str) -> ProviderConfig | None:
-        model = self.session.get(ProviderConfigModel, config_id)
-        if model is None:
-            return None
-        return self._to_entity(model)
-
-    def get_by_name(self, name: str) -> ProviderConfig | None:
-        model = self.session.query(ProviderConfigModel).filter(
-            ProviderConfigModel.name == name
-        ).first()
-        if model is None:
-            return None
-        return self._to_entity(model)
-
-    def get_active(self) -> ProviderConfig | None:
-        model = self.session.query(ProviderConfigModel).filter(
-            ProviderConfigModel.is_active == 1
-        ).first()
-        if model is None:
-            return None
-        return self._to_entity(model)
+    def _write(self, configs: list[ProviderConfig]) -> None:
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {"providers": [c.model_dump(mode="json") for c in configs]}
+        tmp_path = self._path.with_suffix(self._path.suffix + ".tmp")
+        with tmp_path.open("w", encoding="utf-8") as handle:
+            json.dump(payload, handle, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, self._path)
 
     def list_all(self) -> list[ProviderConfig]:
-        models = self.session.query(ProviderConfigModel).order_by(
-            ProviderConfigModel.display_name
-        ).all()
-        return [self._to_entity(m) for m in models]
+        with self._lock:
+            return self._read()
 
-    def deactivate_all(self) -> None:
-        self.session.query(ProviderConfigModel).filter(
-            ProviderConfigModel.is_active == 1
-        ).update({"is_active": 0})
+    def list_by_purpose(self, purpose: Purpose) -> list[ProviderConfig]:
+        with self._lock:
+            return [c for c in self._read() if c.purpose == purpose]
+
+    def get_by_id(self, config_id: str) -> ProviderConfig | None:
+        with self._lock:
+            for config in self._read():
+                if config.id == config_id:
+                    return config
+            return None
+
+    def get_active_by_purpose(self, purpose: Purpose) -> ProviderConfig | None:
+        with self._lock:
+            for config in self._read():
+                if config.purpose == purpose and config.is_active:
+                    return config
+            return None
+
+    def save(self, config: ProviderConfig) -> ProviderConfig:
+        with self._lock:
+            configs = self._read()
+            for index, existing in enumerate(configs):
+                if existing.id == config.id:
+                    configs[index] = config
+                    break
+            else:
+                configs.append(config)
+            self._write(configs)
+        return config
 
     def delete(self, config_id: str) -> bool:
-        model = self.session.get(ProviderConfigModel, config_id)
-        if model is None:
-            return False
-        self.session.delete(model)
-        return True
+        with self._lock:
+            configs = self._read()
+            remaining = [c for c in configs if c.id != config_id]
+            if len(remaining) == len(configs):
+                return False
+            self._write(remaining)
+            return True
 
-    def _to_entity(self, model: ProviderConfigModel) -> ProviderConfig:
-        from app.enums.api_mode import ApiMode
-        return ProviderConfig(
-            id=model.id,
-            name=model.name,
-            api_mode=ApiMode(model.api_mode),
-            api_key=model.api_key,
-            api_host=model.api_host,
-            api_path=model.api_path,
-            model_id=model.model_id,
-            display_name=model.display_name,
-            context_window=model.context_window,
-            max_output_tokens=model.max_output_tokens,
-            is_active=bool(model.is_active),
-            created_at=model.created_at,
-            updated_at=model.updated_at,
-        )
+    def deactivate_by_purpose(self, purpose: Purpose) -> None:
+        with self._lock:
+            configs = self._read()
+            changed = False
+            for index, config in enumerate(configs):
+                if config.purpose == purpose and config.is_active:
+                    configs[index] = config.model_copy(update={"is_active": False})
+                    changed = True
+            if changed:
+                self._write(configs)
