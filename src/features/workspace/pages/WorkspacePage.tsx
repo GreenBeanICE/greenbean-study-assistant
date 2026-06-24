@@ -5,71 +5,10 @@ import FileManager from "../components/left/FileManager";
 import DocumentViewer from "../components/center/DocumentViewer";
 import ChatPanel from "../components/right/ChatPanel";
 import ResizableHandle from "../components/shared/ResizableHandle";
-import type { WorkspaceState, WorkspaceAction, WorkspacePageProps, TextFormatAction } from "../type";
-import type { SectionNode, ContentBlock, ContentLine, FootnoteReference } from "../../../types/section";
+import type { FileItem, WorkspaceState, WorkspaceAction, WorkspacePageProps } from "../type";
+import { createFileId, DEFAULT_FOLDERS, formatFileSize, getFileType } from "../workspaceFiles";
+import type { SectionNode, ContentLine } from "../../../types/section";
 import type { ChatMessage } from "../../../types/chat";
-
-function getLocalizedSections(): SectionNode[] {
-  return [
-    { id: "ch1", title: "第一章：引言", index: "1", expanded: true, children: [
-      { id: "ch1-1", title: "背景介绍", index: "1.1" },
-      { id: "ch1-2", title: "研究意义", index: "1.2" },
-      { id: "ch1-3", title: "论文结构", index: "1.3" },
-    ]},
-    { id: "ch2", title: "第二章：理论基础", index: "2", expanded: true, children: [
-      { id: "ch2-1", title: "概念定义", index: "2.1" },
-      { id: "ch2-2", title: "相关研究", index: "2.2" },
-    ]},
-    { id: "ch3", title: "第三章：方法论", index: "3", expanded: false, children: [
-      { id: "ch3-1", title: "数据采集", index: "3.1" },
-      { id: "ch3-2", title: "分析方法", index: "3.2" },
-      { id: "ch3-3", title: "验证方案", index: "3.3" },
-    ]},
-    { id: "ch4", title: "第四章：实验与结果", index: "4" },
-    { id: "ch5", title: "第五章：结论", index: "5" },
-  ];
-}
-
-function getLocalizedContent(): ContentBlock[] {
-  return [
-    { id: "block-ch1-1", sectionId: "ch1-1", title: "1.1 背景介绍", contentType: "text",
-      lines: [
-        { id: "l1", text: "近年来，人工智能技术取得了飞速发展，深刻改变了各行各业的面貌。", type: "paragraph", footnoteRef: "1" },
-        { id: "l2", text: "在教育领域，AI 技术的应用尤为引人注目。", type: "paragraph" },
-        { id: "l3", text: "本节将介绍本研究的基本背景和动机。", type: "heading", level: 2 },
-        { id: "l4", text: "• 全球教育数字化转型趋势", type: "list" },
-        { id: "l5", text: "• 在法中国留学生面临的语言与学习障碍", type: "list" },
-        { id: "l6", text: "• 现有工具与解决方案的不足", type: "list", footnoteRef: "2" },
-      ]},
-    { id: "block-table-1", sectionId: "ch2-1", title: "表1：主流AI教育平台对比", contentType: "table",
-      tableData: { headers: ["平台名称", "语言支持", "AI 功能", "定价"],
-        rows: [
-          { id: "tr1", cells: ["Coursera", "多语言", "课程推荐", "$59/月"] },
-          { id: "tr2", cells: ["Duolingo", "40+语言", "自适应学习", "免费+Premium"] },
-          { id: "tr3", cells: ["GreenBean", "中/法", "深度解析+问答", "免费"] },
-        ]},
-    },
-    { id: "block-image-1", sectionId: "ch2-1", title: "图1：AI教育市场规模预测", contentType: "image", imageUrl: "",
-      imageCaption: "全球AI教育市场将在2025年突破500亿美元（示意图）" },
-    { id: "block-ch1-2", sectionId: "ch1-2", title: "1.2 研究意义", contentType: "text",
-      lines: [
-        { id: "l7", text: "本研究具有重要的理论意义和实践价值。", type: "paragraph" },
-        { id: "l8", text: "从理论层面看，本研究探索了 AI 辅助学习的新范式。", type: "paragraph" },
-        { id: "l9", text: "从实践层面看，本研究为留学生提供了切实可行的学习工具。", type: "paragraph" },
-      ]},
-    { id: "block-ch2-1", sectionId: "ch2-1", title: "2.1 概念定义", contentType: "text",
-      lines: [
-        { id: "l10", text: "本节定义了研究中使用的核心概念。", type: "paragraph" },
-        { id: "l11", text: "定义 1（智能学习助手）：...", type: "code" },
-        { id: "l12", text: "定义 2（知识图谱）：...", type: "code" },
-      ]},
-  ];
-}
-
-const initialFootnotes: FootnoteReference[] = [
-  { id: "fn-1", refNumber: "1", sourceText: "Gartner预测到2025年AI在教育领域创造超过500亿美元的市场价值。", sourceDesc: "第1页，第1段" },
-  { id: "fn-2", refNumber: "2", sourceText: "现有针对在法中国留学生的法语AI辅导产品仍属空白。", sourceDesc: "第1页，第6段" },
-];
 
 export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction): WorkspaceState {
   switch (action.type) {
@@ -129,8 +68,7 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
   }
 }
 
-function WorkspacePage(_props: WorkspacePageProps) {
-  const titleRef = useRef<HTMLInputElement>(null);
+function WorkspacePage({ initialFiles = [], initialFolders = DEFAULT_FOLDERS, initialSections = [], initialContentBlocks = [], initialFootnotes = [] }: WorkspacePageProps) {
   const rightDragRef = useRef(false);
   const rightWidthRef = useRef(302);
   const rightDragClientXRef = useRef(0);
@@ -138,31 +76,33 @@ function WorkspacePage(_props: WorkspacePageProps) {
   const [leftMode, setLeftMode] = useState<"files" | "sections" | null>("files");
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [selectedFileName, setSelectedFileName] = useState<string>("");
+  const [files, setFiles] = useState<FileItem[]>(initialFiles);
 
   const [state, dispatch] = useReducer(workspaceReducer, {
-    sections: getLocalizedSections(), selectedSectionId: null, contentBlocks: getLocalizedContent(),
+    sections: initialSections, selectedSectionId: null, contentBlocks: initialContentBlocks,
     chatMessages: [], chatInput: "", loading: false, footnotes: initialFootnotes,
     expandedFootnoteId: null, currentSelection: null, showSelectionMenu: false,
     selectionMenuPos: null, quotedText: null, tokenUsage: 0,
     leftCollapsed: false, rightCollapsed: false,
-    leftPanelWidth: 256, rightPanelWidth: 302, documentTitle: "cours-analyse-s1.pdf",
+    leftPanelWidth: 256, rightPanelWidth: 302, documentTitle: "",
   });
 
   rightWidthRef.current = state.rightPanelWidth;
 
-  const d = useCallback((s: string) => dispatch({ type: "SELECT_SECTION", sectionId: s } as any), []);
-  const togg = useCallback((s: string) => dispatch({ type: "TOGGLE_SECTION_EXPAND", sectionId: s } as any), []);
-  const th = useCallback((b: string, l: string) => dispatch({ type: "TOGGLE_HIGHLIGHT", blockId: b, lineId: l } as any), []);
-  const ut = useCallback((b: string, l: string, t: string) => dispatch({ type: "UPDATE_LINE_TEXT", blockId: b, lineId: l, text: t } as any), []);
-  const fmt = useCallback((b: string, l: string, f: TextFormatAction) => dispatch({ type: "FORMAT_LINE", blockId: b, lineId: l, format: f } as any), []);
-  const tf = useCallback((id: string) => dispatch({ type: "TOGGLE_FOOTNOTE", footnoteId: id } as any), []);
-  const sel = useCallback((s: any) => dispatch({ type: "SET_SELECTION", selection: s } as any), []);
-  const sm = useCallback((s: boolean, p?: { x: number; y: number }) => dispatch({ type: "SHOW_SELECTION_MENU", show: s, pos: p } as any), []);
-  const qs = useCallback(() => dispatch({ type: "QUOTE_SELECTION" } as any), []);
-  const ci = useCallback((t: string) => dispatch({ type: "SET_CHAT_INPUT", text: t } as any), []);
-  const cq = useCallback(() => dispatch({ type: "CLEAR_QUOTE" } as any), []);
-  const send = useCallback(() => { if ((state.chatInput.trim() || state.quotedText) && !state.loading) dispatch({ type: "SEND_CHAT_MESSAGE", message: {} as ChatMessage } as any); }, [state.chatInput, state.quotedText, state.loading]);
-  const setLeftW = useCallback((d: number) => dispatch({ type: "SET_LEFT_WIDTH", width: state.leftPanelWidth + d } as any), [state.leftPanelWidth]);
+  const selectSection = useCallback((sectionId: string) => dispatch({ type: "SELECT_SECTION", sectionId }), []);
+  const toggleSectionExpand = useCallback((sectionId: string) => dispatch({ type: "TOGGLE_SECTION_EXPAND", sectionId }), []);
+  const updateLineText = useCallback((blockId: string, lineId: string, text: string) => dispatch({ type: "UPDATE_LINE_TEXT", blockId, lineId, text }), []);
+  const toggleFootnote = useCallback((footnoteId: string) => dispatch({ type: "TOGGLE_FOOTNOTE", footnoteId }), []);
+  const showSelectionMenu = useCallback((show: boolean, pos?: { x: number; y: number }) => dispatch({ type: "SHOW_SELECTION_MENU", show, pos }), []);
+  const quoteSelection = useCallback(() => dispatch({ type: "QUOTE_SELECTION" }), []);
+  const setChatInput = useCallback((text: string) => dispatch({ type: "SET_CHAT_INPUT", text }), []);
+  const clearQuote = useCallback(() => dispatch({ type: "CLEAR_QUOTE" }), []);
+  const sendChatMessage = useCallback(() => {
+    if ((state.chatInput.trim() || state.quotedText) && !state.loading) {
+      dispatch({ type: "SEND_CHAT_MESSAGE" });
+    }
+  }, [state.chatInput, state.quotedText, state.loading]);
+  const setLeftW = useCallback((d: number) => dispatch({ type: "SET_LEFT_WIDTH", width: state.leftPanelWidth + d }), [state.leftPanelWidth]);
 
   const setRightW = useCallback((d: number, clientX?: number) => {
     rightDragRef.current = true;
@@ -171,23 +111,23 @@ function WorkspacePage(_props: WorkspacePageProps) {
     }
     if (state.rightCollapsed) {
       rightWidthRef.current = Math.min(667, Math.max(189, 189 - d));
-      dispatch({ type: "SET_RIGHT_WIDTH", width: rightWidthRef.current } as any);
+      dispatch({ type: "SET_RIGHT_WIDTH", width: rightWidthRef.current });
     } else {
       const w = Math.max(0, Math.min(667, rightWidthRef.current - d));
       rightWidthRef.current = w;
-      dispatch({ type: "SET_RIGHT_WIDTH", width: w } as any);
+      dispatch({ type: "SET_RIGHT_WIDTH", width: w });
     }
   }, [state.rightCollapsed]);
 
   const toggleLeftPanel = useCallback((mode: "files" | "sections") => {
     setLeftMode((prev) => (prev === mode ? null : mode));
     if (state.leftCollapsed) {
-      dispatch({ type: "TOGGLE_LEFT_PANEL" } as any);
+      dispatch({ type: "TOGGLE_LEFT_PANEL" });
     }
   }, [state.leftCollapsed]);
 
   const toggleRightPanel = useCallback(() => {
-    dispatch({ type: "TOGGLE_RIGHT_PANEL" } as any);
+    dispatch({ type: "TOGGLE_RIGHT_PANEL" });
   }, []);
 
   // Close on mouseup when at minimum width and cursor near window right edge, or when below threshold
@@ -202,7 +142,7 @@ function WorkspacePage(_props: WorkspacePageProps) {
           (!state.rightCollapsed && state.rightPanelWidth > 0 && state.rightPanelWidth < 189) ||
           (state.rightPanelWidth <= 189 && cx > 0 && winW - cx < 50)
         ) {
-          dispatch({ type: "TOGGLE_RIGHT_PANEL" } as any);
+          dispatch({ type: "TOGGLE_RIGHT_PANEL" });
         }
       }
     };
@@ -219,7 +159,7 @@ function WorkspacePage(_props: WorkspacePageProps) {
       // Minimum viewport needed: toolbar + left panel width + right panel min (189) + main content min (200)
       const minViewportNeeded = toolbarWidth + leftMax + 189 + 200;
       if (window.innerWidth < minViewportNeeded) {
-        dispatch({ type: "TOGGLE_RIGHT_PANEL" } as any);
+        dispatch({ type: "TOGGLE_RIGHT_PANEL" });
       }
     };
     window.addEventListener("resize", handleResize);
@@ -232,18 +172,54 @@ function WorkspacePage(_props: WorkspacePageProps) {
     setLeftMode("sections");
   }, []);
 
+  const handleUpload = useCallback((file: File) => {
+    const newFile: FileItem = {
+      id: createFileId(),
+      name: file.name,
+      type: getFileType(file.name),
+      category: "",
+      size: formatFileSize(file.size),
+      date: new Date().toISOString().split("T")[0],
+      status: "pending",
+    };
+    setFiles((prev) => [newFile, ...prev]);
+    setSelectedFileId(newFile.id);
+    setSelectedFileName(newFile.name);
+    setLeftMode("sections");
+  }, []);
+
+  const handleDeleteFile = useCallback((fileId: string) => {
+    setFiles((prev) => prev.filter((file) => file.id !== fileId));
+    if (selectedFileId === fileId) {
+      setSelectedFileId(null);
+      setSelectedFileName("");
+      setLeftMode("files");
+    }
+  }, [selectedFileId]);
+
+  const handleRenameFile = useCallback((fileId: string, newName: string) => {
+    setFiles((prev) => prev.map((file) => file.id === fileId ? { ...file, name: newName } : file));
+    if (selectedFileId === fileId) {
+      setSelectedFileName(newName);
+    }
+  }, [selectedFileId]);
+
+  const handleMoveFile = useCallback((fileId: string, toCategory: string) => {
+    setFiles((prev) => prev.map((file) => file.id === fileId ? { ...file, category: toCategory } : file));
+  }, []);
+
   const handleBackToFiles = useCallback(() => {
     setLeftMode("files");
     setSelectedFileId(null);
   }, []);
 
   const handleSectionSelect = useCallback((id: string) => {
-    d(id);
+    selectSection(id);
     setTimeout(() => {
       const el = document.getElementById(`block-${id}`);
       if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 50);
-  }, [d]);
+  }, [selectSection]);
 
   const showLeftPanel = leftMode !== null;
 
@@ -296,14 +272,16 @@ function WorkspacePage(_props: WorkspacePageProps) {
                   {leftMode === "files" && (
                     <motion.div key="files-panel" initial={{ x: -state.leftPanelWidth }} animate={{ x: 0 }} exit={{ x: -state.leftPanelWidth }}
                       transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }} className="absolute inset-0 bg-white/70">
-                      <FileManager onFileSelectWithName={handleFileSelect} />
+                      <FileManager files={files} folders={initialFolders} selectedFileId={selectedFileId}
+                        onUpload={handleUpload} onFileSelectWithName={handleFileSelect}
+                        onDeleteFile={handleDeleteFile} onRenameFile={handleRenameFile} onMoveFile={handleMoveFile} />
                     </motion.div>
                   )}
                   {leftMode === "sections" && selectedFileId && (
                     <motion.div key="sections-panel" initial={{ x: state.leftPanelWidth }} animate={{ x: 0 }} exit={{ x: state.leftPanelWidth }}
                       transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }} className="absolute inset-0 bg-white/70">
                       <SectionTree sections={state.sections} selectedSectionId={state.selectedSectionId}
-                        onSelect={handleSectionSelect} onToggle={togg} onBack={handleBackToFiles} title={selectedFileName} />
+                        onSelect={handleSectionSelect} onToggle={toggleSectionExpand} onBack={handleBackToFiles} title={selectedFileName} />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -316,10 +294,11 @@ function WorkspacePage(_props: WorkspacePageProps) {
 
         <main className="flex-1 min-w-0 min-h-0">
           <DocumentViewer contentBlocks={state.contentBlocks} selectedSectionId={state.selectedSectionId}
+            pendingFileName={selectedFileId && state.sections.length === 0 ? selectedFileName : undefined}
             footnotes={state.footnotes} expandedFootnoteId={state.expandedFootnoteId}
-            currentSelection={state.currentSelection} showSelectionMenu={state.showSelectionMenu} selectionMenuPos={state.selectionMenuPos}
-            onToggleHighlight={th} onUpdateLineText={ut} onFormatLine={fmt}
-            onToggleFootnote={tf} onSelectText={sel} onShowSelectionMenu={sm} onQuoteSelection={qs} />
+            showSelectionMenu={state.showSelectionMenu} selectionMenuPos={state.selectionMenuPos}
+            onUpdateLineText={updateLineText}
+            onToggleFootnote={toggleFootnote} onShowSelectionMenu={showSelectionMenu} onQuoteSelection={quoteSelection} />
         </main>
 
         <ResizableHandle onResize={setRightW} position="right" onDoubleClick={toggleRightPanel} />
@@ -332,7 +311,7 @@ function WorkspacePage(_props: WorkspacePageProps) {
           {!state.rightCollapsed && (
             <div style={{ width: state.rightPanelWidth, maxWidth: "100%" }} className="h-full overflow-hidden relative">
               <ChatPanel messages={state.chatMessages} input={state.chatInput} quotedText={state.quotedText} tokenUsage={state.tokenUsage}
-                onInputChange={ci} onSend={send} onClearQuote={cq} loading={state.loading} />
+                onInputChange={setChatInput} onSend={sendChatMessage} onClearQuote={clearQuote} loading={state.loading} />
             </div>
           )}
         </motion.aside>

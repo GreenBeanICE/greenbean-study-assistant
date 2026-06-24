@@ -2,40 +2,17 @@
  * 文件管理面板 — 文件夹树结构，支持上传、右键重命名/删除/移动
  */
 
-import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import type { FileItem, FileManagerProps, FileType } from "../../type";
+import { createFileId, DEFAULT_FOLDERS, formatFileSize, getFileType } from "../../workspaceFiles";
 
 /* ------------------------------------------------------------------ */
 /*  类型定义                                                           */
 /* ------------------------------------------------------------------ */
 
-export type FileType = "PDF" | "DOC" | "PPT" | "IMG" | "TXT" | "MD";
-export type FileStatus = "parsed" | "parsing" | "pending";
-
-export interface FileItem {
-  id: string;
-  name: string;
-  type: FileType;
-  category: string;
-  size: string;
-  date: string;
-  status: FileStatus;
-}
-
-export interface Folder {
-  key: string;
-  label: string;
-}
-
-export interface FileManagerProps {
-  files?: FileItem[];
-  folders?: Folder[];
-  selectedFileId?: string | null;
-  onFileSelect?: (fileId: string) => void;
-  /** 选中文件后的回调，返回文件名 */
-  onFileSelectWithName?: (fileId: string, fileName: string) => void;
-}
+export type { FileItem, Folder } from "../../type";
 
 /* ------------------------------------------------------------------ */
 /*  类型颜色映射                                                       */
@@ -51,36 +28,6 @@ const TYPE_STYLES: Record<FileType, { bg: string; text: string; label: string }>
 };
 
 /* ------------------------------------------------------------------ */
-/*  默认数据                                                           */
-/* ------------------------------------------------------------------ */
-
-const DEFAULT_FOLDERS: Folder[] = [
-  { key: "course", label: "课程资料" },
-  { key: "exam", label: "考试复习" },
-  { key: "thesis", label: "论文参考" },
-];
-
-function getDefaultFiles(lang: string): FileItem[] {
-  const zh = lang === "zh";
-  return [
-    { id: "f1", name: "cours-analyse-s1.pdf", type: "PDF", category: "course", size: "12.4 MB", date: "2025-09-15", status: "parsed" },
-    { id: "f2", name: "TD-économie-chap2.docx", type: "DOC", category: "course", size: "3.2 MB", date: "2025-10-02", status: "parsed" },
-    { id: "f3", name: "cours-droit-commercial.pptx", type: "PPT", category: "course", size: "45.8 MB", date: "2025-10-10", status: "parsing" },
-    { id: "f4", name: "cours-maths-tableau.webp", type: "IMG", category: "course", size: "2.1 MB", date: "2025-10-15", status: "pending" },
-    { id: "f5", name: zh ? "复习笔记-期中exam.pdf" : "révision-exam.pdf", type: "PDF", category: "exam", size: "8.5 MB", date: "2025-11-01", status: "parsed" },
-    { id: "f6", name: zh ? "论文-引言部分.docx" : "mémoire-intro.docx", type: "DOC", category: "thesis", size: "1.8 MB", date: "2025-11-10", status: "parsed" },
-    { id: "f7", name: zh ? "参考文献列表.pdf" : "bibliographie.pdf", type: "PDF", category: "thesis", size: "5.3 MB", date: "2025-11-15", status: "pending" },
-    { id: "f8", name: "TD-statistiques.pptx", type: "PPT", category: "course", size: "28.6 MB", date: "2025-11-20", status: "parsing" },
-  ];
-}
-
-function uid(): string {
-  const array = new Uint32Array(1);
-  crypto.getRandomValues(array);
-  return `f_${array[0].toString(36).slice(0, 7)}`;
-}
-
-/* ------------------------------------------------------------------ */
 /*  文件管理器组件                                                     */
 /* ------------------------------------------------------------------ */
 
@@ -88,14 +35,16 @@ export default function FileManager({
   files: externalFiles,
   folders: externalFolders,
   selectedFileId,
+  onUpload,
   onFileSelect,
   onFileSelectWithName,
+  onDeleteFile,
+  onRenameFile,
+  onMoveFile,
 }: FileManagerProps) {
-  const [lang, _setLang] = useState("zh");
-
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(["course"]));
-  const [internalFiles, setInternalFiles] = useState<FileItem[]>(() => getDefaultFiles(lang));
+  const [internalFiles, setInternalFiles] = useState<FileItem[]>([]);
 
   // 右键菜单状态
   const [contextMenu, setContextMenu] = useState<{ fileId: string; x: number; y: number } | null>(null);
@@ -149,15 +98,18 @@ export default function FileManager({
     const file = e.target.files?.[0];
     if (file) {
       const newFile: FileItem = {
-        id: uid(),
+        id: createFileId(),
         name: file.name,
-        type: (file.name.split('.').pop()?.toUpperCase() as FileType) || "PDF",
+        type: getFileType(file.name),
         category: "",
-        size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
+        size: formatFileSize(file.size),
         date: new Date().toISOString().split('T')[0],
         status: "pending",
       };
-      setInternalFiles((prev) => [newFile, ...prev]);
+      onUpload?.(file);
+      if (!externalFiles) {
+        setInternalFiles((prev) => [newFile, ...prev]);
+      }
     }
     (e.target as HTMLInputElement).value = "";
   }, []);
@@ -174,9 +126,12 @@ export default function FileManager({
 
   /** 删除文件 */
   const handleDelete = useCallback((fileId: string) => {
-    setInternalFiles((prev) => prev.filter((f) => f.id !== fileId));
+    onDeleteFile?.(fileId);
+    if (!externalFiles) {
+      setInternalFiles((prev) => prev.filter((f) => f.id !== fileId));
+    }
     closeContextMenu();
-  }, [closeContextMenu]);
+  }, [closeContextMenu, externalFiles, onDeleteFile]);
 
   /** 开始重命名 */
   const handleStartRename = useCallback((fileId: string) => {
@@ -191,20 +146,26 @@ export default function FileManager({
   /** 提交重命名 */
   const handleRenameSubmit = useCallback(() => {
     if (renaming && renaming.name.trim()) {
-      setInternalFiles((prev) => prev.map((f) =>
-        f.id === renaming.fileId ? { ...f, name: renaming.name.trim() } : f
-      ));
+      onRenameFile?.(renaming.fileId, renaming.name.trim());
+      if (!externalFiles) {
+        setInternalFiles((prev) => prev.map((f) =>
+          f.id === renaming.fileId ? { ...f, name: renaming.name.trim() } : f
+        ));
+      }
     }
     setRenaming(null);
-  }, [renaming]);
+  }, [externalFiles, onRenameFile, renaming]);
 
   /** 移动文件到指定文件夹 */
   const handleMove = useCallback((fileId: string, toCategory: string) => {
-    setInternalFiles((prev) => prev.map((f) =>
-      f.id === fileId ? { ...f, category: toCategory } : f
-    ));
+    onMoveFile?.(fileId, toCategory);
+    if (!externalFiles) {
+      setInternalFiles((prev) => prev.map((f) =>
+        f.id === fileId ? { ...f, category: toCategory } : f
+      ));
+    }
     closeContextMenu();
-  }, [closeContextMenu]);
+  }, [closeContextMenu, externalFiles, onMoveFile]);
 
   /** 点击文件 */
   const handleFileClick = useCallback((fileId: string, fileName: string) => {

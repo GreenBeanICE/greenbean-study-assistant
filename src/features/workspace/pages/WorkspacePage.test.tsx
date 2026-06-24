@@ -2,7 +2,58 @@ import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup, act } from "@testing-library/react";
 import WorkspacePage, { workspaceReducer } from "./WorkspacePage";
-import type { WorkspaceState } from "../type";
+import type { FileItem, Folder, WorkspaceState } from "../type";
+import type { ContentBlock, FootnoteReference, SectionNode } from "../../../types/section";
+
+const sampleFolders: Folder[] = [
+  { key: "course", label: "课程资料" },
+  { key: "exam", label: "考试复习" },
+  { key: "thesis", label: "论文参考" },
+];
+
+const sampleFiles: FileItem[] = [
+  { id: "f1", name: "cours-analyse-s1.pdf", type: "PDF", category: "course", size: "12.4 MB", date: "2025-09-15", status: "parsed" },
+  { id: "f2", name: "TD-économie-chap2.docx", type: "DOC", category: "course", size: "3.2 MB", date: "2025-10-02", status: "parsed" },
+  { id: "f5", name: "复习笔记-期中exam.pdf", type: "PDF", category: "exam", size: "8.5 MB", date: "2025-11-01", status: "parsed" },
+];
+
+const sampleSections: SectionNode[] = [
+  { id: "ch1", title: "第一章：引言", index: "1", expanded: true, children: [
+    { id: "ch1-1", title: "背景介绍", index: "1.1" },
+    { id: "ch1-2", title: "研究意义", index: "1.2" },
+  ]},
+  { id: "ch2", title: "第二章：理论基础", index: "2", expanded: true, children: [
+    { id: "ch2-1", title: "概念定义", index: "2.1" },
+  ]},
+  { id: "ch3", title: "第三章：方法论", index: "3", expanded: false },
+  { id: "ch5", title: "第五章：结论", index: "5" },
+];
+
+const sampleContentBlocks: ContentBlock[] = [
+  { id: "block-ch1-1", sectionId: "ch1-1", title: "1.1 背景介绍", contentType: "text", lines: [
+    { id: "l1", text: "近年来，人工智能技术取得了飞速发展。", type: "paragraph", footnoteRef: "1" },
+    { id: "l2", text: "在教育领域，AI 技术的应用尤为引人注目。", type: "paragraph" },
+  ]},
+  { id: "block-ch2-1", sectionId: "ch2-1", title: "2.1 概念定义", contentType: "text", lines: [
+    { id: "l3", text: "本节定义了研究中使用的核心概念。", type: "paragraph" },
+  ]},
+];
+
+const sampleFootnotes: FootnoteReference[] = [
+  { id: "fn-1", refNumber: "1", sourceText: "Gartner预测到2025年AI在教育领域创造超过500亿美元的市场价值。", sourceDesc: "第1页，第1段" },
+];
+
+function renderDemoWorkspace() {
+  return render(
+    <WorkspacePage
+      initialFiles={sampleFiles}
+      initialFolders={sampleFolders}
+      initialSections={sampleSections}
+      initialContentBlocks={sampleContentBlocks}
+      initialFootnotes={sampleFootnotes}
+    />,
+  );
+}
 
 function createTestState(): WorkspaceState {
   return {
@@ -57,6 +108,13 @@ describe("WorkspacePage", () => {
     expect(screen.getByText("论文参考")).toBeDefined();
   });
 
+  it("默认进入空工作区时不显示演示文件", () => {
+    render(<WorkspacePage />);
+    expect(screen.queryByText("cours-analyse-s1.pdf")).toBeNull();
+    expect(screen.queryByText("TD-économie-chap2.docx")).toBeNull();
+    expect(screen.getByText("从左侧上传一份文档开始")).toBeDefined();
+  });
+
   it("搜索框存在", () => {
     render(<WorkspacePage />);
     const searchInput = screen.getByPlaceholderText("搜索文件名...");
@@ -64,13 +122,13 @@ describe("WorkspacePage", () => {
   });
 
   it("文件夹默认展开课程资料", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     expect(screen.getByText("cours-analyse-s1.pdf")).toBeDefined();
     expect(screen.queryByText("复习笔记-期中exam.pdf")).toBeNull();
   });
 
   it("点击文件夹可展开/折叠", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     fireEvent.click(screen.getByText("考试复习"));
     expect(screen.getByText("复习笔记-期中exam.pdf")).toBeDefined();
     fireEvent.click(screen.getByText("考试复习"));
@@ -78,20 +136,20 @@ describe("WorkspacePage", () => {
   });
 
   it("选择文件后切换到章节树模式", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
     expect(screen.getByText("cours-analyse-s1.pdf")).toBeDefined();
     expect(screen.queryByText("我的文档")).toBeNull();
   });
 
   it("章节树模式显示返回按钮", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
     expect(screen.getByTitle("返回文件列表")).toBeDefined();
   });
 
   it("返回按钮可回到文件列表", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
     const backBtn = screen.getByTitle("返回文件列表");
     fireEvent.click(backBtn);
@@ -99,14 +157,14 @@ describe("WorkspacePage", () => {
   });
 
   it("章节树显示章节列表", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
     expect(screen.getByText((c) => c.includes("第一章：引言"))).toBeDefined();
     expect(screen.getByText((c) => c.includes("第五章：结论"))).toBeDefined();
   });
 
   it("点击章节后中间区域显示对应的内容", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
     expect(screen.getByText("从左侧上传一份文档开始")).toBeDefined();
     fireEvent.click(screen.getByText((c) => c.includes("1.1 背景介绍")));
@@ -126,7 +184,7 @@ describe("WorkspacePage", () => {
   });
 
   it("选择文件后章节按钮出现", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
     expect(screen.getByTitle("章节导航")).toBeDefined();
   });
@@ -138,7 +196,18 @@ describe("WorkspacePage", () => {
 
   it("右侧聊天面板显示默认欢迎语", () => {
     render(<WorkspacePage />);
-    expect(screen.getByText("上传一份文档后，我在这里帮你答疑")).toBeDefined();
+    expect(screen.getByText("有什么可以帮你？")).toBeDefined();
+  });
+
+  it("上传文档后进入等待解析态", () => {
+    render(<WorkspacePage />);
+    const uploadLabel = screen.getByTitle("上传新文件");
+    const fileInput = uploadLabel.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(["lecture"], "lecture.pdf", { type: "application/pdf" });
+    Object.defineProperty(fileInput, "files", { value: [file] });
+    fireEvent.change(fileInput);
+    expect(screen.getByText("暂无章节数据")).toBeDefined();
+    expect(screen.getByText("《lecture.pdf》已上传，等待解析")).toBeDefined();
   });
 
   it("中间区域文档查看器存在", () => {
@@ -191,13 +260,13 @@ describe("WorkspacePage", () => {
     expect(screen.getByText(/Enter/)).toBeDefined();
   });
 
-  it("右侧面板有token使用量提示", () => {
+  it("右侧面板显示AI助手状态区", () => {
     render(<WorkspacePage />);
-    expect(screen.getByText("0 / 4,096")).toBeDefined();
+    expect(screen.getByText("AI 助手")).toBeDefined();
   });
 
   it("右键菜单操作-删除文件", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     const fileBtn = screen.getByText("TD-économie-chap2.docx").closest("button");
     if (fileBtn) {
       fireEvent.contextMenu(fileBtn);
@@ -229,7 +298,7 @@ describe("WorkspacePage", () => {
   });
 
   it("带引用发送聊天消息覆盖 quotedText 分支", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
     fireEvent.click(screen.getByText((c) => c.includes("1.1 背景介绍")));
     const textarea = screen.getByPlaceholderText("输入你的问题...");
@@ -254,7 +323,7 @@ describe("WorkspacePage", () => {
   });
 
   it("右键菜单操作-移动到其他文件夹", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     const fileBtn = screen.getByText("cours-analyse-s1.pdf").closest("button");
     if (fileBtn) {
       fireEvent.contextMenu(fileBtn);
@@ -264,7 +333,7 @@ describe("WorkspacePage", () => {
   });
 
   it("右键菜单操作-重命名文件", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     const fileBtn = screen.getByText("cours-analyse-s1.pdf").closest("button");
     if (fileBtn) {
       fireEvent.contextMenu(fileBtn);
@@ -280,7 +349,7 @@ describe("WorkspacePage", () => {
   });
 
   it("通过快捷键 Escape 退出重命名", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     const fileBtn = screen.getByText("cours-analyse-s1.pdf").closest("button");
     if (fileBtn) {
       fireEvent.contextMenu(fileBtn);
@@ -294,7 +363,7 @@ describe("WorkspacePage", () => {
   });
 
   it("章节树展开/折叠 TOGGLE_SECTION_EXPAND", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
     const ch3Btn = screen.getByText((c) => c.includes("第三章：方法论"));
     fireEvent.click(ch3Btn);
@@ -303,7 +372,7 @@ describe("WorkspacePage", () => {
   });
 
   it("通过文件面板章节导航按钮切换 leftMode", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
     const sectionBtn = screen.getByTitle("章节导航");
     fireEvent.click(sectionBtn);
@@ -311,7 +380,7 @@ describe("WorkspacePage", () => {
   });
 
   it("右键菜单移动到其他文件夹", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     const fileBtn = screen.getByText("TD-économie-chap2.docx").closest("button");
     if (fileBtn) {
       fireEvent.contextMenu(fileBtn);
@@ -324,7 +393,7 @@ describe("WorkspacePage", () => {
   });
 
   it("右键菜单移出文件夹", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     const fileBtn = screen.getByText("cours-analyse-s1.pdf").closest("button");
     if (fileBtn) {
       fireEvent.contextMenu(fileBtn);
@@ -362,7 +431,7 @@ describe("WorkspacePage", () => {
   });
 
   it("点击章节按钮隐藏文件面板", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
     const sectionBtn = screen.getByTitle("章节导航");
     fireEvent.click(sectionBtn);
@@ -376,7 +445,7 @@ describe("WorkspacePage", () => {
     mockEl.scrollIntoView = vi.fn();
     document.body.appendChild(mockEl);
     
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
     fireEvent.click(screen.getByText((c) => c.includes("1.1 背景介绍")));
     
@@ -390,7 +459,7 @@ describe("WorkspacePage", () => {
   });
 
   it("选择无对应 element 的章节不报错", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
     // Select a section that has no matching element in DOM
     fireEvent.click(screen.getByText((c) => c.includes("第五章：结论")));
@@ -398,7 +467,7 @@ describe("WorkspacePage", () => {
   });
 
   it("右键菜单移动到同文件夹选项不存在", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     const fileBtn = screen.getByText("cours-analyse-s1.pdf").closest("button");
     if (fileBtn) {
       fireEvent.contextMenu(fileBtn);
@@ -408,7 +477,7 @@ describe("WorkspacePage", () => {
   });
 
   it("点击脚注展开详情触发 TOGGLE_FOOTNOTE", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
     fireEvent.click(screen.getByText((c) => c.includes("1.1 背景介绍")));
     const footnoteBtns = screen.getAllByTitle("点击查看原文引用");
@@ -420,7 +489,7 @@ describe("WorkspacePage", () => {
   });
 
   it("FORMAT_LINE 事件通过 reducer 处理不报错", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
     fireEvent.click(screen.getByText((c) => c.includes("1.1 背景介绍")));
     const boldBtns = screen.getAllByTitle("加粗");
@@ -458,7 +527,7 @@ describe("WorkspacePage", () => {
   });
 
   it("内容编辑触发 reducer 的 UPDATE_LINE_TEXT", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
     fireEvent.click(screen.getByText((c) => c.includes("1.1 背景介绍")));
     const contentEditableElements = document.querySelectorAll('[contenteditable="true"]');
@@ -519,7 +588,7 @@ describe("WorkspacePage", () => {
   });
 
   it("通过文档查看器的高亮触发 TOGGLE_HIGHLIGHT", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
     fireEvent.click(screen.getByText((c) => c.includes("1.1 背景介绍")));
     // The document toolbar buttons exist and can be clicked
@@ -542,7 +611,7 @@ describe("WorkspacePage", () => {
   });
 
   it("左侧面板折叠时点击文件管理保持折叠状态", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
     const sectionBtn = screen.getByTitle("章节导航");
     fireEvent.click(sectionBtn);
@@ -571,7 +640,7 @@ describe("WorkspacePage", () => {
   });
 
   it("通过文件选择触发 handleFileSelect 和 leftMode 切换", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
     expect(screen.getByTitle("返回文件列表")).toBeDefined();
     fireEvent.click(screen.getByTitle("返回文件列表"));
@@ -593,7 +662,7 @@ describe("WorkspacePage", () => {
   });
 
   it("高亮工具栏按钮存在并可点击", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
     fireEvent.click(screen.getByText((c) => c.includes("1.1 背景介绍")));
     const highlightBtn = screen.getAllByTitle("高亮");
@@ -609,7 +678,7 @@ describe("WorkspacePage", () => {
   });
 
   it("章节切换时 SELECT_SECTION dispatch 通过章节导航触发", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
     fireEvent.click(screen.getByText((c) => c.includes("1.1 背景介绍")));
     fireEvent.click(screen.getByText((c) => c.includes("2.1 概念定义")));
@@ -646,13 +715,12 @@ describe("WorkspacePage", () => {
 
   it("右面板宽度设为较小值时 SET_RIGHT_WIDTH 限制最小宽度", () => {
     render(<WorkspacePage />);
-    const handle = document.querySelector('[class*="cursor-col-resize"]:last-child');
     // This test validates that the dispatch works correctly
     expect(screen.getByTitle("收起AI聊天")).toBeDefined();
   });
 
   it("左侧面板折叠后点击章节按钮恢复左面板", () => {
-    render(<WorkspacePage />);
+    renderDemoWorkspace();
     fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
     // Click section nav to hide left panel  
     fireEvent.click(screen.getByTitle("章节导航"));
@@ -785,13 +853,13 @@ describe("workspaceReducer", () => {
 
   it("SEND_CHAT_MESSAGE without/with quotedText", () => {
     const s1 = createTestState(); s1.chatInput = "hello";
-    const r1 = workspaceReducer(s1, { type: "SEND_CHAT_MESSAGE", message: {} as any });
+    const r1 = workspaceReducer(s1, { type: "SEND_CHAT_MESSAGE" });
     expect(r1.chatMessages).toHaveLength(2);
     expect(r1.chatMessages[0].content).toBe("hello");
     expect(r1.tokenUsage).toBe(150);
 
     const s2 = createTestState(); s2.chatInput = "q"; s2.quotedText = "ref";
-    const r2 = workspaceReducer(s2, { type: "SEND_CHAT_MESSAGE", message: {} as any });
+    const r2 = workspaceReducer(s2, { type: "SEND_CHAT_MESSAGE" });
     expect(r2.chatMessages[0].content).toContain("[引用]");
     expect(r2.quotedText).toBeNull();
   });

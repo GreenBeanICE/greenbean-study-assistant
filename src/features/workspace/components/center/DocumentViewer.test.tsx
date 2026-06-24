@@ -91,14 +91,10 @@ const defaultProps = {
   selectedSectionId: null,
   footnotes: sampleFootnotes,
   expandedFootnoteId: null,
-  currentSelection: null,
   showSelectionMenu: false,
   selectionMenuPos: null,
-  onToggleHighlight: vi.fn(),
   onUpdateLineText: vi.fn(),
-  onFormatLine: vi.fn(),
   onToggleFootnote: vi.fn(),
-  onSelectText: vi.fn(),
   onShowSelectionMenu: vi.fn(),
   onQuoteSelection: vi.fn(),
 };
@@ -416,7 +412,9 @@ describe("DocumentViewer", () => {
       getRangeAt: () => ({}),
     } as unknown as Selection);
     render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />);
-    document.dispatchEvent(new Event("selectionchange"));
+    act(() => {
+      document.dispatchEvent(new Event("selectionchange"));
+    });
     expect(mockGetSelection).toHaveBeenCalled();
     mockGetSelection.mockRestore();
   });
@@ -731,24 +729,13 @@ describe("DocumentViewer", () => {
     removeEventListenerSpy.mockRestore();
   });
 
-  it("通过工具栏插入图片/表格触发 onFormat (handleFormat 回调)", () => {
-    const onFormatLine = vi.fn();
-    render(
-      <DocumentViewer
-        {...defaultProps}
-        selectedSectionId="ch1-1"
-        onFormatLine={onFormatLine}
-      />,
-    );
-    // 文档工具栏中的插入图片按钮
+  it("通过工具栏插入图片/表格时不报错", () => {
+    render(<DocumentViewer {...defaultProps} selectedSectionId="ch1-1" />);
     const insertImageBtns = screen.getAllByTitle("插入图片");
     expect(insertImageBtns.length).toBeGreaterThanOrEqual(1);
     fireEvent.mouseDown(insertImageBtns[0]);
-    // 插入图片由 toolbar 的 mousedown 直接调用 onFormat（即 handleFormat）
-    // handleFormat 是空函数，所以 onFormatLine 不会被调用
-    // 但至少测试不报错
     const insertTableBtns = screen.getAllByTitle("插入表格");
     fireEvent.mouseDown(insertTableBtns[0]);
-    expect(onFormatLine).not.toHaveBeenCalled();
+    expect(screen.getByText("1.1 背景介绍")).toBeDefined();
   });
 });

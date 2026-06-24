@@ -1,4 +1,3 @@
-import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import ChatPanel from "./ChatPanel";
@@ -36,16 +35,20 @@ describe("ChatPanel", () => {
     expect(screen.getByText("AI 助手")).toBeDefined();
   });
 
-  it("空消息列表显示上传引导文案", () => {
-    render(<ChatPanel {...defaultProps} />);
-    expect(screen.getByText("上传一份文档后，我在这里帮你答疑")).toBeDefined();
-    expect(screen.queryByText("有什么可以帮你？")).toBeNull();
-  });
-
   it("空白输入时发送按钮禁用", () => {
     render(<ChatPanel {...defaultProps} />);
     const sendBtn = document.querySelector("button[disabled]");
     expect(sendBtn).toBeDefined();
+  });
+
+  it("空消息列表显示上传后的提问引导文案", () => {
+    render(<ChatPanel {...defaultProps} />);
+    expect(screen.getByText("上传资料后，可以让我总结、解释或出题")).toBeDefined();
+  });
+
+  it("显示 token 用量", () => {
+    render(<ChatPanel {...defaultProps} tokenUsage={500} />);
+    expect(screen.getByText("500 / 4,096")).toBeDefined();
   });
 
   it("输入文本后发送按钮可点击", () => {
@@ -106,12 +109,6 @@ describe("ChatPanel", () => {
     expect(clearBtn).toBeDefined();
     if (clearBtn) fireEvent.click(clearBtn);
     expect(onClearQuote).toHaveBeenCalled();
-  });
-
-  it("显示 token 用量", () => {
-    render(<ChatPanel {...defaultProps} tokenUsage={150} />);
-    expect(screen.getByText(/150/)).toBeDefined();
-    expect(screen.getByText(/4,096/)).toBeDefined();
   });
 
   it("加载中显示脉冲动画点", () => {

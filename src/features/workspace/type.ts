@@ -3,6 +3,24 @@ import type { ChatMessage } from "../../types/chat";
 
 export type TextFormatAction = "bold" | "italic" | "underline" | "strikethrough" | "highlight" | "align-left" | "align-center" | "align-right" | "align-justify" | "insert-image" | "insert-table";
 
+export type FileType = "PDF" | "DOC" | "PPT" | "IMG" | "TXT" | "MD";
+export type FileStatus = "parsed" | "parsing" | "pending";
+
+export interface FileItem {
+  id: string;
+  name: string;
+  type: FileType;
+  category: string;
+  size: string;
+  date: string;
+  status: FileStatus;
+}
+
+export interface Folder {
+  key: string;
+  label: string;
+}
+
 export interface WorkspaceState {
   sections: SectionNode[];
   selectedSectionId: string | null;
@@ -36,7 +54,7 @@ export type WorkspaceAction =
   | { type: "QUOTE_SELECTION" }
   | { type: "CLEAR_QUOTE" }
   | { type: "SET_CHAT_INPUT"; text: string }
-  | { type: "SEND_CHAT_MESSAGE"; message: ChatMessage }
+  | { type: "SEND_CHAT_MESSAGE" }
   | { type: "SET_LOADING"; loading: boolean }
   | { type: "SET_TOKEN_USAGE"; usage: number }
   | { type: "TOGGLE_LEFT_PANEL" }
@@ -56,16 +74,13 @@ export interface SectionTreeProps {
 export interface DocumentViewerProps {
   contentBlocks: ContentBlock[];
   selectedSectionId: string | null;
+  pendingFileName?: string;
   footnotes: FootnoteReference[];
   expandedFootnoteId: string | null;
-  currentSelection: TextSelection | null;
   showSelectionMenu: boolean;
   selectionMenuPos: { x: number; y: number } | null;
-  onToggleHighlight: (blockId: string, lineId: string) => void;
   onUpdateLineText: (blockId: string, lineId: string, text: string) => void;
-  onFormatLine: (blockId: string, lineId: string, format: TextFormatAction) => void;
   onToggleFootnote: (footnoteId: string) => void;
-  onSelectText: (selection: TextSelection | null) => void;
   onShowSelectionMenu: (show: boolean, pos?: { x: number; y: number }) => void;
   onQuoteSelection: () => void;
 }
@@ -81,7 +96,24 @@ export interface ChatPanelProps {
   loading: boolean;
 }
 
+export interface FileManagerProps {
+  files?: FileItem[];
+  folders?: Folder[];
+  selectedFileId?: string | null;
+  onUpload?: (file: File) => void;
+  onFileSelect?: (fileId: string) => void;
+  onFileSelectWithName?: (fileId: string, fileName: string) => void;
+  onDeleteFile?: (fileId: string) => void;
+  onRenameFile?: (fileId: string, newName: string) => void;
+  onMoveFile?: (fileId: string, toCategory: string) => void;
+}
+
 export interface WorkspacePageProps {
   /** 工作区唯一标识（可选，后续可根据此加载不同数据） */
   workspaceId?: string;
+  initialFiles?: FileItem[];
+  initialFolders?: Folder[];
+  initialSections?: SectionNode[];
+  initialContentBlocks?: ContentBlock[];
+  initialFootnotes?: FootnoteReference[];
 }

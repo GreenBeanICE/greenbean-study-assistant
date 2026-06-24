@@ -3,6 +3,24 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import FileManager, { type FileItem, type Folder } from "./FileManager";
 
+const sampleFolders: Folder[] = [
+  { key: "course", label: "课程资料" },
+  { key: "exam", label: "考试复习" },
+  { key: "thesis", label: "论文参考" },
+];
+
+const sampleFiles: FileItem[] = [
+  { id: "f1", name: "cours-analyse-s1.pdf", type: "PDF", category: "course", size: "12.4 MB", date: "2025-09-15", status: "parsed" },
+  { id: "f2", name: "TD-économie-chap2.docx", type: "DOC", category: "course", size: "3.2 MB", date: "2025-10-02", status: "parsed" },
+  { id: "f3", name: "cours-droit-commercial.pptx", type: "PPT", category: "course", size: "45.8 MB", date: "2025-10-10", status: "parsing" },
+  { id: "f5", name: "复习笔记-期中exam.pdf", type: "PDF", category: "exam", size: "8.5 MB", date: "2025-11-01", status: "parsed" },
+  { id: "f6", name: "论文-引言部分.docx", type: "DOC", category: "thesis", size: "1.8 MB", date: "2025-11-10", status: "parsed" },
+];
+
+function renderSampleFileManager(props: Partial<React.ComponentProps<typeof FileManager>> = {}) {
+  return render(<FileManager files={sampleFiles} folders={sampleFolders} {...props} />);
+}
+
 describe("FileManager", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -22,8 +40,14 @@ describe("FileManager", () => {
     expect(screen.getByText("论文参考")).toBeDefined();
   });
 
-  it("默认文件列表渲染在展开的文件夹中", () => {
+  it("默认不渲染任何生产演示文件", () => {
     render(<FileManager />);
+    expect(screen.queryByText("cours-analyse-s1.pdf")).toBeNull();
+    expect(screen.queryByText("TD-économie-chap2.docx")).toBeNull();
+  });
+
+  it("默认文件列表渲染在展开的文件夹中", () => {
+    renderSampleFileManager();
     // "课程资料" 默认展开
     expect(screen.getByText("cours-analyse-s1.pdf")).toBeDefined();
     expect(screen.getByText("TD-économie-chap2.docx")).toBeDefined();
@@ -32,21 +56,21 @@ describe("FileManager", () => {
   /* ===== 搜索 ===== */
 
   it("搜索框过滤文件", () => {
-    render(<FileManager />);
+    renderSampleFileManager();
     const searchInput = screen.getByPlaceholderText("搜索文件名...");
     fireEvent.change(searchInput, { target: { value: "analyse" } });
     expect(screen.getByText("cours-analyse-s1.pdf")).toBeDefined();
   });
 
   it("空搜索结果显示空状态", () => {
-    render(<FileManager />);
+    renderSampleFileManager();
     const searchInput = screen.getByPlaceholderText("搜索文件名...");
     fireEvent.change(searchInput, { target: { value: "zzz_nonexistent_file" } });
     expect(screen.getByText("暂无匹配文件")).toBeDefined();
   });
 
   it("搜索模式下不显示文件夹结构", () => {
-    render(<FileManager />);
+    renderSampleFileManager();
     const searchInput = screen.getByPlaceholderText("搜索文件名...");
     fireEvent.change(searchInput, { target: { value: "cours" } });
     // 搜索模式下不应显示文件夹标题（课程资料仅在非搜索模式显示）
@@ -56,7 +80,7 @@ describe("FileManager", () => {
   /* ===== 文件夹展开/折叠 ===== */
 
   it("点击文件夹可展开子文件", () => {
-    render(<FileManager />);
+    renderSampleFileManager();
     expect(screen.queryByText("复习笔记-期中exam.pdf")).toBeNull();
     fireEvent.click(screen.getByText("考试复习"));
     expect(screen.getByText("复习笔记-期中exam.pdf")).toBeDefined();
@@ -75,7 +99,7 @@ describe("FileManager", () => {
   it("点击文件触发 onFileSelect", () => {
     const onFileSelect = vi.fn();
     const onFileSelectWithName = vi.fn();
-    render(<FileManager onFileSelect={onFileSelect} onFileSelectWithName={onFileSelectWithName} />);
+    renderSampleFileManager({ onFileSelect, onFileSelectWithName });
     const fileBtn = screen.getByText("cours-analyse-s1.pdf").closest("button");
     expect(fileBtn).toBeDefined();
     if (fileBtn) {
@@ -87,7 +111,7 @@ describe("FileManager", () => {
 
   it("仅 onFileSelect 回调时只触发一个", () => {
     const onFileSelect = vi.fn();
-    render(<FileManager onFileSelect={onFileSelect} />);
+    renderSampleFileManager({ onFileSelect });
     const fileBtn = screen.getByText("cours-analyse-s1.pdf").closest("button");
     if (fileBtn) {
       fireEvent.click(fileBtn);
@@ -97,7 +121,7 @@ describe("FileManager", () => {
 
   /* ===== 上传 ===== */
 
-  it("上传新文件触发文件列表更新", () => {
+  it("非受控模式上传新文件触发文件列表更新", () => {
     render(<FileManager />);
     const uploadLabel = screen.getByTitle("上传新文件");
     const fileInput = uploadLabel.querySelector('input[type="file"]') as HTMLInputElement;
@@ -108,6 +132,38 @@ describe("FileManager", () => {
     expect(screen.getByText("nouveau-cours.pdf")).toBeDefined();
   });
 
+  it("上传新文件调用 onUpload", () => {
+    const onUpload = vi.fn();
+    render(<FileManager onUpload={onUpload} /> as React.ReactElement);
+    const uploadLabel = screen.getByTitle("上传新文件");
+    const fileInput = uploadLabel.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(["dummy content"], "nouveau-cours.pdf", { type: "application/pdf" });
+    Object.defineProperty(fileInput, "files", { value: [file] });
+    fireEvent.change(fileInput);
+    expect(onUpload).toHaveBeenCalledWith(file);
+  });
+
+  it("非受控上传 Office 和图片文件时映射为支持的文件类型", () => {
+    render(<FileManager />);
+    const uploadLabel = screen.getByTitle("上传新文件");
+    const fileInput = uploadLabel.querySelector('input[type="file"]') as HTMLInputElement;
+
+    const uploads = [
+      { fileName: "cours.docx", expectedLabel: "DOC" },
+      { fileName: "slides.pptx", expectedLabel: "PPT" },
+      { fileName: "photo.jpg", expectedLabel: "IMG" },
+    ];
+
+    for (const upload of uploads) {
+      const file = new File(["dummy content"], upload.fileName);
+      Object.defineProperty(fileInput, "files", { value: [file], configurable: true });
+      fireEvent.change(fileInput);
+
+      expect(screen.getByText(upload.fileName)).toBeDefined();
+      expect(screen.getByText(upload.expectedLabel)).toBeDefined();
+    }
+  });
+
   it("上传空文件列表不会报错", () => {
     render(<FileManager />);
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
@@ -115,8 +171,7 @@ describe("FileManager", () => {
     // 空 file 列表（用户取消选择）
     Object.defineProperty(fileInput, "files", { value: [] });
     fireEvent.change(fileInput);
-    // 不应有额外文件出现
-    expect(screen.getByText("cours-analyse-s1.pdf")).toBeDefined();
+    expect(screen.queryByText("nouveau-cours.pdf")).toBeNull();
   });
 
   /* ===== 上传按钮 ===== */
@@ -129,7 +184,7 @@ describe("FileManager", () => {
   /* ===== 右键菜单: 重命名 ===== */
 
   it("右键菜单操作-重命名", () => {
-    render(<FileManager selectedFileId="f1" />);
+    renderSampleFileManager({ selectedFileId: "f1" });
     const fileBtn = screen.getByText("cours-analyse-s1.pdf").closest("button");
     expect(fileBtn).toBeDefined();
     if (fileBtn) {
@@ -142,7 +197,8 @@ describe("FileManager", () => {
   });
 
   it("重命名提交后文件名称更新（blur 保存）", () => {
-    render(<FileManager selectedFileId="f1" />);
+    const onRenameFile = vi.fn();
+    renderSampleFileManager({ selectedFileId: "f1", onRenameFile });
     const fileBtn = screen.getByText("cours-analyse-s1.pdf").closest("button");
     if (fileBtn) {
       fireEvent.contextMenu(fileBtn);
@@ -151,14 +207,14 @@ describe("FileManager", () => {
       if (renameInput) {
         fireEvent.change(renameInput, { target: { value: "新名称.pdf" } });
         fireEvent.blur(renameInput);
-        expect(screen.getByText("新名称.pdf")).toBeDefined();
-        expect(screen.queryByText("cours-analyse-s1.pdf")).toBeNull();
+        expect(onRenameFile).toHaveBeenCalledWith("f1", "新名称.pdf");
       }
     }
   });
 
   it("重命名 Enter 键提交", () => {
-    render(<FileManager selectedFileId="f1" />);
+    const onRenameFile = vi.fn();
+    renderSampleFileManager({ selectedFileId: "f1", onRenameFile });
     const fileBtn = screen.getByText("cours-analyse-s1.pdf").closest("button");
     if (fileBtn) {
       fireEvent.contextMenu(fileBtn);
@@ -167,13 +223,13 @@ describe("FileManager", () => {
       if (renameInput) {
         fireEvent.change(renameInput, { target: { value: "enter-name.pdf" } });
         fireEvent.keyDown(renameInput, { key: "Enter" });
-        expect(screen.getByText("enter-name.pdf")).toBeDefined();
+        expect(onRenameFile).toHaveBeenCalledWith("f1", "enter-name.pdf");
       }
     }
   });
 
   it("重命名 Escape 取消", () => {
-    render(<FileManager selectedFileId="f1" />);
+    renderSampleFileManager({ selectedFileId: "f1" });
     const fileBtn = screen.getByText("cours-analyse-s1.pdf").closest("button");
     if (fileBtn) {
       fireEvent.contextMenu(fileBtn);
@@ -192,20 +248,21 @@ describe("FileManager", () => {
   /* ===== 右键菜单: 删除 ===== */
 
   it("右键菜单操作-删除", () => {
-    render(<FileManager />);
+    const onDeleteFile = vi.fn();
+    renderSampleFileManager({ onDeleteFile });
     const fileBtn = screen.getByText("cours-analyse-s1.pdf").closest("button");
     if (fileBtn) {
       fireEvent.contextMenu(fileBtn);
       expect(screen.getByText("删除")).toBeDefined();
       fireEvent.click(screen.getByText("删除"));
-      expect(screen.queryByText("cours-analyse-s1.pdf")).toBeNull();
+      expect(onDeleteFile).toHaveBeenCalledWith("f1");
     }
   });
 
   /* ===== 右键菜单: 移动到 ===== */
 
   it("右键菜单操作-移动到其他文件夹", () => {
-    render(<FileManager selectedFileId="f1" />);
+    renderSampleFileManager({ selectedFileId: "f1" });
     const fileBtn = screen.getByText("cours-analyse-s1.pdf").closest("button");
     if (fileBtn) {
       fireEvent.contextMenu(fileBtn);
@@ -217,7 +274,7 @@ describe("FileManager", () => {
   });
 
   it("右键菜单移动到指定文件夹", () => {
-    render(<FileManager selectedFileId="f1" />);
+    renderSampleFileManager({ selectedFileId: "f1" });
     const fileBtn = screen.getByText("cours-analyse-s1.pdf").closest("button");
     if (fileBtn) {
       fireEvent.contextMenu(fileBtn);
@@ -229,7 +286,7 @@ describe("FileManager", () => {
   });
 
   it("右键菜单移出文件夹", () => {
-    render(<FileManager />);
+    renderSampleFileManager();
     const fileBtn = screen.getByText("cours-analyse-s1.pdf").closest("button");
     if (fileBtn) {
       fireEvent.contextMenu(fileBtn);
@@ -241,7 +298,7 @@ describe("FileManager", () => {
   /* ===== 右键菜单: 关闭 ===== */
 
   it("右键菜单可通过 Escape 关闭", () => {
-    render(<FileManager selectedFileId="f1" />);
+    renderSampleFileManager({ selectedFileId: "f1" });
     const fileBtn = screen.getByText("cours-analyse-s1.pdf").closest("button");
     if (fileBtn) {
       fireEvent.contextMenu(fileBtn);
@@ -254,7 +311,7 @@ describe("FileManager", () => {
   });
 
   it("右键菜单点击 backdrop 关闭", () => {
-    render(<FileManager selectedFileId="f1" />);
+    renderSampleFileManager({ selectedFileId: "f1" });
     const fileBtn = screen.getByText("cours-analyse-s1.pdf").closest("button");
     if (fileBtn) {
       fireEvent.contextMenu(fileBtn);
@@ -269,7 +326,7 @@ describe("FileManager", () => {
   /* ===== 选中样式 ===== */
 
   it("选中文件时应用选中样式", () => {
-    render(<FileManager selectedFileId="f1" />);
+    renderSampleFileManager({ selectedFileId: "f1" });
     const fileBtn = screen.getByText("cours-analyse-s1.pdf").closest("button");
     expect(fileBtn).toBeDefined();
     if (fileBtn) {

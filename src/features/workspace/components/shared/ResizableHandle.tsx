@@ -5,7 +5,6 @@ function ResizableHandle({
   onResize,
   onDoubleClick,
   onDragStateChange,
-  position = "left",
 }: {
   onResize: (delta: number, clientX?: number) => void;
   onDoubleClick?: () => void;

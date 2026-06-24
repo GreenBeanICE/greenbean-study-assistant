@@ -20,12 +20,14 @@ function AIAvatar({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
 function TokenUsage({ usage }: { usage: number }) {
   const max = 4096;
   const percentage = Math.min((usage / max) * 100, 100);
+  const formattedUsage = usage.toLocaleString("en-US");
+  const formattedMax = max.toLocaleString("en-US");
   return (
     <div className="flex items-center gap-1.5 text-[9px] text-neutral-400 flex-shrink-0 min-w-0">
       <div className="w-10 h-1.5 bg-black/10 rounded-full overflow-hidden flex-shrink-0">
         <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300" style={{ width: `${percentage}%` }} />
       </div>
-      <span className="font-medium flex-shrink-0">{usage.toLocaleString()} / {max.toLocaleString()}</span>
+      <span className="font-medium flex-shrink-0">{formattedUsage} / {formattedMax}</span>
     </div>
   );
 }
@@ -87,6 +89,7 @@ function ChatPanel({ messages, input, quotedText, tokenUsage, onInputChange, onS
               </svg>
             </div>
             <p className="text-sm text-neutral-500 font-medium">有什么可以帮你？</p>
+            <p className="text-xs text-neutral-400 mt-1">上传资料后，可以让我总结、解释或出题</p>
           </div>
         ) : (
           messages.map((msg) => (

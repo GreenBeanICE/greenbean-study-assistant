@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import DocumentToolbar from "../shared/DocumentToolbar";
 import type { DocumentViewerProps } from "../../type";
 import type { ContentLine, ContentBlock, FootnoteReference } from "../../../../types/section";
-import type { TextFormatAction } from "../../type";
 
 /** 只控制行级对齐和整体外观，加粗/斜体等通过内联 HTML 实现 */
 function getLineStyle(line: ContentLine): string {
@@ -225,10 +224,10 @@ function BlockContent({ block, onViewFootnote, onLineHtmlChange }: {
 }
 
 function DocumentViewer({
-  contentBlocks, selectedSectionId, footnotes, expandedFootnoteId,
-  currentSelection, showSelectionMenu, selectionMenuPos,
-  onToggleHighlight, onUpdateLineText, onFormatLine, onToggleFootnote,
-  onSelectText, onShowSelectionMenu, onQuoteSelection,
+  contentBlocks, selectedSectionId, pendingFileName, footnotes, expandedFootnoteId,
+  showSelectionMenu, selectionMenuPos,
+  onUpdateLineText, onToggleFootnote,
+  onShowSelectionMenu, onQuoteSelection,
 }: DocumentViewerProps) {
   const viewerRef = useRef<HTMLDivElement>(null);
 
@@ -254,11 +253,6 @@ function DocumentViewer({
   }, [onUpdateLineText]);
 
   // 工具栏格式操作 — 通过 document.execCommand 在 mousedown 阶段执行
-  const handleFormat = useCallback((format: TextFormatAction) => {
-    // 由工具栏按钮在 mousedown 阶段通过 execLocalFormat 处理
-    // 这里只是占位，实际操作在 DocumentToolbar 的 execLocalFormat 中完成
-  }, []);
-
   const expandedFootnote = expandedFootnoteId ? footnotes.find((fn) => fn.id === expandedFootnoteId) || null : null;
 
   const handleViewFootnote = useCallback((ref: string) => {
@@ -303,7 +297,7 @@ function DocumentViewer({
       </div>
 
       {/* Word风格工具栏 — 启用状态依赖选中文字 */}
-      <DocumentToolbar selectedLineId={hasSelection ? "selected" : null} onFormat={handleFormat} />
+      <DocumentToolbar selectedLineId={hasSelection ? "selected" : null} />
 
       {/* Word风格文档内容 — 容器过窄时不换行，允许用户横向滚动查看完整文字 */}
       <div
@@ -318,8 +312,12 @@ function DocumentViewer({
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
               </svg>
             </div>
-            <p className="text-sm text-neutral-500 font-medium">选择章节查看内容</p>
-            <p className="text-xs text-neutral-400 mt-1">点击左侧章节列表，解析内容将在此处展示</p>
+            <p className="text-sm text-neutral-500 font-medium">
+              {pendingFileName ? `《${pendingFileName}》已上传，等待解析` : "从左侧上传一份文档开始"}
+            </p>
+            <p className="text-xs text-neutral-400 mt-1">
+              {pendingFileName ? "解析能力尚未接入，刷新后需要重新上传" : "支持 PDF、Word、PPT、图片、TXT 和 Markdown"}
+            </p>
           </div>
         ) : (
           <div className="min-w-max" style={{ minWidth: "max-content" }}>

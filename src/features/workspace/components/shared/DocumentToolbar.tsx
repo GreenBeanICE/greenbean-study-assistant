@@ -68,7 +68,7 @@ const ALIGN_BUTTONS: ToolbarButton[] = [
 
 interface DocumentToolbarProps {
   selectedLineId: string | null;
-  onFormat: (action: TextFormatAction) => void;
+  onFormat?: (action: TextFormatAction) => void;
 }
 
 /** 选中文字用指定标签包裹（直接 DOM 操作，保留选中高亮） */
@@ -146,12 +146,12 @@ export function execLocalFormat(action: TextFormatAction): boolean {
 }
 
 /** 通用渲染按钮的辅助函数，alwaysEnabled 表示该按钮不受选中状态影响（常亮） */
-function renderToolbarButton(btn: ToolbarButton, enabled: boolean, onFormat: (action: TextFormatAction) => void, alwaysEnabled = false) {
+function renderToolbarButton(btn: ToolbarButton, enabled: boolean, onFormat?: (action: TextFormatAction) => void, alwaysEnabled = false) {
   const active = alwaysEnabled || enabled;
   const handleMouseDown = (e: React.MouseEvent) => {
     if (active) {
       if (btn.action === "insert-image" || btn.action === "insert-table") {
-        onFormat(btn.action);
+        onFormat?.(btn.action);
       } else if (enabled) {
         execLocalFormat(btn.action);
       }
