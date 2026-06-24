@@ -1,120 +1,93 @@
 from unittest.mock import MagicMock
 
 import pytest
+from fastapi.testclient import TestClient
 
-from app.api.provider_controller import ProviderController
+from app.api.dependencies import get_provider_service
+from app.entities.provider_config import ProviderConfig
 from app.enums.api_mode import ApiMode
 from app.enums.purpose import Purpose
-from app.schemas.provider_schema import (
-    ProviderActivateResponse,
-    ProviderConfigCreateRequest,
-    ProviderConfigUpdateRequest,
-)
+from app.main import app
 from app.services.provider_service import ProviderService
 
 
-class TestProviderController:
-    @pytest.fixture
-    def mock_service(self):
-        return MagicMock(spec=ProviderService)
+@pytest.fixture
+def mock_service():
+    return MagicMock(spec=ProviderService)
 
-    @pytest.fixture
-    def controller(self, mock_service):
-        return ProviderController(mock_service)
 
-    @pytest.mark.asyncio
-    async def test_list_providers(
-        self, controller, mock_service, provider_config_factory
-    ):
-        mock_service.list_all.return_value = [provider_config_factory()]
-        result = await controller.list_providers()
-        assert len(result) == 1
-        assert result[0].name == "test-cfg"
+@pytest.fixture
+def client(mock_service):
+    app.dependency_overrides[get_provider_service] = lambda: mock_service
+    yield TestClient(app)
+    app.dependency_overrides.clear()
 
-    @pytest.mark.asyncio
-    async def test_get_provider(
-        self, controller, mock_service, provider_config_factory
-    ):
-        mock_service.get_by_id.return_value = provider_config_factory()
-        result = await controller.get_provider("some-id")
-        assert result.name == "test-cfg"
 
-    @pytest.mark.asyncio
-    async def test_get_provider_returns_none(self, controller, mock_service):
-        mock_service.get_by_id.return_value = None
-        assert await controller.get_provider("missing") is None
+def _make_config(**overrides):
+    kwargs = {
+        "id": "cfg-1",
+        "name": "test-cfg",
+        "api_mode": ApiMode.OPENAI_COMPAT,
+        "api_key": "sk-test",
+        "api_host": "https://api.test.com",
+        "model_id": "test-model",
+        "display_name": "Test",
+        "purpose": Purpose.CHAT,
+    }
+    kwargs.update(overrides)
+    return ProviderConfig(**kwargs)
 
-    @pytest.mark.asyncio
-    async def test_create_provider(
-        self, controller, mock_service, provider_config_factory
-    ):
-        config = provider_config_factory(name="new-cfg")
-        mock_service.create.return_value = config
-        request = ProviderConfigCreateRequest(
-            name="new-cfg",
-            api_mode=ApiMode.OPENAI_COMPAT,
-            api_key="sk-key",
-            api_host="https://api.test.com",
-            model_id="test-model",
-            display_name="New",
-            purpose=Purpose.CHAT,
-        )
-        assert request.purpose == Purpose.CHAT
-        result = await controller.create_provider(request)
-        assert result.name == "new-cfg"
 
-    @pytest.mark.asyncio
-    async def test_update_provider(
-        self, controller, mock_service, provider_config_factory
-    ):
-        config = provider_config_factory(name="updated")
-        mock_service.update.return_value = config
-        request = ProviderConfigUpdateRequest(display_name="Updated")
-        result = await controller.update_provider("some-id", request)
-        assert result.name == "updated"
+def test_list_providers(client, mock_service):
+    mock_service.list_all.return_value = []
+    response = client.get("/api/providers?purpose=chat")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["code"] == 200
+    assert body["data"] == []
+    mock_service.list_all.assert_called_once_with(Purpose.CHAT)
 
-    @pytest.mark.asyncio
-    async def test_update_provider_returns_none(self, controller, mock_service):
-        mock_service.update.return_value = None
-        request = ProviderConfigUpdateRequest(display_name="Nope")
-        assert await controller.update_provider("missing", request) is None
 
-    @pytest.mark.asyncio
-    async def test_delete_provider(self, controller, mock_service):
-        mock_service.delete.return_value = True
-        assert await controller.delete_provider("some-id") is True
+def test_create_provider(client, mock_service):
+    mock_service.create.return_value = _make_config(name="new-cfg")
+    response = client.post(
+        "/api/providers",
+        json={
+            "name": "new-cfg",
+            "api_mode": ApiMode.OPENAI_COMPAT,
+            "api_key": "sk-key",
+            "api_host": "https://api.test.com",
+            "model_id": "test-model",
+            "display_name": "New",
+            "purpose": Purpose.CHAT,
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["data"]["name"] == "new-cfg"
+    assert "api_key" not in response.json()["data"]
 
-    @pytest.mark.asyncio
-    async def test_delete_provider_false(self, controller, mock_service):
-        mock_service.delete.return_value = False
-        assert await controller.delete_provider("missing") is False
 
-    @pytest.mark.asyncio
-    async def test_activate_provider(
-        self, controller, mock_service, provider_config_factory
-    ):
-        config = provider_config_factory(name="activate-me", is_active=True)
-        mock_service.activate.return_value = config
-        result = await controller.activate_provider("some-id")
-        assert isinstance(result, ProviderActivateResponse)
-        assert result.name == "activate-me"
+def test_activate_provider(client, mock_service):
+    mock_service.activate.return_value = _make_config(name="test-cfg", is_active=True)
+    response = client.post("/api/providers/cfg-1/activate")
+    assert response.status_code == 200
+    assert response.json()["data"]["name"] == "test-cfg"
 
-    @pytest.mark.asyncio
-    async def test_activate_provider_returns_none(self, controller, mock_service):
-        mock_service.activate.return_value = None
-        assert await controller.activate_provider("missing") is None
 
-    @pytest.mark.asyncio
-    async def test_get_active_provider(
-        self, controller, mock_service, provider_config_factory
-    ):
-        config = provider_config_factory(name="active-cfg", is_active=True)
-        mock_service.get_active.return_value = config
-        result = await controller.get_active_provider()
-        assert isinstance(result, ProviderActivateResponse)
-        assert result.name == "active-cfg"
+def test_get_active_provider(client, mock_service):
+    mock_service.get_active.return_value = _make_config(name="test-cfg", is_active=True)
+    response = client.get("/api/providers/active?purpose=chat")
+    assert response.status_code == 200
+    mock_service.get_active.assert_called_once_with(Purpose.CHAT)
 
-    @pytest.mark.asyncio
-    async def test_get_active_provider_returns_none(self, controller, mock_service):
-        mock_service.get_active.return_value = None
-        assert await controller.get_active_provider() is None
+
+def test_get_active_provider_none_returns_404(client, mock_service):
+    mock_service.get_active.return_value = None
+    response = client.get("/api/providers/active?purpose=chat")
+    assert response.status_code == 404
+
+
+def test_delete_provider(client, mock_service):
+    mock_service.delete.return_value = True
+    response = client.delete("/api/providers/cfg-1")
+    assert response.status_code == 200
