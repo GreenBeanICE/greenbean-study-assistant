@@ -1,6 +1,7 @@
+from sqlalchemy import case
 from sqlalchemy.orm import Session
 
-from app.db.models import ChunkModel
+from app.db.models import ChunkModel, DocumentUnitModel
 from app.entities import Chunk
 from app.repositories.sqlite_helpers import datetime_value, json_object, json_value
 
@@ -37,6 +38,30 @@ class ChunkRepository:
         model = self.session.get(ChunkModel, chunk_id)
         if model is None:
             return None
+        return self._to_entity(model)
+
+    def list_by_document(self, document_id: str) -> list[Chunk]:
+        models = (
+            self.session.query(ChunkModel)
+            .join(DocumentUnitModel, DocumentUnitModel.id == ChunkModel.document_unit_id)
+            .filter(DocumentUnitModel.document_id == document_id)
+            .order_by(DocumentUnitModel.sequence_index, ChunkModel.sequence_index)
+            .all()
+        )
+        return [self._to_entity(model) for model in models]
+
+    def list_by_ids(self, ids: list[str]) -> list[Chunk]:
+        if not ids:
+            return []
+        models = (
+            self.session.query(ChunkModel)
+            .filter(ChunkModel.id.in_(ids))
+            .order_by(case({chunk_id: index for index, chunk_id in enumerate(ids)}, value=ChunkModel.id))
+            .all()
+        )
+        return [self._to_entity(model) for model in models]
+
+    def _to_entity(self, model: ChunkModel) -> Chunk:
         return Chunk(
             id=model.id,
             document_unit_id=model.document_unit_id,

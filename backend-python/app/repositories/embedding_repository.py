@@ -6,7 +6,7 @@ from sqlalchemy import select, update
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Session
 
-from app.db.models import ChunkModel, EmbeddingVectorModel
+from app.db.models import ChunkModel, DocumentUnitModel, EmbeddingVectorModel
 from app.repositories.sqlite_helpers import datetime_value, json_array, json_value
 
 
@@ -108,6 +108,33 @@ class EmbeddingRepository:
             vector=json_array(row[4]),
             created_at=datetime.fromisoformat(row[5]),
         )
+
+    def list_by_document(self, document_id: str) -> list[ChunkEmbedding]:
+        rows = self.session.execute(
+            select(
+                EmbeddingVectorModel.id,
+                EmbeddingVectorModel.chunk_id,
+                EmbeddingVectorModel.embedding_model,
+                EmbeddingVectorModel.vector_dimension,
+                EmbeddingVectorModel.vector_json,
+                EmbeddingVectorModel.created_at,
+            )
+            .join(ChunkModel, ChunkModel.id == EmbeddingVectorModel.chunk_id)
+            .join(DocumentUnitModel, DocumentUnitModel.id == ChunkModel.document_unit_id)
+            .where(DocumentUnitModel.document_id == document_id)
+            .order_by(ChunkModel.sequence_index)
+        ).all()
+        return [
+            ChunkEmbedding(
+                id=row[0],
+                chunk_id=row[1],
+                embedding_model=row[2],
+                vector_dimension=row[3],
+                vector=json_array(row[4]),
+                created_at=datetime.fromisoformat(row[5]),
+            )
+            for row in rows
+        ]
 
     def _chunk_exists(self, chunk_id: str) -> bool:
         table = ChunkModel.__table__

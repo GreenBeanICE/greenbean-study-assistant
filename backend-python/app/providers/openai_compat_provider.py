@@ -1,7 +1,7 @@
 from openai import AsyncOpenAI
 
 from app.entities.provider_config import ProviderConfig
-from app.providers.base import AIProvider, ChatResult
+from app.providers.base import AIProvider, ChatResult, EmbeddingResult
 
 
 class OpenAICompatibleProvider(AIProvider):
@@ -35,3 +35,17 @@ class OpenAICompatibleProvider(AIProvider):
         response = await self._client.chat.completions.create(**kwargs)
         content = response.choices[0].message.content
         return ChatResult(content=content)
+
+    async def create_embedding(
+        self,
+        input: str | list[str],
+        model: str | None = None,
+    ) -> EmbeddingResult:
+        if model is None:
+            raise ValueError("Embedding model is required")
+
+        response = await self._client.embeddings.create(model=model, input=input)
+        return EmbeddingResult(
+            embeddings=[item.embedding for item in response.data],
+            model=response.model,
+        )

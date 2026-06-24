@@ -125,6 +125,7 @@ def test_successful_initialization_loads_sqlite_vec_and_creates_core_tables(tmp_
         "document_records",
         "document_units",
         "sections",
+        "section_unit_links",
         "chunks",
         "analysis_results",
         "chat_sessions",
@@ -133,32 +134,39 @@ def test_successful_initialization_loads_sqlite_vec_and_creates_core_tables(tmp_
     }.issubset(table_names)
 
 
-def test_sqlite_vec_load_failure_fails_database_initialization(tmp_path):
-    with pytest.raises(SQLiteVecInitializationError, match="sqlite-vec"):
-        initialize_database(
-            data_dir=tmp_path / "data",
-            sqlite_vec_loader=fail_to_load_sqlite_vec,
-            embedding_dimension=8,
-        )
+def test_sqlite_vec_load_failure_falls_back_to_plain_sqlite_initialization(tmp_path):
+    result = initialize_database(
+        data_dir=tmp_path / "data",
+        sqlite_vec_loader=fail_to_load_sqlite_vec,
+        embedding_dimension=8,
+    )
+
+    assert result.persistence_ready is True
+    assert result.sqlite_vec_version is None
+    assert result.database_path.exists()
 
 
-def test_sqlite_vec_health_check_failure_preserves_specific_error(tmp_path):
-    with pytest.raises(SQLiteVecInitializationError, match="health check failed"):
-        initialize_database(
-            data_dir=tmp_path / "data",
-            sqlite_vec_loader=lambda connection: None,
-            embedding_dimension=8,
-        )
+def test_sqlite_vec_health_check_failure_falls_back_to_plain_sqlite_initialization(tmp_path):
+    result = initialize_database(
+        data_dir=tmp_path / "data",
+        sqlite_vec_loader=lambda connection: None,
+        embedding_dimension=8,
+    )
+
+    assert result.persistence_ready is True
+    assert result.sqlite_vec_version is None
 
 
-def test_sqlite_vec_health_check_rejects_empty_version(tmp_path):
+def test_sqlite_vec_health_check_empty_version_falls_back_to_plain_sqlite(tmp_path):
     def load_empty_version(connection: sqlite3.Connection) -> None:
         connection.create_function("vec_version", 0, lambda: None)
 
-    with pytest.raises(SQLiteVecInitializationError, match="returned no version"):
-        initialize_database(
-            data_dir=tmp_path / "data",
-            sqlite_vec_loader=load_empty_version,
-            embedding_dimension=8,
-        )
+    result = initialize_database(
+        data_dir=tmp_path / "data",
+        sqlite_vec_loader=load_empty_version,
+        embedding_dimension=8,
+    )
+
+    assert result.persistence_ready is True
+    assert result.sqlite_vec_version is None
 

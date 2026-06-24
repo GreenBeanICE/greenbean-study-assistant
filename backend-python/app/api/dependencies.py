@@ -5,6 +5,7 @@
 """
 from app.services.document_ingest_service import DocumentIngestService
 from app.services.document_query_service import DocumentQueryService
+from app.services.section_service import SectionService
 
 _session_factory = None
 
@@ -32,3 +33,7 @@ def get_ingest_service() -> DocumentIngestService:
 
 def get_document_query_service() -> DocumentQueryService:
     return DocumentQueryService(uow_factory=_build_uow_factory())
+
+
+def get_section_service() -> SectionService:
+    return SectionService(uow_factory=_build_uow_factory())

@@ -1,3 +1,4 @@
+from sqlalchemy import case
 from sqlalchemy.orm import Session
 
 from app.db.models import DocumentUnitModel
@@ -42,6 +43,17 @@ class DocumentUnitRepository:
             self.session.query(DocumentUnitModel)
             .filter(DocumentUnitModel.document_id == document_id)
             .order_by(DocumentUnitModel.sequence_index)
+            .all()
+        )
+        return [self._to_entity(model) for model in models]
+
+    def list_by_ids(self, unit_ids: list[str]) -> list[DocumentUnit]:
+        if not unit_ids:
+            return []
+        models = (
+            self.session.query(DocumentUnitModel)
+            .filter(DocumentUnitModel.id.in_(unit_ids))
+            .order_by(case({unit_id: index for index, unit_id in enumerate(unit_ids)}, value=DocumentUnitModel.id))
             .all()
         )
         return [self._to_entity(model) for model in models]

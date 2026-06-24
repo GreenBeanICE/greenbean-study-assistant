@@ -5,7 +5,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
-from app.api import document_controller
+from app.api import document_controller, section_controller
 from app.api.dependencies import set_session_factory
 from app.db.connection import create_app_session_factory
 from app.db.init_db import load_sqlite_vec_extension
@@ -35,3 +35,4 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title="Greenbean Study Assistant API", lifespan=lifespan)
 
 app.include_router(document_controller.router, prefix="/api")
+app.include_router(section_controller.router, prefix="/api")

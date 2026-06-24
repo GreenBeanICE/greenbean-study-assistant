@@ -50,6 +50,7 @@ class DocumentUnitModel(Base):
 
 class SectionModel(Base):
     __tablename__ = "sections"
+    __table_args__ = (UniqueConstraint("document_id", "order_index"),)
 
     id: Mapped[str] = mapped_column(Text, primary_key=True)
     document_id: Mapped[str] = mapped_column(
@@ -68,6 +69,19 @@ class SectionModel(Base):
     parser_version: Mapped[str | None] = mapped_column(Text)
     external_id: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class SectionUnitLinkModel(Base):
+    __tablename__ = "section_unit_links"
+    __table_args__ = (
+        UniqueConstraint("section_id", "document_unit_id"),
+        UniqueConstraint("section_id", "order_index"),
+    )
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    section_id: Mapped[str] = mapped_column(ForeignKey("sections.id"), nullable=False)
+    document_unit_id: Mapped[str] = mapped_column(ForeignKey("document_units.id"), nullable=False)
+    order_index: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
 class ChunkModel(Base):

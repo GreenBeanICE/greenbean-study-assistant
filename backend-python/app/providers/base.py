@@ -6,6 +6,12 @@ class ChatResult:
         self.content = content
 
 
+class EmbeddingResult:
+    def __init__(self, embeddings: list[list[float]], model: str) -> None:
+        self.embeddings = embeddings
+        self.model = model
+
+
 class AIProvider(ABC):
 
     @abstractmethod
@@ -17,4 +23,12 @@ class AIProvider(ABC):
         max_tokens: int | None = None,
         response_format: dict | None = None,
     ) -> ChatResult:
+        ...
+
+    @abstractmethod
+    async def create_embedding(
+        self,
+        input: str | list[str],
+        model: str | None = None,
+    ) -> EmbeddingResult:
         ...

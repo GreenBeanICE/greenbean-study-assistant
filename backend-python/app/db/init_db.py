@@ -123,7 +123,19 @@ def _create_schema(connection: sqlite3.Connection, embedding_dimension: int) -> 
             external_id TEXT,
             created_at TEXT NOT NULL,
             FOREIGN KEY (document_id) REFERENCES document_records(id),
-            FOREIGN KEY (parent_section_id) REFERENCES sections(id)
+            FOREIGN KEY (parent_section_id) REFERENCES sections(id),
+            UNIQUE (document_id, order_index)
+        );
+
+        CREATE TABLE IF NOT EXISTS section_unit_links (
+            id TEXT PRIMARY KEY,
+            section_id TEXT NOT NULL,
+            document_unit_id TEXT NOT NULL,
+            order_index INTEGER NOT NULL,
+            FOREIGN KEY (section_id) REFERENCES sections(id),
+            FOREIGN KEY (document_unit_id) REFERENCES document_units(id),
+            UNIQUE (section_id, document_unit_id),
+            UNIQUE (section_id, order_index)
         );
 
         CREATE TABLE IF NOT EXISTS chunks (
