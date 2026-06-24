@@ -158,24 +158,6 @@ class EmbeddingVectorModel(Base):
     created_at: Mapped[str] = mapped_column(Text, nullable=False)
 
 
-class ProviderConfigModel(Base):
-    __tablename__ = "provider_configs"
-
-    id: Mapped[str] = mapped_column(Text, primary_key=True)
-    name: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
-    api_mode: Mapped[str] = mapped_column(Text, nullable=False)
-    api_key: Mapped[str] = mapped_column(Text, nullable=False)
-    api_host: Mapped[str] = mapped_column(Text, nullable=False)
-    api_path: Mapped[str] = mapped_column(Text, nullable=False)
-    model_id: Mapped[str] = mapped_column(Text, nullable=False)
-    display_name: Mapped[str] = mapped_column(Text, nullable=False)
-    context_window: Mapped[int] = mapped_column(Integer, nullable=False)
-    max_output_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
-    is_active: Mapped[bool] = mapped_column(Integer, nullable=False)
-    created_at: Mapped[str] = mapped_column(Text, nullable=False)
-    updated_at: Mapped[str] = mapped_column(Text, nullable=False)
-
-
 class AppMetadataModel(Base):
     __tablename__ = "app_metadata"
 

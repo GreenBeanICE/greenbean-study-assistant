@@ -11,10 +11,9 @@ from app.entities import (
     Chunk,
     DocumentRecord,
     DocumentUnit,
-    ProviderConfig,
     Section,
 )
-from app.enums import AnalysisType, ApiMode, DocumentFileType, MessageRole
+from app.enums import AnalysisType, DocumentFileType, MessageRole
 from app.repositories.analysis_result_repository import AnalysisResultRepository
 from app.repositories.chat_message_repository import ChatMessageRepository
 from app.repositories.chat_session_repository import ChatSessionRepository
@@ -26,7 +25,6 @@ from app.repositories.embedding_repository import (
     EmbeddingRepository,
     MissingChunkError,
 )
-from app.repositories.provider_config_repository import ProviderConfigRepository
 from app.repositories.section_repository import SectionRepository
 
 
@@ -177,110 +175,6 @@ def test_embedding_repository_rejects_missing_chunk(session_factory):
                 embedding_model="test-embedding-model",
                 vector=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8],
             )
-
-
-def make_provider_config(name: str = "test-cfg", is_active: bool = False) -> ProviderConfig:
-    return ProviderConfig(
-        name=name, api_mode=ApiMode.OPENAI_COMPAT, api_key="sk-test",
-        api_host="https://api.test.com", model_id="test-model",
-        display_name=name, is_active=is_active,
-    )
-
-
-def test_provider_config_repository_save_and_get_by_id(session_factory):
-    config = make_provider_config()
-    with session_factory() as session:
-        ProviderConfigRepository(session).save(config)
-        session.commit()
-    with session_factory() as session:
-        loaded = ProviderConfigRepository(session).get_by_id(config.id)
-        assert loaded.name == "test-cfg"
-        assert loaded.api_mode == ApiMode.OPENAI_COMPAT
-
-
-def test_provider_config_repository_get_by_name(session_factory):
-    config = make_provider_config(name="unique-name")
-    with session_factory() as session:
-        ProviderConfigRepository(session).save(config)
-        session.commit()
-    with session_factory() as session:
-        loaded = ProviderConfigRepository(session).get_by_name("unique-name")
-        assert loaded.id == config.id
-
-
-def test_provider_config_repository_get_by_name_returns_none(session_factory):
-    with session_factory() as session:
-        assert ProviderConfigRepository(session).get_by_name("nonexistent") is None
-
-
-def test_provider_config_repository_get_active(session_factory):
-    config = make_provider_config(name="active-one", is_active=True)
-    with session_factory() as session:
-        ProviderConfigRepository(session).save(config)
-        session.commit()
-    with session_factory() as session:
-        assert ProviderConfigRepository(session).get_active().name == "active-one"
-
-
-def test_provider_config_repository_get_active_returns_none_when_none_active(session_factory):
-    config = make_provider_config(is_active=False)
-    with session_factory() as session:
-        ProviderConfigRepository(session).save(config)
-        session.commit()
-    with session_factory() as session:
-        assert ProviderConfigRepository(session).get_active() is None
-
-
-def test_provider_config_repository_deactivate_all(session_factory):
-    with session_factory() as session:
-        repo = ProviderConfigRepository(session)
-        repo.save(make_provider_config(name="c1", is_active=True))
-        repo.save(make_provider_config(name="c2", is_active=True))
-        repo.deactivate_all()
-        session.commit()
-    with session_factory() as session:
-        assert ProviderConfigRepository(session).get_active() is None
-
-
-def test_provider_config_repository_list_all(session_factory):
-    with session_factory() as session:
-        repo = ProviderConfigRepository(session)
-        repo.save(make_provider_config(name="a"))
-        repo.save(make_provider_config(name="b"))
-        session.commit()
-    with session_factory() as session:
-        names = [c.name for c in ProviderConfigRepository(session).list_all()]
-        assert "a" in names and "b" in names
-
-
-def test_provider_config_repository_delete(session_factory):
-    config = make_provider_config()
-    with session_factory() as session:
-        ProviderConfigRepository(session).save(config)
-        session.commit()
-    with session_factory() as session:
-        assert ProviderConfigRepository(session).delete(config.id) is True
-        session.commit()
-    with session_factory() as session:
-        assert ProviderConfigRepository(session).get_by_id(config.id) is None
-
-
-def test_provider_config_repository_delete_nonexistent(session_factory):
-    with session_factory() as session:
-        assert ProviderConfigRepository(session).delete("nonexistent-id") is False
-
-
-def test_provider_config_repository_update(session_factory):
-    config = make_provider_config(name="original")
-    with session_factory() as session:
-        repo = ProviderConfigRepository(session)
-        repo.save(config)
-        session.commit()
-        config.name = "updated"
-        repo.save(config)
-        session.commit()
-    with session_factory() as session:
-        assert ProviderConfigRepository(session).get_by_id(config.id).name == "updated"
 
 
 def test_document_repository_list_by_workspace_filters_by_workspace(session_factory):

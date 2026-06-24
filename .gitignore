@@ -71,6 +71,9 @@ data/*.sqlite3-wal
 data/uploads/*
 !data/uploads/.gitkeep
 
+# Provider API configs (contains secrets)
+data/provider_configs.json
+
 # Tauri and Vite caches
 .vite/
 src-tauri/gen/schemas/
