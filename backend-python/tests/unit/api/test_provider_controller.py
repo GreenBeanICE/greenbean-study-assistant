@@ -91,3 +91,24 @@ def test_delete_provider(client, mock_service):
     mock_service.delete.return_value = True
     response = client.delete("/api/providers/cfg-1")
     assert response.status_code == 200
+
+
+def test_create_provider_rejects_invalid_purpose_dimension_combination(client, mock_service):
+    mock_service.create.return_value = _make_config(name="new-cfg")
+
+    response = client.post(
+        "/api/providers",
+        json={
+            "name": "bad-chat",
+            "api_mode": ApiMode.OPENAI_COMPAT,
+            "api_key": "sk-key",
+            "api_host": "https://api.test.com",
+            "model_id": "test-model",
+            "display_name": "Bad Chat",
+            "purpose": Purpose.CHAT,
+            "embedding_dimension": 128,
+        },
+    )
+
+    assert response.status_code == 422
+    mock_service.create.assert_not_called()

@@ -2,7 +2,7 @@
 文档摄取服务测试，覆盖 DocumentIngestService 全部逻辑。
 """
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from app.services.document_ingest_service import DocumentIngestService, SOURCE_TYPE_TO_FILE_TYPE
 from app.enums.document_file_type import DocumentFileType
 from app.enums.document_status import DocumentStatus
@@ -465,3 +465,91 @@ def test_ingest_failure_does_not_persist_when_uow_provided(uow_factory):
 
     with uow_factory() as uow:
         assert DocumentRepository(uow.session).list_by_workspace("ws-1") == []
+
+
+@pytest.mark.us25
+def test_ingest_document_runs_chunk_and_section_pipeline():
+    chunk_service = MagicMock()
+    chunk_service.build_chunks_for_document.return_value = ["chunk-a"]
+    section_service = MagicMock()
+    section_service.build_sections.return_value = ["section-a"]
+    service = DocumentIngestService(
+        chunk_service=chunk_service,
+        section_service=section_service,
+    )
+
+    with patch("app.parsers.parser_factory.ParserFactory.get_parser") as mock_get_parser:
+        mock_parser = MagicMock()
+        mock_parser.parse.return_value = [_make_page(content="hello", source_type="text")]
+        mock_get_parser.return_value = mock_parser
+
+        result = service.ingest_document("notes.txt", b"content")
+
+    chunk_service.build_chunks_for_document.assert_called_once_with(
+        result["document_record"].id
+    )
+    section_service.build_sections.assert_called_once_with(result["document_record"].id)
+    assert result["chunks"] == ["chunk-a"]
+    assert result["sections"] == ["section-a"]
+    assert result["embeddings"] == []
+
+
+@pytest.mark.us25
+@pytest.mark.asyncio
+async def test_ingest_document_async_runs_embedding_after_chunk_pipeline():
+    chunk = MagicMock(text_content="chunk text")
+    chunk_service = MagicMock()
+    chunk_service.build_chunks_for_document.return_value = [chunk]
+    section_service = MagicMock()
+    section_service.build_sections.return_value = ["section-a"]
+    embedding_service = MagicMock()
+    embedding_service.embed_chunks = AsyncMock(return_value=["embedding-a"])
+    service = DocumentIngestService(
+        chunk_service=chunk_service,
+        section_service=section_service,
+        embedding_service=embedding_service,
+    )
+
+    with patch("app.parsers.parser_factory.ParserFactory.get_parser") as mock_get_parser:
+        mock_parser = MagicMock()
+        mock_parser.parse.return_value = [_make_page(content="hello", source_type="text")]
+        mock_get_parser.return_value = mock_parser
+
+        result = await service.ingest_document_async(
+            filename="notes.txt",
+            file_content=b"content",
+        )
+
+    embedding_service.embed_chunks.assert_awaited_once_with([chunk])
+    assert result["embeddings"] == ["embedding-a"]
+
+
+@pytest.mark.us25
+@pytest.mark.asyncio
+async def test_ingest_document_async_keeps_upload_success_when_embedding_fails():
+    chunk = MagicMock(text_content="chunk text")
+    chunk_service = MagicMock()
+    chunk_service.build_chunks_for_document.return_value = [chunk]
+    section_service = MagicMock()
+    section_service.build_sections.return_value = ["section-a"]
+    embedding_service = MagicMock()
+    embedding_service.embed_chunks = AsyncMock(side_effect=RuntimeError("embed failed"))
+    service = DocumentIngestService(
+        chunk_service=chunk_service,
+        section_service=section_service,
+        embedding_service=embedding_service,
+    )
+
+    with patch("app.parsers.parser_factory.ParserFactory.get_parser") as mock_get_parser:
+        mock_parser = MagicMock()
+        mock_parser.parse.return_value = [_make_page(content="hello", source_type="text")]
+        mock_get_parser.return_value = mock_parser
+
+        result = await service.ingest_document_async(
+            filename="notes.txt",
+            file_content=b"content",
+        )
+
+    assert result["chunks"] == [chunk]
+    assert result["sections"] == ["section-a"]
+    assert result["embeddings"] == []

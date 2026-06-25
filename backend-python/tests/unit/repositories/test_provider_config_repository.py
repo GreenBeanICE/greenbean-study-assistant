@@ -1,4 +1,5 @@
 import json
+import sqlite3
 
 import pytest
 
@@ -119,3 +120,64 @@ def test_atomic_write_no_tmp_left(tmp_path):
     repo = ProviderConfigRepository(tmp_path / "provider_configs.json")
     repo.save(_chat_config())
     assert list(tmp_path.glob("*.tmp")) == []
+
+
+def test_list_all_migrates_legacy_sqlite_when_json_missing(tmp_path):
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    sqlite_path = data_dir / "greenbean-study-assistant.sqlite3"
+    with sqlite3.connect(sqlite_path) as connection:
+        connection.execute(
+            """
+            CREATE TABLE provider_configs (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                api_mode TEXT NOT NULL,
+                api_key TEXT NOT NULL,
+                api_host TEXT NOT NULL,
+                api_path TEXT NOT NULL,
+                model_id TEXT NOT NULL,
+                display_name TEXT NOT NULL,
+                context_window INTEGER NOT NULL,
+                max_output_tokens INTEGER NOT NULL,
+                is_active INTEGER NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO provider_configs (
+                id, name, api_mode, api_key, api_host, api_path, model_id,
+                display_name, context_window, max_output_tokens, is_active,
+                created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "legacy-chat-1",
+                "legacy-chat",
+                "openai_compat",
+                "sk-legacy",
+                "https://api.legacy.test",
+                "/v1/chat/completions",
+                "legacy-model",
+                "Legacy Chat",
+                65536,
+                8192,
+                1,
+                "2026-06-25T00:00:00+00:00",
+                "2026-06-25T00:00:00+00:00",
+            ),
+        )
+        connection.commit()
+
+    json_path = data_dir / "provider_configs.json"
+    repo = ProviderConfigRepository(json_path)
+
+    configs = repo.list_all()
+
+    assert [config.id for config in configs] == ["legacy-chat-1"]
+    assert configs[0].purpose == Purpose.CHAT
+    payload = json.loads(json_path.read_text(encoding="utf-8"))
+    assert payload["providers"][0]["id"] == "legacy-chat-1"

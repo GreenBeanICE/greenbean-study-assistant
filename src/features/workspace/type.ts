@@ -1,5 +1,6 @@
 import type { SectionNode, ContentBlock, FootnoteReference, TextSelection } from "../../types/section";
 import type { ChatMessage } from "../../types/chat";
+import type { DocumentUnit } from "../../types/document";
 
 export type TextFormatAction = "bold" | "italic" | "underline" | "strikethrough" | "highlight" | "align-left" | "align-center" | "align-right" | "align-justify" | "insert-image" | "insert-table";
 
@@ -89,7 +90,7 @@ export interface DocumentViewerProps {
   onShowSelectionMenu: (show: boolean, pos?: { x: number; y: number }) => void;
   onQuoteSelection: () => void;
   // 新增：原文面板相关 props
-  units?: import("../../types/document").DocumentUnit[];
+  units?: DocumentUnit[];
   showRawPanel?: boolean;
   showParsedPanel?: boolean;
   onToggleRawPanel?: () => void;

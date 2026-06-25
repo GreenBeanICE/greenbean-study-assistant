@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 
 from app.enums.api_mode import ApiMode
 from app.enums.purpose import Purpose
@@ -134,3 +135,33 @@ def test_delete_inactive_keeps_registry(repo):
     other = service.create(_chat_payload(name="b"))
     service.delete(other.id)
     assert ProviderRegistry.get_active_config(Purpose.CHAT).id == active.id
+
+
+def test_update_rejects_invalid_purpose_transition_and_keeps_persisted_config(repo):
+    service = ProviderService(repo)
+    created = service.create(_chat_payload())
+
+    with pytest.raises(ValidationError):
+        service.update(created.id, {"purpose": Purpose.EMBEDDING})
+
+    persisted = repo.get_by_id(created.id)
+    assert persisted.purpose == Purpose.CHAT
+    assert persisted.embedding_dimension is None
+
+
+def test_update_moves_active_provider_between_registry_slots(repo):
+    service = ProviderService(repo)
+    created = service.create(_chat_payload())
+    service.activate(created.id)
+
+    updated = service.update(
+        created.id,
+        {"purpose": Purpose.EMBEDDING, "embedding_dimension": 512},
+    )
+
+    assert updated.purpose == Purpose.EMBEDDING
+    assert updated.is_active is True
+    assert repo.get_active_by_purpose(Purpose.CHAT) is None
+    assert repo.get_active_by_purpose(Purpose.EMBEDDING).id == created.id
+    assert ProviderRegistry.get_active_config(Purpose.CHAT) is None
+    assert ProviderRegistry.get_active_config(Purpose.EMBEDDING).id == created.id

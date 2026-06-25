@@ -5,6 +5,7 @@
 """
 from app.config.settings import PROVIDER_CONFIGS_PATH
 from app.repositories.provider_config_repository import ProviderConfigRepository
+from app.services.chunk_service import ChunkService
 from app.services.document_ingest_service import DocumentIngestService
 from app.services.document_query_service import DocumentQueryService
 from app.services.embedding_service import EmbeddingService
@@ -33,11 +34,20 @@ def _build_uow_factory():
 
 
 def get_ingest_service() -> DocumentIngestService:
-    return DocumentIngestService(uow_factory=_build_uow_factory())
+    return DocumentIngestService(
+        uow_factory=_build_uow_factory(),
+        chunk_service=get_chunk_service(),
+        embedding_service=get_embedding_service(),
+        section_service=get_section_service(),
+    )
 
 
 def get_document_query_service() -> DocumentQueryService:
     return DocumentQueryService(uow_factory=_build_uow_factory())
+
+
+def get_chunk_service() -> ChunkService:
+    return ChunkService(uow_factory=_build_uow_factory())
 
 
 def get_section_service() -> SectionService:

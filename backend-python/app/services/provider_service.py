@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from app.entities.provider_config import ProviderConfig
 from app.enums.purpose import Purpose
 from app.providers.registry import ProviderRegistry
@@ -17,13 +19,25 @@ class ProviderService:
         config = self.repository.get_by_id(config_id)
         if config is None:
             return None
-        updated = config.model_copy(
-            update={k: v for k, v in data.items() if v is not None}
-        )
-        self.repository.save(updated)
-        active_config = ProviderRegistry.get_active_config(updated.purpose)
-        if active_config is not None and active_config.id == config_id:
+        merged_data = config.model_dump(mode="python")
+        merged_data.update({k: v for k, v in data.items() if v is not None})
+        merged_data["updated_at"] = datetime.now(timezone.utc)
+        updated = ProviderConfig(**merged_data)
+
+        if updated.is_active and config.purpose != updated.purpose:
+            self.repository.deactivate_by_purpose(updated.purpose)
+            self.repository.save(updated)
+            ProviderRegistry.clear(config.purpose)
             ProviderRegistry.activate(updated)
+            return updated
+
+        if updated.is_active:
+            self.repository.deactivate_by_purpose(updated.purpose)
+        self.repository.save(updated)
+        if updated.is_active:
+            ProviderRegistry.activate(updated)
+        elif config.is_active:
+            ProviderRegistry.clear(config.purpose)
         return updated
 
     def activate(self, config_id: str) -> ProviderConfig | None:

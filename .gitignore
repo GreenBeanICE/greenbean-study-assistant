@@ -66,6 +66,15 @@ data/*.sqlite-shm
 data/*.sqlite-wal
 data/*.sqlite3-shm
 data/*.sqlite3-wal
+backend-python/data/*.db
+backend-python/data/*.db-shm
+backend-python/data/*.db-wal
+backend-python/data/*.sqlite
+backend-python/data/*.sqlite3
+backend-python/data/*.sqlite-shm
+backend-python/data/*.sqlite-wal
+backend-python/data/*.sqlite3-shm
+backend-python/data/*.sqlite3-wal
 
 # User uploaded files
 data/uploads/*
@@ -73,6 +82,7 @@ data/uploads/*
 
 # Provider API configs (contains secrets)
 data/provider_configs.json
+backend-python/data/provider_configs.json
 
 # Tauri and Vite caches
 .vite/

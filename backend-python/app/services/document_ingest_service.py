@@ -25,7 +25,14 @@ SOURCE_TYPE_TO_FILE_TYPE: dict[str, DocumentFileType] = {
 class DocumentIngestService:
     """安全文档摄取流水线：解析 → 实体构建 → 持久化。"""
 
-    def __init__(self, uow_factory=None):
+    def __init__(
+        self,
+        uow_factory=None,
+        *,
+        chunk_service=None,
+        embedding_service=None,
+        section_service=None,
+    ):
         """
         服务初始化。
 
@@ -33,6 +40,9 @@ class DocumentIngestService:
                             未传入时为内存模式，仅返回实体不写库（用于单元测试）。
         """
         self.uow_factory = uow_factory
+        self.chunk_service = chunk_service
+        self.embedding_service = embedding_service
+        self.section_service = section_service
 
     def ingest_document(
         self,
@@ -138,6 +148,14 @@ class DocumentIngestService:
                 preview_item["source_type"] = p["metadata"].get("source_type", "unknown")
             page_index_preview.append(preview_item)
 
+        chunks = []
+        if self.chunk_service is not None:
+            chunks = self.chunk_service.build_chunks_for_document(document_record.id)
+
+        sections = []
+        if self.section_service is not None:
+            sections = self.section_service.build_sections(document_record.id)
+
         return {
             "filename": filename,
             "total_pages": len(parsed_pages),
@@ -145,4 +163,36 @@ class DocumentIngestService:
             "page_index_preview": page_index_preview,
             "document_record": document_record,
             "document_units": document_units,
+            "chunks": chunks,
+            "sections": sections,
+            "embeddings": [],
         }
+
+    async def ingest_document_async(
+        self,
+        filename: str,
+        file_content: bytes,
+        *,
+        workspace_id: str = "",
+        title: str | None = None,
+        file_path: str = "",
+        file_hash: str | None = None,
+    ) -> dict:
+        result = self.ingest_document(
+            filename,
+            file_content,
+            workspace_id=workspace_id,
+            title=title,
+            file_path=file_path,
+            file_hash=file_hash,
+        )
+
+        chunks = result["chunks"]
+        if self.embedding_service is None or not chunks:
+            return result
+
+        try:
+            result["embeddings"] = await self.embedding_service.embed_chunks(chunks)
+        except Exception:
+            result["embeddings"] = []
+        return result

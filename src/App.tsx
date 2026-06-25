@@ -23,10 +23,9 @@ function App() {
       getActiveProvider("embedding"),
     ]).then((results) => {
       const missing = results.some((r) => r.status === "rejected");
+      setView("workspace");
       if (missing) {
         setShowGuide(true);
-      } else {
-        setView("workspace");
       }
     });
   }, []);

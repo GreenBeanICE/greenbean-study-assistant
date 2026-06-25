@@ -2,6 +2,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import ValidationError
 
 from app.api.dependencies import get_provider_service
 from app.enums.purpose import Purpose
@@ -82,7 +83,10 @@ async def create_provider(
     request: ProviderConfigCreateRequest,
     service: Annotated[ProviderService, Depends(get_provider_service)] = None,
 ):
-    config = service.create(request.model_dump())
+    try:
+        config = service.create(request.model_dump())
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors()) from exc
     return {"code": 200, "data": _to_response(config).model_dump(mode="json")}
 
 
@@ -92,7 +96,10 @@ async def update_provider(
     request: ProviderConfigUpdateRequest,
     service: Annotated[ProviderService, Depends(get_provider_service)] = None,
 ):
-    config = service.update(config_id, request.model_dump(exclude_none=True))
+    try:
+        config = service.update(config_id, request.model_dump(exclude_none=True))
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors()) from exc
     if config is None:
         raise HTTPException(status_code=404, detail="provider 不存在")
     return {"code": 200, "data": _to_response(config).model_dump(mode="json")}

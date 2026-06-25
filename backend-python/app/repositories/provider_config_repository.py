@@ -5,11 +5,15 @@
 """
 import json
 import os
+import sqlite3
 import threading
 from pathlib import Path
 
 from app.entities.provider_config import ProviderConfig
 from app.enums.purpose import Purpose
+
+_LEGACY_DATABASE_NAME = "greenbean-study-assistant.sqlite3"
+_LEGACY_API_MODE_MAP = {"openai_compat": "openai-compat"}
 
 
 class ProviderConfigRepository:
@@ -19,11 +23,53 @@ class ProviderConfigRepository:
 
     def _read(self) -> list[ProviderConfig]:
         if not self._path.exists():
-            return []
+            configs = self._migrate_legacy_sqlite()
+            if configs:
+                self._write(configs)
+            return configs
         with self._path.open("r", encoding="utf-8") as handle:
             payload = json.load(handle)
         items = payload.get("providers", []) if isinstance(payload, dict) else []
         return [ProviderConfig(**item) for item in items]
+
+    def _migrate_legacy_sqlite(self) -> list[ProviderConfig]:
+        legacy_database_path = self._path.with_name(_LEGACY_DATABASE_NAME)
+        if not legacy_database_path.exists():
+            return []
+        try:
+            with sqlite3.connect(legacy_database_path) as connection:
+                rows = connection.execute(
+                    """
+                    SELECT id, name, api_mode, api_key, api_host, api_path, model_id,
+                           display_name, context_window, max_output_tokens, is_active,
+                           created_at, updated_at
+                    FROM provider_configs
+                    ORDER BY created_at ASC, id ASC
+                    """
+                ).fetchall()
+        except sqlite3.Error:
+            return []
+
+        return [
+            ProviderConfig(
+                id=row[0],
+                name=row[1],
+                api_mode=_LEGACY_API_MODE_MAP.get(row[2], row[2]),
+                api_key=row[3],
+                api_host=row[4],
+                api_path=row[5],
+                model_id=row[6],
+                display_name=row[7],
+                context_window=row[8],
+                max_output_tokens=row[9],
+                is_active=bool(row[10]),
+                created_at=row[11],
+                updated_at=row[12],
+                purpose=Purpose.CHAT,
+                embedding_dimension=None,
+            )
+            for row in rows
+        ]
 
     def _write(self, configs: list[ProviderConfig]) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)

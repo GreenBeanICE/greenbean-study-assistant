@@ -74,7 +74,7 @@ async def upload_document(
 
         # 进入导入流水线
         file_hash = hashlib.sha256(file_content).hexdigest()
-        result = ingest_service.ingest_document(
+        result = await ingest_service.ingest_document_async(
             file.filename,
             file_content,
             workspace_id=workspace_id,

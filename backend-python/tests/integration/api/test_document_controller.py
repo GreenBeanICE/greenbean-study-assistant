@@ -90,7 +90,9 @@ class TestDocumentUpload:
 
     @pytest.mark.us25
     def test_upload_pdf_success(self):
-        self.mock_service.ingest_document.return_value = _make_ingest_result("test.pdf", "pdf")
+        self.mock_service.ingest_document_async = AsyncMock(
+            return_value=_make_ingest_result("test.pdf", "pdf")
+        )
         response = self.client.post(
             "/api/documents/upload", files=_create_test_file(b"%PDF-1.4", "test.pdf")
         )
@@ -104,7 +106,9 @@ class TestDocumentUpload:
 
     @pytest.mark.us25
     def test_upload_docx_success(self):
-        self.mock_service.ingest_document.return_value = _make_ingest_result("notes.docx", "word")
+        self.mock_service.ingest_document_async = AsyncMock(
+            return_value=_make_ingest_result("notes.docx", "word")
+        )
         response = self.client.post(
             "/api/documents/upload", files=_create_test_file(b"fake", "notes.docx")
         )
@@ -114,7 +118,9 @@ class TestDocumentUpload:
 
     @pytest.mark.us25
     def test_upload_image_success(self):
-        self.mock_service.ingest_document.return_value = _make_ingest_result("photo.png", "image")
+        self.mock_service.ingest_document_async = AsyncMock(
+            return_value=_make_ingest_result("photo.png", "image")
+        )
         response = self.client.post(
             "/api/documents/upload", files=_create_test_file(b"fake", "photo.png")
         )
@@ -166,7 +172,7 @@ class TestDocumentUpload:
 
     @pytest.mark.us25
     def test_upload_value_error(self):
-        self.mock_service.ingest_document.side_effect = ValueError("业务异常")
+        self.mock_service.ingest_document_async = AsyncMock(side_effect=ValueError("业务异常"))
         response = self.client.post(
             "/api/documents/upload", files=_create_test_file(b"content", "test.pdf")
         )
@@ -176,7 +182,7 @@ class TestDocumentUpload:
 
     @pytest.mark.us25
     def test_upload_internal_error(self):
-        self.mock_service.ingest_document.side_effect = Exception("未知错误")
+        self.mock_service.ingest_document_async = AsyncMock(side_effect=Exception("未知错误"))
         response = self.client.post(
             "/api/documents/upload", files=_create_test_file(b"content", "test.pdf")
         )
@@ -186,7 +192,9 @@ class TestDocumentUpload:
 
     @pytest.mark.us25
     def test_upload_jpg_supported(self):
-        self.mock_service.ingest_document.return_value = _make_ingest_result("photo.jpg", "image")
+        self.mock_service.ingest_document_async = AsyncMock(
+            return_value=_make_ingest_result("photo.jpg", "image")
+        )
         response = self.client.post(
             "/api/documents/upload", files=_create_test_file(b"fake", "photo.jpg")
         )
@@ -195,7 +203,9 @@ class TestDocumentUpload:
 
     @pytest.mark.us25
     def test_upload_jpeg_supported(self):
-        self.mock_service.ingest_document.return_value = _make_ingest_result("photo.jpeg", "image")
+        self.mock_service.ingest_document_async = AsyncMock(
+            return_value=_make_ingest_result("photo.jpeg", "image")
+        )
         response = self.client.post(
             "/api/documents/upload", files=_create_test_file(b"fake", "photo.jpeg")
         )
@@ -204,7 +214,9 @@ class TestDocumentUpload:
 
     @pytest.mark.us25
     def test_upload_webp_supported(self):
-        self.mock_service.ingest_document.return_value = _make_ingest_result("image.webp", "image")
+        self.mock_service.ingest_document_async = AsyncMock(
+            return_value=_make_ingest_result("image.webp", "image")
+        )
         response = self.client.post(
             "/api/documents/upload", files=_create_test_file(b"fake", "image.webp")
         )
@@ -213,36 +225,42 @@ class TestDocumentUpload:
 
     @pytest.mark.us25
     def test_upload_passes_default_workspace_id(self):
-        self.mock_service.ingest_document.return_value = _make_ingest_result("test.pdf", "pdf")
+        self.mock_service.ingest_document_async = AsyncMock(
+            return_value=_make_ingest_result("test.pdf", "pdf")
+        )
         self.client.post(
             "/api/documents/upload", files=_create_test_file(b"content", "test.pdf")
         )
 
-        _, kwargs = self.mock_service.ingest_document.call_args
+        _, kwargs = self.mock_service.ingest_document_async.call_args
         assert kwargs.get("workspace_id") == "workspace_1"
 
     @pytest.mark.us25
     def test_upload_passes_explicit_workspace_id(self):
-        self.mock_service.ingest_document.return_value = _make_ingest_result("test.pdf", "pdf")
+        self.mock_service.ingest_document_async = AsyncMock(
+            return_value=_make_ingest_result("test.pdf", "pdf")
+        )
         self.client.post(
             "/api/documents/upload",
             files=_create_test_file(b"content", "test.pdf"),
             data={"workspace_id": "ws-custom"},
         )
 
-        _, kwargs = self.mock_service.ingest_document.call_args
+        _, kwargs = self.mock_service.ingest_document_async.call_args
         assert kwargs.get("workspace_id") == "ws-custom"
 
     @pytest.mark.us25
     def test_upload_passes_file_hash(self):
         import hashlib
 
-        self.mock_service.ingest_document.return_value = _make_ingest_result("test.pdf", "pdf")
+        self.mock_service.ingest_document_async = AsyncMock(
+            return_value=_make_ingest_result("test.pdf", "pdf")
+        )
         self.client.post(
             "/api/documents/upload", files=_create_test_file(b"content", "test.pdf")
         )
 
-        _, kwargs = self.mock_service.ingest_document.call_args
+        _, kwargs = self.mock_service.ingest_document_async.call_args
         expected_hash = hashlib.sha256(b"content").hexdigest()
         assert kwargs.get("file_hash") == expected_hash
 

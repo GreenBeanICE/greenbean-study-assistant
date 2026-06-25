@@ -8,6 +8,7 @@ import pytest
 from app.api.dependencies import (
     get_document_query_service,
     get_ingest_service,
+    get_chunk_service,
     set_session_factory,
 )
 
@@ -30,3 +31,10 @@ def test_get_document_query_service_raises_when_not_configured():
     set_session_factory(None)
     with pytest.raises(RuntimeError, match="Session factory is not configured"):
         get_document_query_service()
+
+
+@pytest.mark.unit
+def test_get_chunk_service_raises_when_not_configured():
+    set_session_factory(None)
+    with pytest.raises(RuntimeError, match="Session factory is not configured"):
+        get_chunk_service()

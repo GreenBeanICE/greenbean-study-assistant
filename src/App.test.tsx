@@ -62,7 +62,10 @@ describe("App", () => {
     expect(screen.getByText("我的文档")).toBeDefined();
 
     const settingsBtn = screen.getByTitle("设置");
-    fireEvent.click(settingsBtn);
+    await act(async () => {
+      fireEvent.click(settingsBtn);
+      await vi.runAllTicks();
+    });
     expect(screen.getByText("模型设置")).toBeDefined();
 
     fireEvent.click(screen.getByRole("button", { name: /返回工作区/ }));
@@ -85,8 +88,27 @@ describe("App", () => {
     await act(async () => { vi.advanceTimersByTime(3800); await vi.runAllTicks(); });
 
     expect(screen.getByText(/尚未配置/)).toBeDefined();
-    fireEvent.click(screen.getByRole("button", { name: /前往设置/ }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /前往设置/ }));
+      await vi.runAllTicks();
+    });
     expect(screen.getByText("模型设置")).toBeDefined();
+  });
+
+  it("缺配置时退出欢迎页并显示工作区引导", async () => {
+    (getActiveProvider as ReturnType<typeof vi.fn>)
+      .mockRejectedValueOnce(new Error("404"))
+      .mockResolvedValueOnce({ id: "embed-1" });
+
+    render(<App />);
+    await act(async () => {
+      vi.advanceTimersByTime(3800);
+      await vi.runAllTicks();
+    });
+
+    expect(screen.queryByText("GreenBean Study Assistant")).toBeNull();
+    expect(screen.getByText("我的文档")).toBeDefined();
+    expect(screen.getByText(/尚未配置/)).toBeDefined();
   });
 
   it("引导可关闭，暂不配置进入工作区", async () => {

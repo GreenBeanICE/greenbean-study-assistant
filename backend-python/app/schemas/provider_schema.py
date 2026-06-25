@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.enums.api_mode import ApiMode
 from app.enums.purpose import Purpose
@@ -17,6 +17,15 @@ class ProviderConfigCreateRequest(BaseModel):
     purpose: Purpose = Field(..., description="用途：chat 或 embedding。")
     embedding_dimension: int | None = Field(default=None, description="向量维度，仅 embedding 用。")
 
+    @model_validator(mode="after")
+    def validate_dimension_by_purpose(self) -> "ProviderConfigCreateRequest":
+        if self.purpose == Purpose.EMBEDDING:
+            if self.embedding_dimension is None or self.embedding_dimension <= 0:
+                raise ValueError("embedding 配置必须提供正整数 embedding_dimension")
+        elif self.embedding_dimension is not None:
+            raise ValueError("chat 配置不能设置 embedding_dimension")
+        return self
+
 
 class ProviderConfigUpdateRequest(BaseModel):
     name: str | None = Field(default=None, description="内部标识。")
@@ -30,6 +39,15 @@ class ProviderConfigUpdateRequest(BaseModel):
     max_output_tokens: int | None = Field(default=None, description="最大输出 token 数。")
     purpose: Purpose | None = Field(default=None, description="用途。")
     embedding_dimension: int | None = Field(default=None, description="向量维度。")
+
+    @model_validator(mode="after")
+    def validate_dimension_by_purpose(self) -> "ProviderConfigUpdateRequest":
+        if self.purpose == Purpose.EMBEDDING:
+            if self.embedding_dimension is not None and self.embedding_dimension <= 0:
+                raise ValueError("embedding 配置必须提供正整数 embedding_dimension")
+        elif self.purpose == Purpose.CHAT and self.embedding_dimension is not None:
+            raise ValueError("chat 配置不能设置 embedding_dimension")
+        return self
 
 
 class ProviderConfigResponse(BaseModel):
