@@ -88,6 +88,12 @@ export interface DocumentViewerProps {
   onToggleFootnote: (footnoteId: string) => void;
   onShowSelectionMenu: (show: boolean, pos?: { x: number; y: number }) => void;
   onQuoteSelection: () => void;
+  // 新增：原文面板相关 props
+  units?: import("../../types/document").DocumentUnit[];
+  showRawPanel?: boolean;
+  showParsedPanel?: boolean;
+  onToggleRawPanel?: () => void;
+  onToggleParsedPanel?: () => void;
 }
 
 export interface ChatPanelProps {
