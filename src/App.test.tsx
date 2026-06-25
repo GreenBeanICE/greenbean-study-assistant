@@ -2,6 +2,7 @@ import React from "react";
 import { describe, it, expect, vi, afterEach, beforeEach, afterAll } from "vitest";
 import { render, screen, cleanup, act, fireEvent } from "@testing-library/react";
 import App from "./App";
+import { getActiveProvider } from "./features/settings/api/providerApi";
 
 vi.mock("framer-motion", () => {
   const createMotionComponent = (tag: string) => {
@@ -36,6 +37,7 @@ afterEach(() => {
 describe("App", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    (getActiveProvider as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "cfg-1" });
   });
 
   afterAll(() => {
@@ -48,15 +50,15 @@ describe("App", () => {
     expect(screen.getByText("GreenBean Study Assistant")).toBeDefined();
   });
 
-  it("shows workspace after splash auto-dismiss", () => {
+  it("shows workspace after splash auto-dismiss", async () => {
     render(<App />);
-    act(() => { vi.advanceTimersByTime(3800); });
+    await act(async () => { vi.advanceTimersByTime(3800); await vi.runAllTicks(); });
     expect(screen.getByText("我的文档")).toBeDefined();
   });
 
-  it("点击齿轮切换到设置页，返回回到工作区", () => {
+  it("点击齿轮切换到设置页，返回回到工作区", async () => {
     render(<App />);
-    act(() => { vi.advanceTimersByTime(3800); });
+    await act(async () => { vi.advanceTimersByTime(3800); await vi.runAllTicks(); });
     expect(screen.getByText("我的文档")).toBeDefined();
 
     const settingsBtn = screen.getByTitle("设置");
@@ -64,6 +66,39 @@ describe("App", () => {
     expect(screen.getByText("模型设置")).toBeDefined();
 
     fireEvent.click(screen.getByRole("button", { name: /返回工作区/ }));
+    expect(screen.getByText("我的文档")).toBeDefined();
+  });
+
+  it("两者均已配置时不弹引导，直接进入工作区", async () => {
+    render(<App />);
+    await act(async () => { vi.advanceTimersByTime(3800); await vi.runAllTicks(); });
+    expect(screen.getByText("我的文档")).toBeDefined();
+    expect(screen.queryByText(/尚未配置/)).toBeNull();
+  });
+
+  it("缺 chat 配置时弹引导，确认后进入设置页", async () => {
+    (getActiveProvider as ReturnType<typeof vi.fn>)
+      .mockRejectedValueOnce(new Error("404"))
+      .mockResolvedValueOnce({ id: "embed-1" });
+
+    render(<App />);
+    await act(async () => { vi.advanceTimersByTime(3800); await vi.runAllTicks(); });
+
+    expect(screen.getByText(/尚未配置/)).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: /前往设置/ }));
+    expect(screen.getByText("模型设置")).toBeDefined();
+  });
+
+  it("引导可关闭，暂不配置进入工作区", async () => {
+    (getActiveProvider as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ id: "chat-1" })
+      .mockRejectedValueOnce(new Error("404"));
+
+    render(<App />);
+    await act(async () => { vi.advanceTimersByTime(3800); await vi.runAllTicks(); });
+
+    expect(screen.getByText(/尚未配置/)).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: /稍后再说/ }));
     expect(screen.getByText("我的文档")).toBeDefined();
   });
 });
