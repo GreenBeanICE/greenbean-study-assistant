@@ -238,27 +238,31 @@ function DocumentViewer({
   const handleRawScroll = useCallback(() => {
     if (isSyncingRef.current || !parsedPanelRef.current || !rawPanelRef.current) return;
     isSyncingRef.current = true;
-    const maxScroll = rawPanelRef.current.scrollHeight - rawPanelRef.current.clientHeight;
-    if (maxScroll <= 0) {
+    requestAnimationFrame(() => {
+      const maxScroll = rawPanelRef.current!.scrollHeight - rawPanelRef.current!.clientHeight;
+      if (maxScroll <= 0) {
+        isSyncingRef.current = false;
+        return;
+      }
+      const ratio = rawPanelRef.current!.scrollTop / maxScroll;
+      parsedPanelRef.current!.scrollTop = ratio * (parsedPanelRef.current!.scrollHeight - parsedPanelRef.current!.clientHeight);
       isSyncingRef.current = false;
-      return;
-    }
-    const ratio = rawPanelRef.current.scrollTop / maxScroll;
-    parsedPanelRef.current.scrollTop = ratio * (parsedPanelRef.current.scrollHeight - parsedPanelRef.current.clientHeight);
-    requestAnimationFrame(() => { isSyncingRef.current = false; });
+    });
   }, []);
 
   const handleParsedScroll = useCallback(() => {
     if (isSyncingRef.current || !parsedPanelRef.current || !rawPanelRef.current) return;
     isSyncingRef.current = true;
-    const maxScroll = parsedPanelRef.current.scrollHeight - parsedPanelRef.current.clientHeight;
-    if (maxScroll <= 0) {
+    requestAnimationFrame(() => {
+      const maxScroll = parsedPanelRef.current!.scrollHeight - parsedPanelRef.current!.clientHeight;
+      if (maxScroll <= 0) {
+        isSyncingRef.current = false;
+        return;
+      }
+      const ratio = parsedPanelRef.current!.scrollTop / maxScroll;
+      rawPanelRef.current!.scrollTop = ratio * (rawPanelRef.current!.scrollHeight - rawPanelRef.current!.clientHeight);
       isSyncingRef.current = false;
-      return;
-    }
-    const ratio = parsedPanelRef.current.scrollTop / maxScroll;
-    rawPanelRef.current.scrollTop = ratio * (rawPanelRef.current.scrollHeight - rawPanelRef.current.clientHeight);
-    requestAnimationFrame(() => { isSyncingRef.current = false; });
+    });
   }, []);
 
   const filteredBlocks = selectedSectionId
@@ -379,7 +383,7 @@ function DocumentViewer({
         {showRawPanel && units && units.length > 0 && (
           <>
             <div className="w-1/2 overflow-hidden" ref={rawPanelRef} onScroll={handleRawScroll}>
-              <RawTextPanel units={units} selectedUnitId={selectedSectionId} />
+              <RawTextPanel units={units} selectedUnitId={units.find(u => u.sequence_index.toString() === selectedSectionId)?.id} />
             </div>
             <div className="w-px bg-black/5 flex-shrink-0" />
           </>

@@ -208,7 +208,7 @@ function WorkspacePage({ workspaceId, initialFiles = [], initialFolders = DEFAUL
     }
 
     dispatch({ type: "SELECT_SECTION", sectionId: null });
-  }, [documentBlocksByFileId, documentSectionsByFileId, documentUnitsByFileId, files]);
+  }, [documentBlocksByFileId, documentSectionsByFileId, files]);
 
   const handleFileSelect = useCallback((fileId: string, fileName: string) => {
     setSelectedFileId(fileId);

@@ -793,4 +793,78 @@ describe("DocumentViewer", () => {
     );
     expect(screen.queryByText("第一页内容")).toBeNull(); // 原文不显示
   });
+
+  it("calls onToggleRawPanel when raw button is clicked", () => {
+    const onToggleRawPanel = vi.fn();
+    render(
+      <DocumentViewer
+        contentBlocks={sampleBlocks}
+        units={mockUnits}
+        showRawPanel={true}
+        showParsedPanel={true}
+        selectedSectionId={null}
+        footnotes={[]}
+        expandedFootnoteId={null}
+        showSelectionMenu={false}
+        selectionMenuPos={null}
+        onUpdateLineText={vi.fn()}
+        onToggleFootnote={vi.fn()}
+        onShowSelectionMenu={vi.fn()}
+        onQuoteSelection={vi.fn()}
+        onToggleRawPanel={onToggleRawPanel}
+        onToggleParsedPanel={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByText("原文"));
+    expect(onToggleRawPanel).toHaveBeenCalled();
+  });
+
+  it("calls onToggleParsedPanel when parsed button is clicked", () => {
+    const onToggleParsedPanel = vi.fn();
+    render(
+      <DocumentViewer
+        contentBlocks={sampleBlocks}
+        units={mockUnits}
+        showRawPanel={true}
+        showParsedPanel={true}
+        selectedSectionId={null}
+        footnotes={[]}
+        expandedFootnoteId={null}
+        showSelectionMenu={false}
+        selectionMenuPos={null}
+        onUpdateLineText={vi.fn()}
+        onToggleFootnote={vi.fn()}
+        onShowSelectionMenu={vi.fn()}
+        onQuoteSelection={vi.fn()}
+        onToggleRawPanel={vi.fn()}
+        onToggleParsedPanel={onToggleParsedPanel}
+      />
+    );
+    fireEvent.click(screen.getByText("解析"));
+    expect(onToggleParsedPanel).toHaveBeenCalled();
+  });
+
+  it("hides parsed panel content when showParsedPanel is false", () => {
+    render(
+      <DocumentViewer
+        contentBlocks={sampleBlocks}
+        units={mockUnits}
+        showRawPanel={true}
+        showParsedPanel={false}
+        selectedSectionId={null}
+        footnotes={[]}
+        expandedFootnoteId={null}
+        showSelectionMenu={false}
+        selectionMenuPos={null}
+        onUpdateLineText={vi.fn()}
+        onToggleFootnote={vi.fn()}
+        onShowSelectionMenu={vi.fn()}
+        onQuoteSelection={vi.fn()}
+        onToggleRawPanel={vi.fn()}
+        onToggleParsedPanel={vi.fn()}
+      />
+    );
+    // 解析面板内容不应显示（空状态文案）
+    expect(screen.queryByText("从左侧上传一份文档开始")).toBeNull();
+  });
 });
