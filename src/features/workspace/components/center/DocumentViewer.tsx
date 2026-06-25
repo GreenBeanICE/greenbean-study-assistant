@@ -2,7 +2,7 @@ import { useRef, useCallback, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import DocumentToolbar from "../shared/DocumentToolbar";
 import type { DocumentViewerProps } from "../../type";
-import type { ContentLine, ContentBlock, FootnoteReference } from "../../../../types/section";
+import type { ContentLine, ContentBlock, FootnoteReference, SourceCitation } from "../../../../types/section";
 import type { TextFormatAction } from "../../type";
 
 /** 只控制行级对齐和整体外观，加粗/斜体等通过内联 HTML 实现 */
@@ -49,11 +49,18 @@ function EditableText({ text, onBlur }: { text: string; onBlur: (newText: string
 }
 
 /** 可交互的内容行：支持选中部分文字 + 内联编辑 */
-function ContentLineRender({ line, blockId, onViewFootnote, onLineHtmlChange }: {
+function ContentLineRender({ line, blockId, sectionId, onViewFootnote, onLineHtmlChange, onLineContextMenu }: {
   line: ContentLine;
   blockId: string;
+  sectionId: string;
   onViewFootnote?: (ref: string) => void;
   onLineHtmlChange?: (blockId: string, lineId: string, html: string) => void;
+  onLineContextMenu?: (
+    event: React.MouseEvent,
+    line: ContentLine,
+    blockId: string,
+    sectionId: string,
+  ) => void;
 }) {
   const spanRef = useRef<HTMLSpanElement>(null);
 
@@ -84,6 +91,7 @@ function ContentLineRender({ line, blockId, onViewFootnote, onLineHtmlChange }: 
     <div
       data-block-id={blockId}
       data-line-id={line.id}
+      onContextMenu={(event) => onLineContextMenu?.(event, line, blockId, sectionId)}
       className={`px-1 py-0.5 rounded-sm transition-colors ${
         line.highlighted
           ? "bg-yellow-200/60"
@@ -176,12 +184,17 @@ function ImageBlock({ block, onLineHtmlChange }: { block: ContentBlock; onLineHt
   );
 }
 
-function SelectionMenu({ pos, onQuote, onClose }: { pos: { x: number; y: number }; onQuote: () => void; onClose: () => void }) {
+function SelectionMenu({ pos, citations, onShowSources, onClose }: {
+  pos: { x: number; y: number };
+  citations: SourceCitation[];
+  onShowSources: (citations: SourceCitation[]) => void;
+  onClose: () => void;
+}) {
   return (<><div className="fixed inset-0 z-40" onClick={onClose} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClose(); }} tabIndex={0} role="button" aria-label="Close selection menu" />
     <div className="fixed z-50 bg-white rounded-xl shadow-xl border border-black/10 py-1 min-w-[140px]" style={{ left: pos.x, top: pos.y }}>
-      <button onClick={onQuote} className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-neutral-700 hover:bg-black/5 transition">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-        引用此段询问 AI
+      <button onClick={() => onShowSources(citations)} className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-neutral-700 hover:bg-black/5 transition">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+        显示来源
       </button>
     </div>
   </>);
@@ -208,17 +221,31 @@ function FootnotePanel({ footnote, onClose }: { footnote: FootnoteReference; onC
   );
 }
 
-function BlockContent({ block, onViewFootnote, onLineHtmlChange }: {
+function BlockContent({ block, onViewFootnote, onLineHtmlChange, onLineContextMenu }: {
   block: ContentBlock;
   onViewFootnote?: (ref: string) => void;
   onLineHtmlChange?: (blockId: string, lineId: string, html: string) => void;
+  onLineContextMenu?: (
+    event: React.MouseEvent,
+    line: ContentLine,
+    blockId: string,
+    sectionId: string,
+  ) => void;
 }) {
   if (block.contentType === "table") return <TableBlock block={block} onLineHtmlChange={onLineHtmlChange} />;
   if (block.contentType === "image") return <ImageBlock block={block} onLineHtmlChange={onLineHtmlChange} />;
   return (
     <div className="space-y-0.5">
       {(block.lines || []).map((line) => (
-        <ContentLineRender key={line.id} line={line} blockId={block.id} onViewFootnote={onViewFootnote} onLineHtmlChange={onLineHtmlChange} />
+        <ContentLineRender
+          key={line.id}
+          line={line}
+          blockId={block.id}
+          sectionId={block.sectionId}
+          onViewFootnote={onViewFootnote}
+          onLineHtmlChange={onLineHtmlChange}
+          onLineContextMenu={onLineContextMenu}
+        />
       ))}
     </div>
   );
@@ -227,8 +254,9 @@ function BlockContent({ block, onViewFootnote, onLineHtmlChange }: {
 function DocumentViewer({
   contentBlocks, selectedSectionId, footnotes, expandedFootnoteId,
   currentSelection, showSelectionMenu, selectionMenuPos,
-  onToggleHighlight, onUpdateLineText, onFormatLine, onToggleFootnote,
-  onSelectText, onShowSelectionMenu, onQuoteSelection,
+  onUpdateLineText, onToggleFootnote,
+  onSelectText, onShowSelectionMenu,
+  onShowSources,
 }: DocumentViewerProps) {
   const viewerRef = useRef<HTMLDivElement>(null);
 
@@ -254,7 +282,7 @@ function DocumentViewer({
   }, [onUpdateLineText]);
 
   // 工具栏格式操作 — 通过 document.execCommand 在 mousedown 阶段执行
-  const handleFormat = useCallback((format: TextFormatAction) => {
+  const handleFormat = useCallback((_format: TextFormatAction) => {
     // 由工具栏按钮在 mousedown 阶段通过 execLocalFormat 处理
     // 这里只是占位，实际操作在 DocumentToolbar 的 execLocalFormat 中完成
   }, []);
@@ -265,6 +293,43 @@ function DocumentViewer({
     const footnote = footnotes.find((fn) => fn.refNumber === ref);
     if (footnote) onToggleFootnote(footnote.id);
   }, [footnotes, onToggleFootnote]);
+
+  const getSelectionCitations = useCallback((): SourceCitation[] => {
+    if (!currentSelection) return [];
+    const block = filteredBlocks.find((item) => item.id === currentSelection.blockId);
+    if (!block?.lines) return [];
+    const fromIndex = block.lines.findIndex((line) => line.id === currentSelection.fromLineId);
+    const toIndex = block.lines.findIndex((line) => line.id === currentSelection.toLineId);
+    if (fromIndex < 0 || toIndex < 0) return [];
+    const start = Math.min(fromIndex, toIndex);
+    const end = Math.max(fromIndex, toIndex);
+    const unique = new Map<string, SourceCitation>();
+    block.lines.slice(start, end + 1).forEach((line) => {
+      (line.citations ?? []).forEach((citation) => unique.set(citation.id, citation));
+    });
+    return Array.from(unique.values());
+  }, [currentSelection, filteredBlocks]);
+
+  const handleLineContextMenu = useCallback((
+    event: React.MouseEvent,
+    line: ContentLine,
+    blockId: string,
+    sectionId: string,
+  ) => {
+    event.preventDefault();
+    if (!line.citations || line.citations.length === 0) {
+      onShowSelectionMenu(false);
+      return;
+    }
+    onSelectText({
+      text: window.getSelection()?.toString().trim() || line.text,
+      blockId,
+      sectionId,
+      fromLineId: line.id,
+      toLineId: line.id,
+    });
+    onShowSelectionMenu(true, { x: event.clientX, y: event.clientY });
+  }, [onSelectText, onShowSelectionMenu]);
 
   const handleDownload = () => {
     const btn = document.createElement("a");
@@ -281,7 +346,8 @@ function DocumentViewer({
     }
   };
 
-  const showSelectionMenuVisible = showSelectionMenu && selectionMenuPos;
+  const selectionCitations = getSelectionCitations();
+  const showSelectionMenuVisible = showSelectionMenu && selectionMenuPos && selectionCitations.length > 0;
 
   return (
     <div className="flex flex-col h-full">
@@ -332,7 +398,12 @@ function DocumentViewer({
                       onUpdateLineText(block.id, `title-${block.id}`, val);
                     }} />
                   </h3>
-                  <BlockContent block={block} onViewFootnote={handleViewFootnote} onLineHtmlChange={handleLineHtmlChange} />
+                  <BlockContent
+                    block={block}
+                    onViewFootnote={handleViewFootnote}
+                    onLineHtmlChange={handleLineHtmlChange}
+                    onLineContextMenu={handleLineContextMenu}
+                  />
                 </div>
               ))}
             </div>
@@ -347,7 +418,8 @@ function DocumentViewer({
       {showSelectionMenuVisible && (
         <SelectionMenu
           pos={selectionMenuPos!}
-          onQuote={onQuoteSelection}
+          citations={selectionCitations}
+          onShowSources={onShowSources}
           onClose={() => onShowSelectionMenu(false)}
         />
       )}

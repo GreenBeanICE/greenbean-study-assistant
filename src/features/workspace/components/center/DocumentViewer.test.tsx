@@ -35,7 +35,23 @@ const sampleBlocks: ContentBlock[] = [
     title: "1.1 背景介绍",
     contentType: "text",
     lines: [
-      { id: "l1", text: "AI技术发展迅速。", type: "paragraph", footnoteRef: "1" },
+      {
+        id: "l1",
+        text: "AI技术发展迅速。",
+        type: "paragraph",
+        footnoteRef: "1",
+        citations: [
+          {
+            id: "c-sample-1",
+            page: 1,
+            documentUnitId: "unit-1",
+            chunkId: "chunk-1",
+            sourceText: "AI技术发展迅速。",
+            startChar: 0,
+            endChar: 8,
+          },
+        ],
+      },
       { id: "l2", text: "教育领域应用广泛。", type: "paragraph" },
       { id: "l3", text: "研究背景与动机", type: "heading", level: 2 },
       { id: "l4", text: "• 测试列表项", type: "list" },
@@ -101,6 +117,7 @@ const defaultProps = {
   onSelectText: vi.fn(),
   onShowSelectionMenu: vi.fn(),
   onQuoteSelection: vi.fn(),
+  onShowSources: vi.fn(),
 };
 
 describe("DocumentViewer", () => {
@@ -351,22 +368,56 @@ describe("DocumentViewer", () => {
     expect(onUpdateLineText).not.toHaveBeenCalled();
   });
 
-  it("showSelectionMenu 为 true 时显示 SelectionMenu", () => {
-    const onQuoteSelection = vi.fn();
+  it("showSelectionMenu 为 true 且选区有 citation 时显示来源菜单", () => {
+    const onShowSources = vi.fn();
     const onShowSelectionMenu = vi.fn();
+    const contentBlocksWithCitations: ContentBlock[] = [
+      {
+        id: "block-1",
+        sectionId: "ch1-1",
+        title: "1.1 背景介绍",
+        contentType: "text",
+        lines: [
+          {
+            id: "l1",
+            text: "AI技术发展迅速。",
+            type: "paragraph",
+            citations: [
+              {
+                id: "c1",
+                page: 1,
+                documentUnitId: "unit-1",
+                chunkId: "chunk-1",
+                sourceText: "AI技术发展迅速。",
+                startChar: 0,
+                endChar: 8,
+              },
+            ],
+          },
+        ],
+      },
+    ];
     render(
       <DocumentViewer
         {...defaultProps}
+        contentBlocks={contentBlocksWithCitations}
         selectedSectionId="ch1-1"
+        currentSelection={{
+          text: "AI技术发展迅速。",
+          blockId: "block-1",
+          sectionId: "ch1-1",
+          fromLineId: "l1",
+          toLineId: "l1",
+        }}
         showSelectionMenu={true}
         selectionMenuPos={{ x: 100, y: 200 }}
-        onQuoteSelection={onQuoteSelection}
+        onShowSources={onShowSources}
         onShowSelectionMenu={onShowSelectionMenu}
       />,
     );
-    expect(screen.getByText("引用此段询问 AI")).toBeDefined();
-    fireEvent.click(screen.getByText("引用此段询问 AI"));
-    expect(onQuoteSelection).toHaveBeenCalled();
+    expect(screen.getByText("显示来源")).toBeDefined();
+    fireEvent.click(screen.getByText("显示来源"));
+    expect(onShowSources).toHaveBeenCalled();
   });
 
   it("SelectionMenu 点击 backdrop 触发 onShowSelectionMenu(false)", () => {
@@ -375,6 +426,13 @@ describe("DocumentViewer", () => {
       <DocumentViewer
         {...defaultProps}
         selectedSectionId="ch1-1"
+        currentSelection={{
+          text: "AI技术发展迅速。",
+          blockId: "block-1",
+          sectionId: "ch1-1",
+          fromLineId: "l1",
+          toLineId: "l1",
+        }}
         showSelectionMenu={true}
         selectionMenuPos={{ x: 100, y: 200 }}
         onShowSelectionMenu={onShowSelectionMenu}
@@ -398,6 +456,7 @@ describe("DocumentViewer", () => {
       />,
     );
     expect(screen.queryByText("引用此段询问 AI")).toBeNull();
+    expect(screen.queryByText("显示来源")).toBeNull();
   });
 
   it("selectionchange 事件正确触发 setHasSelection", () => {
@@ -439,6 +498,13 @@ describe("DocumentViewer", () => {
       <DocumentViewer
         {...defaultProps}
         selectedSectionId="ch1-1"
+        currentSelection={{
+          text: "AI技术发展迅速。",
+          blockId: "block-1",
+          sectionId: "ch1-1",
+          fromLineId: "l1",
+          toLineId: "l1",
+        }}
         showSelectionMenu={true}
         selectionMenuPos={{ x: 100, y: 200 }}
         onShowSelectionMenu={onShowSelectionMenu}
@@ -456,6 +522,13 @@ describe("DocumentViewer", () => {
       <DocumentViewer
         {...defaultProps}
         selectedSectionId="ch1-1"
+        currentSelection={{
+          text: "AI技术发展迅速。",
+          blockId: "block-1",
+          sectionId: "ch1-1",
+          fromLineId: "l1",
+          toLineId: "l1",
+        }}
         showSelectionMenu={true}
         selectionMenuPos={{ x: 100, y: 200 }}
         onShowSelectionMenu={onShowSelectionMenu}
@@ -741,5 +814,108 @@ describe("DocumentViewer", () => {
     const insertTableBtns = screen.getAllByTitle("插入表格");
     fireEvent.mouseDown(insertTableBtns[0]);
     expect(onFormatLine).not.toHaveBeenCalled();
+  });
+
+  it("选中带 citation 的解析句子右键菜单只显示“显示来源”", () => {
+    const analysisBlocks: ContentBlock[] = [
+      {
+        id: "analysis-block-1",
+        sectionId: "ch1-1",
+        title: "1.1 背景介绍",
+        contentType: "text",
+        lines: [
+          {
+            id: "s1",
+            text: "人工智能正在改变教育资料的学习方式。",
+            type: "paragraph",
+            citations: [
+              {
+                id: "c1",
+                page: 1,
+                documentUnitId: "unit-1",
+                chunkId: "chunk-1",
+                sourceText: "人工智能技术取得了飞速发展。",
+                startChar: 0,
+                endChar: 14,
+              },
+            ],
+          } as any,
+        ],
+      },
+    ];
+    const onShowSources = vi.fn();
+
+    render(
+      <DocumentViewer
+        {...defaultProps}
+        contentBlocks={analysisBlocks}
+        selectedSectionId="ch1-1"
+        currentSelection={{
+          text: "人工智能正在改变教育资料的学习方式。",
+          blockId: "analysis-block-1",
+          sectionId: "ch1-1",
+          fromLineId: "s1",
+          toLineId: "s1",
+        }}
+        showSelectionMenu={true}
+        selectionMenuPos={{ x: 20, y: 30 }}
+        onShowSources={onShowSources}
+      />,
+    );
+
+    expect(screen.getByText("显示来源")).toBeDefined();
+    expect(screen.queryByText("引用此段询问 AI")).toBeNull();
+
+    fireEvent.click(screen.getByText("显示来源"));
+    expect(onShowSources).toHaveBeenCalledWith([
+      {
+        id: "c1",
+        page: 1,
+        documentUnitId: "unit-1",
+        chunkId: "chunk-1",
+        sourceText: "人工智能技术取得了飞速发展。",
+        startChar: 0,
+        endChar: 14,
+      },
+    ]);
+  });
+
+  it("选中无 citation 的解析句子时不显示来源菜单", () => {
+    const analysisBlocks: ContentBlock[] = [
+      {
+        id: "analysis-block-1",
+        sectionId: "ch1-1",
+        title: "1.1 背景介绍",
+        contentType: "text",
+        lines: [
+          {
+            id: "s1",
+            text: "这句话暂时没有可靠来源。",
+            type: "paragraph",
+            citations: [],
+          } as any,
+        ],
+      },
+    ];
+
+    render(
+      <DocumentViewer
+        {...defaultProps}
+        contentBlocks={analysisBlocks}
+        selectedSectionId="ch1-1"
+        currentSelection={{
+          text: "这句话暂时没有可靠来源。",
+          blockId: "analysis-block-1",
+          sectionId: "ch1-1",
+          fromLineId: "s1",
+          toLineId: "s1",
+        }}
+        showSelectionMenu={true}
+        selectionMenuPos={{ x: 20, y: 30 }}
+      />,
+    );
+
+    expect(screen.queryByText("显示来源")).toBeNull();
+    expect(screen.queryByText("引用此段询问 AI")).toBeNull();
   });
 });

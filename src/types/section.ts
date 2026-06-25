@@ -32,6 +32,8 @@ export interface ContentLine {
   align?: "left" | "center" | "right" | "justify";
   /** 脚注引用标记，如 "1" 代表蓝色圆点 */
   footnoteRef?: string;
+  /** 解析句子的原文来源引用 */
+  citations?: SourceCitation[];
   /** 文字颜色 */
   color?: string;
   /** 字号（相对大小，如 "sm", "base", "lg", "xl"） */
@@ -89,4 +91,22 @@ export interface TextSelection {
   fromLineId: string;
   /** 选中范围结束行 ID */
   toLineId: string;
+}
+
+/** 解析句子的来源引用 */
+export interface SourceCitation {
+  id: string;
+  page: number | null;
+  documentUnitId: string;
+  chunkId?: string | null;
+  sourceText: string;
+  startChar: number;
+  endChar: number;
+}
+
+/** 文字版 PDF 源文件页面 */
+export interface SourcePage {
+  page: number | null;
+  documentUnitId: string;
+  text: string;
 }

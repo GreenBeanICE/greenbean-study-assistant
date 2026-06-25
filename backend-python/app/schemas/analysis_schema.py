@@ -1,6 +1,7 @@
 ﻿from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.enums.analysis_type import AnalysisType
 
@@ -63,3 +64,61 @@ class AnalysisOutput(BaseModel):
     source_refs: list[SourceRef] = Field(
         default_factory=list, description="Source references"
     )
+
+
+class SourceCitation(BaseModel):
+    id: str = Field(..., description="Citation ID")
+    page: int | None = Field(default=None, description="Source page number")
+    document_unit_id: str = Field(..., description="Source DocumentUnit ID")
+    chunk_id: str | None = Field(default=None, description="Source Chunk ID")
+    source_text: str = Field(..., description="Original text supporting the sentence")
+    start_char: int = Field(..., ge=0, description="Start character offset in source page text")
+    end_char: int = Field(..., ge=0, description="End character offset in source page text")
+
+    @model_validator(mode="after")
+    def validate_char_range(self) -> "SourceCitation":
+        if self.end_char < self.start_char:
+            raise ValueError("end_char must be greater than or equal to start_char")
+        return self
+
+
+class SectionAnalysisSentence(BaseModel):
+    id: str = Field(..., description="Sentence ID")
+    text: str = Field(..., description="Analysis sentence text")
+    citations: list[SourceCitation] = Field(
+        default_factory=list,
+        description="Sentence-level source citations",
+    )
+
+
+class SourcePage(BaseModel):
+    page: int | None = Field(default=None, description="Source page number")
+    document_unit_id: str = Field(..., description="Source DocumentUnit ID")
+    text: str = Field(..., description="Text-version PDF page content")
+
+
+class SectionAnalysisOutput(BaseModel):
+    section_id: str = Field(..., description="Section ID")
+    section_title: str = Field(..., description="Section title")
+    status: Literal["draft", "completed"] = Field(..., description="Analysis status")
+    sentences: list[SectionAnalysisSentence] = Field(
+        default_factory=list,
+        description="Sentence-level analysis output",
+    )
+    source_pages: list[SourcePage] = Field(
+        default_factory=list,
+        description="Text-version PDF source pages",
+    )
+
+    @model_validator(mode="after")
+    def validate_completed_sentences_have_citations(self) -> "SectionAnalysisOutput":
+        if self.status == "completed":
+            uncited_sentence_ids = [
+                sentence.id for sentence in self.sentences if not sentence.citations
+            ]
+            if uncited_sentence_ids:
+                raise ValueError(
+                    "completed section analysis requires citations for every sentence: "
+                    + ", ".join(uncited_sentence_ids)
+                )
+        return self

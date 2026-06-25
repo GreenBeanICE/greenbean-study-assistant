@@ -1,4 +1,11 @@
-import type { SectionNode, ContentBlock, FootnoteReference, TextSelection } from "../../types/section";
+import type {
+  SectionNode,
+  ContentBlock,
+  FootnoteReference,
+  SourceCitation,
+  SourcePage,
+  TextSelection,
+} from "../../types/section";
 import type { ChatMessage } from "../../types/chat";
 
 export type TextFormatAction = "bold" | "italic" | "underline" | "strikethrough" | "highlight" | "align-left" | "align-center" | "align-right" | "align-justify" | "insert-image" | "insert-table";
@@ -16,6 +23,9 @@ export interface WorkspaceState {
   showSelectionMenu: boolean;
   selectionMenuPos: { x: number; y: number } | null;
   quotedText: string | null;
+  rightPanelMode: "chat" | "sources";
+  sourcePages: SourcePage[];
+  activeSourceCitations: SourceCitation[];
   tokenUsage: number;
   leftCollapsed: boolean;
   rightCollapsed: boolean;
@@ -35,6 +45,8 @@ export type WorkspaceAction =
   | { type: "SHOW_SELECTION_MENU"; show: boolean; pos?: { x: number; y: number } }
   | { type: "QUOTE_SELECTION" }
   | { type: "CLEAR_QUOTE" }
+  | { type: "SHOW_SOURCES"; citations: SourceCitation[] }
+  | { type: "SHOW_CHAT" }
   | { type: "SET_CHAT_INPUT"; text: string }
   | { type: "SEND_CHAT_MESSAGE"; message: ChatMessage }
   | { type: "SET_LOADING"; loading: boolean }
@@ -68,6 +80,7 @@ export interface DocumentViewerProps {
   onSelectText: (selection: TextSelection | null) => void;
   onShowSelectionMenu: (show: boolean, pos?: { x: number; y: number }) => void;
   onQuoteSelection: () => void;
+  onShowSources: (citations: SourceCitation[]) => void;
 }
 
 export interface ChatPanelProps {

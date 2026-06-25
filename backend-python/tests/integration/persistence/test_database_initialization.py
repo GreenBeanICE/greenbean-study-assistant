@@ -1,5 +1,7 @@
 from contextlib import closing
 import sqlite3
+from types import SimpleNamespace
+import sys
 
 import pytest
 
@@ -24,23 +26,25 @@ def fail_to_load_sqlite_vec(connection: sqlite3.Connection) -> None:
 
 class FakeSQLiteConnection:
     def __init__(self) -> None:
+        self.loaded_by_sqlite_vec_sdk = False
         self.extension_states = []
-        self.loaded_extension = None
 
     def enable_load_extension(self, enabled: bool) -> None:
         self.extension_states.append(enabled)
 
-    def load_extension(self, extension_name: str) -> None:
-        self.loaded_extension = extension_name
 
-
-def test_default_sqlite_vec_loader_enables_loads_and_disables_extension():
+def test_default_sqlite_vec_loader_uses_sqlite_vec_python_sdk(monkeypatch):
     connection = FakeSQLiteConnection()
+
+    def fake_load(received_connection: FakeSQLiteConnection) -> None:
+        received_connection.loaded_by_sqlite_vec_sdk = True
+
+    monkeypatch.setitem(sys.modules, "sqlite_vec", SimpleNamespace(load=fake_load))
 
     load_sqlite_vec_extension(connection)
 
+    assert connection.loaded_by_sqlite_vec_sdk is True
     assert connection.extension_states == [True, False]
-    assert connection.loaded_extension == "sqlite_vec"
 
 
 def test_first_start_creates_data_dir_and_sqlite_database(tmp_path):
@@ -130,6 +134,8 @@ def test_successful_initialization_loads_sqlite_vec_and_creates_core_tables(tmp_
         "chat_sessions",
         "chat_messages",
         "embedding_vectors",
+        "chunk_embedding_index_entries",
+        "chunk_embedding_vec",
     }.issubset(table_names)
 
 

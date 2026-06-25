@@ -4,11 +4,11 @@ description: >
   Use this skill only for code-changing implementation tasks: feature, bug fix,
   refactor, user story, acceptance criteria, BDD scenario, TDD workflow, unit
   test, integration test, or test-first implementation. 使用此 skill 仅限需要修改代码
-  的实现类任务。Codex 必须先解析 User Story，生成 BDD scenarios，等待用户确认，
+  的实现类任务。必须先解析 User Story，生成 BDD scenarios，等待用户确认，
   再先写测试并确认 Red stage，再等待用户确认，然后实现最小生产代码并运行测试。
   Do not use this skill for pure explanation, architecture discussion, code
   review, code reading, documentation-only work, or non-code-changing tasks.
-  不要用于纯解释、架构讨论、代码审查、代码阅读、仅写文档或不修改代码的任务。
+  不要用于纯解释、架构讨论、代码审查、代码阅读、仅写文档或不修改代码的任务。默认使用中文。
 ---
 
 # BDD & TDD Implementation Skill

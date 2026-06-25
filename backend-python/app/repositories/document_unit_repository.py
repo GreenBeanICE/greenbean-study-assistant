@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.models import DocumentUnitModel
@@ -35,6 +36,30 @@ class DocumentUnitRepository:
         model = self.session.get(DocumentUnitModel, unit_id)
         if model is None:
             return None
+        return self._to_entity(model)
+
+    def list_by_document_and_page_range(
+        self,
+        *,
+        document_id: str,
+        start_page: int,
+        end_page: int,
+    ) -> list[DocumentUnit]:
+        rows = (
+            self.session.execute(
+                select(DocumentUnitModel)
+                .where(DocumentUnitModel.document_id == document_id)
+                .where(DocumentUnitModel.page_number.is_not(None))
+                .where(DocumentUnitModel.page_number >= start_page)
+                .where(DocumentUnitModel.page_number <= end_page)
+                .order_by(DocumentUnitModel.sequence_index)
+            )
+            .scalars()
+            .all()
+        )
+        return [self._to_entity(model) for model in rows]
+
+    def _to_entity(self, model: DocumentUnitModel) -> DocumentUnit:
         return DocumentUnit(
             id=model.id,
             document_id=model.document_id,

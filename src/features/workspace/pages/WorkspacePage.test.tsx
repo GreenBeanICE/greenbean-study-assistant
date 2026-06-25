@@ -9,7 +9,8 @@ function createTestState(): WorkspaceState {
     sections: [], selectedSectionId: null, contentBlocks: [],
     chatMessages: [], chatInput: "", loading: false, footnotes: [],
     expandedFootnoteId: null, currentSelection: null, showSelectionMenu: false,
-    selectionMenuPos: null, quotedText: null, tokenUsage: 0,
+    selectionMenuPos: null, quotedText: null, rightPanelMode: "chat",
+    sourcePages: [], activeSourceCitations: [], tokenUsage: 0,
     leftCollapsed: false, rightCollapsed: false, leftPanelWidth: 256,
     rightPanelWidth: 302, documentTitle: "test.pdf",
   };
@@ -411,7 +412,7 @@ describe("WorkspacePage", () => {
   it("点击脚注展开详情触发 TOGGLE_FOOTNOTE", () => {
     render(<WorkspacePage />);
     fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
-    fireEvent.click(screen.getByText((c) => c.includes("1.1 背景介绍")));
+    fireEvent.click(screen.getByText((c) => c.includes("1.2 研究意义")));
     const footnoteBtns = screen.getAllByTitle("点击查看原文引用");
     if (footnoteBtns.length > 0) {
       fireEvent.click(footnoteBtns[0]);
@@ -647,7 +648,6 @@ describe("WorkspacePage", () => {
 
   it("右面板宽度设为较小值时 SET_RIGHT_WIDTH 限制最小宽度", () => {
     render(<WorkspacePage />);
-    const handle = document.querySelector('[class*="cursor-col-resize"]:last-child');
     // This test validates that the dispatch works correctly
     expect(screen.getByTitle("收起AI聊天")).toBeDefined();
   });
@@ -674,6 +674,22 @@ describe("WorkspacePage", () => {
       Object.defineProperty(window, "innerWidth", { value: originalWidth.value, configurable: true, writable: true });
     }
     expect(screen.getByTitle("展开AI聊天")).toBeDefined();
+  });
+
+  it("选中小节解析文本右键显示来源后，右侧展示文字版 PDF 并高亮来源", () => {
+    render(<WorkspacePage />);
+
+    fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
+    fireEvent.click(screen.getByText((content) => content.includes("1.1 背景介绍")));
+
+    const sentence = screen.getByText("人工智能正在改变教育资料的学习方式。");
+    fireEvent.contextMenu(sentence);
+    fireEvent.click(screen.getByText("显示来源"));
+
+    expect(screen.getByText("文字版 PDF 来源")).toBeDefined();
+    expect(screen.getByText("第 1 页")).toBeDefined();
+    expect(screen.getByText("近年来，人工智能技术取得了飞速发展")).toBeDefined();
+    expect(document.querySelectorAll("[data-source-highlight='true']").length).toBeGreaterThanOrEqual(1);
   });
 });
 

@@ -20,9 +20,14 @@ class DatabaseInitializationResult:
 
 
 def load_sqlite_vec_extension(connection: sqlite3.Connection) -> None:
+    try:
+        import sqlite_vec
+    except ModuleNotFoundError as exc:
+        raise SQLiteVecInitializationError("sqlite-vec Python package is not installed") from exc
+
     connection.enable_load_extension(True)
     try:
-        connection.load_extension("sqlite_vec")
+        sqlite_vec.load(connection)
     finally:
         connection.enable_load_extension(False)
 
@@ -69,6 +74,9 @@ def _check_sqlite_vec(connection: sqlite3.Connection) -> str:
 
 
 def _create_schema(connection: sqlite3.Connection, embedding_dimension: int) -> None:
+    if embedding_dimension <= 0:
+        raise SQLiteVecInitializationError("embedding_dimension must be greater than 0")
+
     connection.executescript(
         """
         CREATE TABLE IF NOT EXISTS document_records (
@@ -188,6 +196,15 @@ def _create_schema(connection: sqlite3.Connection, embedding_dimension: int) -> 
             FOREIGN KEY (chunk_id) REFERENCES chunks(id)
         );
 
+        CREATE TABLE IF NOT EXISTS chunk_embedding_index_entries (
+            rowid INTEGER PRIMARY KEY AUTOINCREMENT,
+            chunk_id TEXT NOT NULL UNIQUE,
+            embedding_model TEXT NOT NULL,
+            vector_dimension INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (chunk_id) REFERENCES chunks(id)
+        );
+
         CREATE TABLE IF NOT EXISTS provider_configs (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL UNIQUE,
@@ -218,3 +235,28 @@ def _create_schema(connection: sqlite3.Connection, embedding_dimension: int) -> 
         """,
         (str(embedding_dimension),),
     )
+    _create_chunk_embedding_vec_table(connection, embedding_dimension)
+
+
+def _create_chunk_embedding_vec_table(
+    connection: sqlite3.Connection,
+    embedding_dimension: int,
+) -> None:
+    try:
+        connection.execute(
+            f"""
+            CREATE VIRTUAL TABLE IF NOT EXISTS chunk_embedding_vec
+            USING vec0(embedding float[{embedding_dimension}])
+            """
+        )
+    except sqlite3.OperationalError as exc:
+        if "no such module: vec0" not in str(exc):
+            raise
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS chunk_embedding_vec (
+                rowid INTEGER PRIMARY KEY,
+                embedding BLOB NOT NULL
+            )
+            """
+        )

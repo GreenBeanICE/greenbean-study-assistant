@@ -4,9 +4,10 @@ import SectionTree from "../components/left/SectionTree";
 import FileManager from "../components/left/FileManager";
 import DocumentViewer from "../components/center/DocumentViewer";
 import ChatPanel from "../components/right/ChatPanel";
+import SourcePanel from "../components/right/SourcePanel";
 import ResizableHandle from "../components/shared/ResizableHandle";
 import type { WorkspaceState, WorkspaceAction, WorkspacePageProps, TextFormatAction } from "../type";
-import type { SectionNode, ContentBlock, ContentLine, FootnoteReference } from "../../../types/section";
+import type { SectionNode, ContentBlock, ContentLine, FootnoteReference, SourceCitation, SourcePage } from "../../../types/section";
 import type { ChatMessage } from "../../../types/chat";
 
 function getLocalizedSections(): SectionNode[] {
@@ -31,15 +32,41 @@ function getLocalizedSections(): SectionNode[] {
 }
 
 function getLocalizedContent(): ContentBlock[] {
+  const sourceCitation: SourceCitation = {
+    id: "c-ai-growth",
+    page: 1,
+    documentUnitId: "unit-page-1",
+    chunkId: "chunk-page-1",
+    sourceText: "近年来，人工智能技术取得了飞速发展",
+    startChar: 0,
+    endChar: 17,
+  };
   return [
     { id: "block-ch1-1", sectionId: "ch1-1", title: "1.1 背景介绍", contentType: "text",
       lines: [
-        { id: "l1", text: "近年来，人工智能技术取得了飞速发展，深刻改变了各行各业的面貌。", type: "paragraph", footnoteRef: "1" },
-        { id: "l2", text: "在教育领域，AI 技术的应用尤为引人注目。", type: "paragraph" },
-        { id: "l3", text: "本节将介绍本研究的基本背景和动机。", type: "heading", level: 2 },
-        { id: "l4", text: "• 全球教育数字化转型趋势", type: "list" },
-        { id: "l5", text: "• 在法中国留学生面临的语言与学习障碍", type: "list" },
-        { id: "l6", text: "• 现有工具与解决方案的不足", type: "list", footnoteRef: "2" },
+        { id: "s1", text: "人工智能正在改变教育资料的学习方式。", type: "paragraph", citations: [sourceCitation] },
+        { id: "s2", text: "在法中国留学生需要同时处理专业概念、外语表述和中文理解。", type: "paragraph", citations: [
+          {
+            id: "c-student-need",
+            page: 1,
+            documentUnitId: "unit-page-1",
+            chunkId: "chunk-page-2",
+            sourceText: "在法中国留学生面临的语言与学习障碍",
+            startChar: 31,
+            endChar: 48,
+          },
+        ] },
+        { id: "s3", text: "因此，小节解析需要把解释和原文证据一起展示。", type: "paragraph", citations: [
+          {
+            id: "c-existing-tools",
+            page: 1,
+            documentUnitId: "unit-page-1",
+            chunkId: "chunk-page-3",
+            sourceText: "现有工具与解决方案的不足",
+            startChar: 49,
+            endChar: 61,
+          },
+        ] },
       ]},
     { id: "block-table-1", sectionId: "ch2-1", title: "表1：主流AI教育平台对比", contentType: "table",
       tableData: { headers: ["平台名称", "语言支持", "AI 功能", "定价"],
@@ -54,7 +81,7 @@ function getLocalizedContent(): ContentBlock[] {
     { id: "block-ch1-2", sectionId: "ch1-2", title: "1.2 研究意义", contentType: "text",
       lines: [
         { id: "l7", text: "本研究具有重要的理论意义和实践价值。", type: "paragraph" },
-        { id: "l8", text: "从理论层面看，本研究探索了 AI 辅助学习的新范式。", type: "paragraph" },
+        { id: "l8", text: "从理论层面看，本研究探索了 AI 辅助学习的新范式。", type: "paragraph", footnoteRef: "1" },
         { id: "l9", text: "从实践层面看，本研究为留学生提供了切实可行的学习工具。", type: "paragraph" },
       ]},
     { id: "block-ch2-1", sectionId: "ch2-1", title: "2.1 概念定义", contentType: "text",
@@ -63,6 +90,16 @@ function getLocalizedContent(): ContentBlock[] {
         { id: "l11", text: "定义 1（智能学习助手）：...", type: "code" },
         { id: "l12", text: "定义 2（知识图谱）：...", type: "code" },
       ]},
+  ];
+}
+
+function getLocalizedSourcePages(): SourcePage[] {
+  return [
+    {
+      page: 1,
+      documentUnitId: "unit-page-1",
+      text: "近年来，人工智能技术取得了飞速发展，深刻改变了各行各业的面貌。在法中国留学生面临的语言与学习障碍。现有工具与解决方案的不足。",
+    },
   ];
 }
 
@@ -109,6 +146,17 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
     case "SHOW_SELECTION_MENU": return { ...state, showSelectionMenu: action.show, selectionMenuPos: action.pos ?? null };
     case "QUOTE_SELECTION": return { ...state, quotedText: state.currentSelection?.text ?? null, showSelectionMenu: false, currentSelection: null, selectionMenuPos: null };
     case "CLEAR_QUOTE": return { ...state, quotedText: null };
+    case "SHOW_SOURCES":
+      return {
+        ...state,
+        rightPanelMode: "sources",
+        rightCollapsed: false,
+        activeSourceCitations: action.citations,
+        showSelectionMenu: false,
+        currentSelection: null,
+        selectionMenuPos: null,
+      };
+    case "SHOW_CHAT": return { ...state, rightPanelMode: "chat", rightCollapsed: false };
     case "SET_CHAT_INPUT": return { ...state, chatInput: action.text };
     case "SEND_CHAT_MESSAGE": {
       const userMsg: ChatMessage = { id: `msg-${Date.now()}`, role: "user", content: state.quotedText ? `[引用] ${state.quotedText}\n\n${state.chatInput}` : state.chatInput, createdAt: new Date().toISOString() };
@@ -130,7 +178,6 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
 }
 
 function WorkspacePage(_props: WorkspacePageProps) {
-  const titleRef = useRef<HTMLInputElement>(null);
   const rightDragRef = useRef(false);
   const rightWidthRef = useRef(302);
   const rightDragClientXRef = useRef(0);
@@ -143,7 +190,8 @@ function WorkspacePage(_props: WorkspacePageProps) {
     sections: getLocalizedSections(), selectedSectionId: null, contentBlocks: getLocalizedContent(),
     chatMessages: [], chatInput: "", loading: false, footnotes: initialFootnotes,
     expandedFootnoteId: null, currentSelection: null, showSelectionMenu: false,
-    selectionMenuPos: null, quotedText: null, tokenUsage: 0,
+    selectionMenuPos: null, quotedText: null, rightPanelMode: "chat",
+    sourcePages: getLocalizedSourcePages(), activeSourceCitations: [], tokenUsage: 0,
     leftCollapsed: false, rightCollapsed: false,
     leftPanelWidth: 256, rightPanelWidth: 302, documentTitle: "cours-analyse-s1.pdf",
   });
@@ -159,6 +207,7 @@ function WorkspacePage(_props: WorkspacePageProps) {
   const sel = useCallback((s: any) => dispatch({ type: "SET_SELECTION", selection: s } as any), []);
   const sm = useCallback((s: boolean, p?: { x: number; y: number }) => dispatch({ type: "SHOW_SELECTION_MENU", show: s, pos: p } as any), []);
   const qs = useCallback(() => dispatch({ type: "QUOTE_SELECTION" } as any), []);
+  const showSources = useCallback((citations: SourceCitation[]) => dispatch({ type: "SHOW_SOURCES", citations } as any), []);
   const ci = useCallback((t: string) => dispatch({ type: "SET_CHAT_INPUT", text: t } as any), []);
   const cq = useCallback(() => dispatch({ type: "CLEAR_QUOTE" } as any), []);
   const send = useCallback(() => { if ((state.chatInput.trim() || state.quotedText) && !state.loading) dispatch({ type: "SEND_CHAT_MESSAGE", message: {} as ChatMessage } as any); }, [state.chatInput, state.quotedText, state.loading]);
@@ -319,7 +368,8 @@ function WorkspacePage(_props: WorkspacePageProps) {
             footnotes={state.footnotes} expandedFootnoteId={state.expandedFootnoteId}
             currentSelection={state.currentSelection} showSelectionMenu={state.showSelectionMenu} selectionMenuPos={state.selectionMenuPos}
             onToggleHighlight={th} onUpdateLineText={ut} onFormatLine={fmt}
-            onToggleFootnote={tf} onSelectText={sel} onShowSelectionMenu={sm} onQuoteSelection={qs} />
+            onToggleFootnote={tf} onSelectText={sel} onShowSelectionMenu={sm} onQuoteSelection={qs}
+            onShowSources={showSources} />
         </main>
 
         <ResizableHandle onResize={setRightW} position="right" onDoubleClick={toggleRightPanel} />
@@ -331,8 +381,12 @@ function WorkspacePage(_props: WorkspacePageProps) {
         >
           {!state.rightCollapsed && (
             <div style={{ width: state.rightPanelWidth, maxWidth: "100%" }} className="h-full overflow-hidden relative">
-              <ChatPanel messages={state.chatMessages} input={state.chatInput} quotedText={state.quotedText} tokenUsage={state.tokenUsage}
-                onInputChange={ci} onSend={send} onClearQuote={cq} loading={state.loading} />
+              {state.rightPanelMode === "sources" ? (
+                <SourcePanel sourcePages={state.sourcePages} activeCitations={state.activeSourceCitations} />
+              ) : (
+                <ChatPanel messages={state.chatMessages} input={state.chatInput} quotedText={state.quotedText} tokenUsage={state.tokenUsage}
+                  onInputChange={ci} onSend={send} onClearQuote={cq} loading={state.loading} />
+              )}
             </div>
           )}
         </motion.aside>
