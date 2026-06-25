@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
 import DocumentViewer from "./DocumentViewer";
 import type { ContentBlock, FootnoteReference } from "../../../../types/section";
+import type { DocumentUnit } from "../../../../types/document";
 
 // Mock framer-motion
 vi.mock("framer-motion", () => {
@@ -737,5 +738,59 @@ describe("DocumentViewer", () => {
     const insertTableBtns = screen.getAllByTitle("插入表格");
     fireEvent.mouseDown(insertTableBtns[0]);
     expect(screen.getByText("1.1 背景介绍")).toBeDefined();
+  });
+
+  // 新增：双栏布局测试
+  const mockUnits: DocumentUnit[] = [
+    { id: "unit-1", sequence_index: 0, page_number: 1, text_content: "第一页内容" },
+    { id: "unit-2", sequence_index: 1, page_number: 2, text_content: "第二页内容" },
+  ];
+
+  it("renders both panels when showRawPanel and showParsedPanel are true", () => {
+    render(
+      <DocumentViewer
+        contentBlocks={sampleBlocks}
+        units={mockUnits}
+        showRawPanel={true}
+        showParsedPanel={true}
+        selectedSectionId={null}
+        footnotes={[]}
+        expandedFootnoteId={null}
+        showSelectionMenu={false}
+        selectionMenuPos={null}
+        onUpdateLineText={vi.fn()}
+        onToggleFootnote={vi.fn()}
+        onShowSelectionMenu={vi.fn()}
+        onQuoteSelection={vi.fn()}
+        onToggleRawPanel={vi.fn()}
+        onToggleParsedPanel={vi.fn()}
+      />
+    );
+    expect(screen.getByText("原文")).toBeDefined();
+    expect(screen.getByText("解析")).toBeDefined();
+    expect(screen.getByText("第一页内容")).toBeDefined(); // 原文
+  });
+
+  it("hides raw panel when showRawPanel is false", () => {
+    render(
+      <DocumentViewer
+        contentBlocks={sampleBlocks}
+        units={mockUnits}
+        showRawPanel={false}
+        showParsedPanel={true}
+        selectedSectionId={null}
+        footnotes={[]}
+        expandedFootnoteId={null}
+        showSelectionMenu={false}
+        selectionMenuPos={null}
+        onUpdateLineText={vi.fn()}
+        onToggleFootnote={vi.fn()}
+        onShowSelectionMenu={vi.fn()}
+        onQuoteSelection={vi.fn()}
+        onToggleRawPanel={vi.fn()}
+        onToggleParsedPanel={vi.fn()}
+      />
+    );
+    expect(screen.queryByText("第一页内容")).toBeNull(); // 原文不显示
   });
 });

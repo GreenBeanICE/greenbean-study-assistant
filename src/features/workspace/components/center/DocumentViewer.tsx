@@ -1,6 +1,7 @@
 import { useRef, useCallback, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import DocumentToolbar from "../shared/DocumentToolbar";
+import RawTextPanel from "./RawTextPanel";
 import type { DocumentViewerProps } from "../../type";
 import type { ContentLine, ContentBlock, FootnoteReference } from "../../../../types/section";
 
@@ -228,8 +229,27 @@ function DocumentViewer({
   showSelectionMenu, selectionMenuPos,
   onUpdateLineText, onToggleFootnote,
   onShowSelectionMenu, onQuoteSelection,
+  units, showRawPanel = true, showParsedPanel = true, onToggleRawPanel, onToggleParsedPanel,
 }: DocumentViewerProps) {
-  const viewerRef = useRef<HTMLDivElement>(null);
+  const rawPanelRef = useRef<HTMLDivElement>(null);
+  const parsedPanelRef = useRef<HTMLDivElement>(null);
+  const isSyncingRef = useRef(false);
+
+  const handleRawScroll = useCallback(() => {
+    if (isSyncingRef.current || !parsedPanelRef.current || !rawPanelRef.current) return;
+    isSyncingRef.current = true;
+    const ratio = rawPanelRef.current.scrollTop / (rawPanelRef.current.scrollHeight - rawPanelRef.current.clientHeight);
+    parsedPanelRef.current.scrollTop = ratio * (parsedPanelRef.current.scrollHeight - parsedPanelRef.current.clientHeight);
+    requestAnimationFrame(() => { isSyncingRef.current = false; });
+  }, []);
+
+  const handleParsedScroll = useCallback(() => {
+    if (isSyncingRef.current || !parsedPanelRef.current || !rawPanelRef.current) return;
+    isSyncingRef.current = true;
+    const ratio = parsedPanelRef.current.scrollTop / (parsedPanelRef.current.scrollHeight - parsedPanelRef.current.clientHeight);
+    rawPanelRef.current.scrollTop = ratio * (rawPanelRef.current.scrollHeight - rawPanelRef.current.clientHeight);
+    requestAnimationFrame(() => { isSyncingRef.current = false; });
+  }, []);
 
   const filteredBlocks = selectedSectionId
     ? contentBlocks.filter((block) => block.sectionId === selectedSectionId)
@@ -314,6 +334,19 @@ function DocumentViewer({
       <div className="flex flex-wrap items-center px-4 py-2 border-b border-black/5 bg-white/50 gap-x-1">
         <h2 className="text-sm font-semibold text-neutral-700 tracking-tight whitespace-nowrap flex-shrink-0">文档解析</h2>
         <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
+          {/* 新增：原文/解析切换按钮 */}
+          {units && units.length > 0 && (
+            <>
+              <button onClick={onToggleRawPanel}
+                className={`cursor-pointer px-2 py-1 text-xs rounded transition ${showRawPanel ? 'bg-blue-100 text-blue-700' : 'text-neutral-400 hover:bg-black/10'}`}>
+                原文
+              </button>
+              <button onClick={onToggleParsedPanel}
+                className={`cursor-pointer px-2 py-1 text-xs rounded transition ${showParsedPanel ? 'bg-blue-100 text-blue-700' : 'text-neutral-400 hover:bg-black/10'}`}>
+                解析
+              </button>
+            </>
+          )}
           <button onClick={handleDownload}
             className="cursor-pointer w-7 h-7 rounded-md flex items-center justify-center hover:bg-black/10 text-neutral-400 transition"
             title="下载">
@@ -330,41 +363,58 @@ function DocumentViewer({
       {/* Word风格工具栏 — 启用状态依赖选中文字 */}
       <DocumentToolbar selectedLineId={hasSelection ? "selected" : null} />
 
-      {/* Word风格文档内容 — 容器过窄时不换行，允许用户横向滚动查看完整文字 */}
-      <div
-        ref={viewerRef}
-        className="flex-1 overflow-y-auto overflow-x-auto px-6 md:px-10 py-4 scrollbar-hide"
-        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-      >
-        {showEmptyState ? (
-          <div className="inline-block pt-16 pl-6">
-            <div className="w-16 h-16 rounded-2xl bg-black/5 flex items-center justify-center mb-4">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" className="text-neutral-400">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
-              </svg>
+      {/* 双栏内容区域 */}
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        {/* 原文面板 */}
+        {showRawPanel && units && units.length > 0 && (
+          <>
+            <div className="w-1/2 overflow-hidden" ref={rawPanelRef} onScroll={handleRawScroll}>
+              <RawTextPanel units={units} selectedUnitId={selectedSectionId} />
             </div>
-            <p className="text-sm text-neutral-500 font-medium">
-              {emptyStateCopy.title}
-            </p>
-            <p className="text-xs text-neutral-400 mt-1">
-              {emptyStateCopy.subtitle}
-            </p>
-          </div>
-        ) : (
-          <div className="min-w-max" style={{ minWidth: "max-content" }}>
-            <div className="max-w-3xl mx-auto">
-              {filteredBlocks.map((block, idx) => (
-                <div key={block.id}>
-                  {idx > 0 && <hr className="my-4 border-black/5" />}
-                  <h3 className="text-base font-semibold text-neutral-800 mb-3 tracking-tight">
-                    <EditableText text={block.title} onBlur={(val) => {
-                      onUpdateLineText(block.id, `title-${block.id}`, val);
-                    }} />
-                  </h3>
-                  <BlockContent block={block} onViewFootnote={handleViewFootnote} onLineHtmlChange={handleLineHtmlChange} />
+            <div className="w-px bg-black/5 flex-shrink-0" />
+          </>
+        )}
+
+        {/* 解析面板 */}
+        {showParsedPanel && (
+          <div
+            ref={parsedPanelRef}
+            onScroll={handleParsedScroll}
+            className={`flex-1 overflow-y-auto overflow-x-auto px-6 md:px-10 py-4 scrollbar-hide ${showRawPanel && units && units.length > 0 ? 'w-1/2' : 'w-full'}`}
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          >
+            {/* 现有的解析内容渲染逻辑 */}
+            {showEmptyState ? (
+              <div className="inline-block pt-16 pl-6">
+                <div className="w-16 h-16 rounded-2xl bg-black/5 flex items-center justify-center mb-4">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" className="text-neutral-400">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
+                  </svg>
                 </div>
-              ))}
-            </div>
+                <p className="text-sm text-neutral-500 font-medium">
+                  {emptyStateCopy.title}
+                </p>
+                <p className="text-xs text-neutral-400 mt-1">
+                  {emptyStateCopy.subtitle}
+                </p>
+              </div>
+            ) : (
+              <div className="min-w-max" style={{ minWidth: "max-content" }}>
+                <div className="max-w-3xl mx-auto">
+                  {filteredBlocks.map((block, idx) => (
+                    <div key={block.id}>
+                      {idx > 0 && <hr className="my-4 border-black/5" />}
+                      <h3 className="text-base font-semibold text-neutral-800 mb-3 tracking-tight">
+                        <EditableText text={block.title} onBlur={(val) => {
+                          onUpdateLineText(block.id, `title-${block.id}`, val);
+                        }} />
+                      </h3>
+                      <BlockContent block={block} onViewFootnote={handleViewFootnote} onLineHtmlChange={handleLineHtmlChange} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
