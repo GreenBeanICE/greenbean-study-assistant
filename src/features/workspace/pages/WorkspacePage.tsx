@@ -9,8 +9,10 @@ import type { FileItem, WorkspaceState, WorkspaceAction, WorkspacePageProps } fr
 import { createFileId, DEFAULT_FOLDERS, formatFileSize, getFileType } from "../workspaceFiles";
 import type { SectionNode, ContentLine, ContentBlock } from "../../../types/section";
 import type { ChatMessage } from "../../../types/chat";
+import type { DocumentUnit } from "../../../types/document";
 import { uploadDocument, getDocumentDetail } from "../../document/api/documentApi";
 import { unitsToContentBlocks, UPLOADED_CONTENT_SECTION_ID } from "../../document/unitsToContentBlocks";
+import { buildSections, getSectionTree } from "../../section/api/sectionApi";
 
 export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction): WorkspaceState {
   switch (action.type) {
@@ -80,8 +82,12 @@ function WorkspacePage({ workspaceId, initialFiles = [], initialFolders = DEFAUL
   const [selectedFileName, setSelectedFileName] = useState<string>("");
   const [files, setFiles] = useState<FileItem[]>(initialFiles);
   const [documentBlocksByFileId, setDocumentBlocksByFileId] = useState<Record<string, ContentBlock[]>>({});
+  const [documentSectionsByFileId, setDocumentSectionsByFileId] = useState<Record<string, SectionNode[]>>({});
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [viewerStatus, setViewerStatus] = useState<"idle" | "parsing" | "ready" | "empty" | "error">("idle");
+  const [showRawPanel, setShowRawPanel] = useState(true);
+  const [showParsedPanel, setShowParsedPanel] = useState(true);
+  const [documentUnitsByFileId, setDocumentUnitsByFileId] = useState<Record<string, DocumentUnit[]>>({});
 
   const [state, dispatch] = useReducer(workspaceReducer, {
     sections: initialSections, selectedSectionId: null, contentBlocks: initialContentBlocks,
@@ -192,8 +198,9 @@ function WorkspacePage({ workspaceId, initialFiles = [], initialFolders = DEFAUL
     }
 
     const blocks = documentBlocksByFileId[fileId] ?? [];
+    const sections = documentSectionsByFileId[fileId] ?? [];
     setViewerStatus(selectedFile?.viewerStatus ?? (blocks.length > 0 ? "ready" : "idle"));
-    dispatch({ type: "SET_LANG_DATA", sections: [], contentBlocks: blocks });
+    dispatch({ type: "SET_LANG_DATA", sections, contentBlocks: blocks });
 
     if (selectedFile?.viewerStatus === "ready" && blocks.length > 0) {
       dispatch({ type: "SELECT_SECTION", sectionId: UPLOADED_CONTENT_SECTION_ID });
@@ -201,7 +208,7 @@ function WorkspacePage({ workspaceId, initialFiles = [], initialFolders = DEFAUL
     }
 
     dispatch({ type: "SELECT_SECTION", sectionId: null });
-  }, [documentBlocksByFileId, files]);
+  }, [documentBlocksByFileId, documentSectionsByFileId, documentUnitsByFileId, files]);
 
   const handleFileSelect = useCallback((fileId: string, fileName: string) => {
     setSelectedFileId(fileId);
@@ -239,11 +246,29 @@ function WorkspacePage({ workspaceId, initialFiles = [], initialFolders = DEFAUL
       const uploadResult = await uploadDocument(file, workspaceId ?? "workspace_1");
       const detail = await getDocumentDetail(uploadResult.id);
       const blocks = unitsToContentBlocks(detail.units);
+
+      // 构建并获取章节树
+      let sections: SectionNode[] = [];
+      try {
+        await buildSections(uploadResult.id);
+        sections = await getSectionTree(uploadResult.id);
+      } catch {
+        // 章节树构建失败不影响文档解析结果展示
+      }
+
       setDocumentBlocksByFileId((prev) => ({
         ...prev,
         [fileId]: blocks,
       }));
-      dispatch({ type: "SET_LANG_DATA", sections: [], contentBlocks: blocks });
+      setDocumentSectionsByFileId((prev) => ({
+        ...prev,
+        [fileId]: sections,
+      }));
+      setDocumentUnitsByFileId((prev) => ({
+        ...prev,
+        [fileId]: detail.units,
+      }));
+      dispatch({ type: "SET_LANG_DATA", sections, contentBlocks: blocks });
       // 自动选中内容区域，让 DocumentViewer 立即渲染解析结果
       if (blocks.length > 0) {
         dispatch({ type: "SELECT_SECTION", sectionId: UPLOADED_CONTENT_SECTION_ID });
@@ -391,7 +416,12 @@ function WorkspacePage({ workspaceId, initialFiles = [], initialFolders = DEFAUL
             footnotes={state.footnotes} expandedFootnoteId={state.expandedFootnoteId}
             showSelectionMenu={state.showSelectionMenu} selectionMenuPos={state.selectionMenuPos}
             onUpdateLineText={updateLineText}
-            onToggleFootnote={toggleFootnote} onShowSelectionMenu={showSelectionMenu} onQuoteSelection={quoteSelection} />
+            onToggleFootnote={toggleFootnote} onShowSelectionMenu={showSelectionMenu} onQuoteSelection={quoteSelection}
+            units={selectedFileId ? documentUnitsByFileId[selectedFileId] : undefined}
+            showRawPanel={showRawPanel}
+            showParsedPanel={showParsedPanel}
+            onToggleRawPanel={() => setShowRawPanel(!showRawPanel)}
+            onToggleParsedPanel={() => setShowParsedPanel(!showParsedPanel)} />
         </main>
 
         <ResizableHandle onResize={setRightW} position="right" onDoubleClick={toggleRightPanel} />

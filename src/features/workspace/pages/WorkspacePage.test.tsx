@@ -249,7 +249,7 @@ describe("WorkspacePage", () => {
 
     // 解析完成后，中间文档区应展示每个解析出的内容块
     expect(await screen.findByText("第 1 页", {}, { timeout: 2000 })).toBeDefined();
-    expect(screen.getByText("第 2 页")).toBeDefined();
+    expect(screen.getAllByText("第 2 页").length).toBeGreaterThanOrEqual(1);
   });
 
   it("上传失败时显示可读的错误提示", async () => {
@@ -290,7 +290,7 @@ describe("WorkspacePage", () => {
 
     fireEvent.click(screen.getByTitle("文件管理"));
     fireEvent.click(screen.getByText("a.pdf"));
-    expect(await screen.findByText("A 的第一页")).toBeDefined();
+    expect((await screen.findAllByText("A 的第一页")).length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText("B 的第一页")).toBeNull();
   });
 
@@ -852,6 +852,53 @@ describe("WorkspacePage", () => {
       Object.defineProperty(window, "innerWidth", { value: originalWidth.value, configurable: true, writable: true });
     }
     expect(screen.getByTitle("展开AI聊天")).toBeDefined();
+  });
+
+  it("shows raw/parsed panel toggle buttons after upload", async () => {
+    (uploadDocument as Mock).mockResolvedValue({ id: "doc1" });
+    (getDocumentDetail as Mock).mockResolvedValue({
+      document: { id: "doc1" },
+      units: [{ id: "u1", sequence_index: 0, page_number: 1, text_content: "第一页内容" }],
+    });
+
+    render(<WorkspacePage />);
+    await uploadPdf("test.pdf");
+    
+    // 验证原文/解析切换按钮出现
+    expect(screen.getByText("原文")).toBeDefined();
+    expect(screen.getByText("解析")).toBeDefined();
+  });
+
+  it("loads units when selecting previously uploaded file", async () => {
+    (uploadDocument as Mock).mockResolvedValue({ id: "doc1" });
+    (getDocumentDetail as Mock).mockResolvedValue({
+      document: { id: "doc1" },
+      units: [{ id: "u1", sequence_index: 0, page_number: 1, text_content: "第一页内容" }],
+    });
+
+    render(<WorkspacePage />);
+    await uploadPdf("test.pdf");
+    
+    // 验证显示原文/解析按钮
+    expect(screen.getByText("原文")).toBeDefined();
+    expect(screen.getByText("解析")).toBeDefined();
+    
+    // 上传第二个文件
+    (uploadDocument as Mock).mockResolvedValueOnce({ id: "doc2" });
+    (getDocumentDetail as Mock).mockResolvedValueOnce({
+      document: { id: "doc2" },
+      units: [{ id: "u2", sequence_index: 0, page_number: 1, text_content: "第二文件内容" }],
+    });
+    
+    await uploadPdf("test2.pdf");
+    
+    // 选择第一个文件
+    fireEvent.click(screen.getByTitle("文件管理"));
+    fireEvent.click(screen.getByText("test.pdf"));
+    
+    // 验证原文/解析按钮仍然存在（units 被缓存并传递）
+    expect(screen.getByText("原文")).toBeDefined();
+    expect(screen.getByText("解析")).toBeDefined();
   });
 });
 
