@@ -238,7 +238,12 @@ function DocumentViewer({
   const handleRawScroll = useCallback(() => {
     if (isSyncingRef.current || !parsedPanelRef.current || !rawPanelRef.current) return;
     isSyncingRef.current = true;
-    const ratio = rawPanelRef.current.scrollTop / (rawPanelRef.current.scrollHeight - rawPanelRef.current.clientHeight);
+    const maxScroll = rawPanelRef.current.scrollHeight - rawPanelRef.current.clientHeight;
+    if (maxScroll <= 0) {
+      isSyncingRef.current = false;
+      return;
+    }
+    const ratio = rawPanelRef.current.scrollTop / maxScroll;
     parsedPanelRef.current.scrollTop = ratio * (parsedPanelRef.current.scrollHeight - parsedPanelRef.current.clientHeight);
     requestAnimationFrame(() => { isSyncingRef.current = false; });
   }, []);
@@ -246,7 +251,12 @@ function DocumentViewer({
   const handleParsedScroll = useCallback(() => {
     if (isSyncingRef.current || !parsedPanelRef.current || !rawPanelRef.current) return;
     isSyncingRef.current = true;
-    const ratio = parsedPanelRef.current.scrollTop / (parsedPanelRef.current.scrollHeight - parsedPanelRef.current.clientHeight);
+    const maxScroll = parsedPanelRef.current.scrollHeight - parsedPanelRef.current.clientHeight;
+    if (maxScroll <= 0) {
+      isSyncingRef.current = false;
+      return;
+    }
+    const ratio = parsedPanelRef.current.scrollTop / maxScroll;
     rawPanelRef.current.scrollTop = ratio * (rawPanelRef.current.scrollHeight - rawPanelRef.current.clientHeight);
     requestAnimationFrame(() => { isSyncingRef.current = false; });
   }, []);
@@ -380,7 +390,7 @@ function DocumentViewer({
           <div
             ref={parsedPanelRef}
             onScroll={handleParsedScroll}
-            className={`flex-1 overflow-y-auto overflow-x-auto px-6 md:px-10 py-4 scrollbar-hide ${showRawPanel && units && units.length > 0 ? 'w-1/2' : 'w-full'}`}
+            className={`overflow-y-auto overflow-x-auto px-6 md:px-10 py-4 scrollbar-hide ${showRawPanel && units && units.length > 0 ? 'w-1/2' : 'w-full'}`}
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
           >
             {/* 现有的解析内容渲染逻辑 */}
