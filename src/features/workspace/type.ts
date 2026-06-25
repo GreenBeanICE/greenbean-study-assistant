@@ -114,11 +114,13 @@ export interface FileManagerProps {
 }
 
 export interface WorkspacePageProps {
-  /** 工作区唯一标识（可选，后续可根据此加载不同数据） */
+  /** 工作区唯一标识（可选，后续可以根据此加载不同数据） */
   workspaceId?: string;
   initialFiles?: FileItem[];
   initialFolders?: Folder[];
   initialSections?: SectionNode[];
   initialContentBlocks?: ContentBlock[];
   initialFootnotes?: FootnoteReference[];
+  /** 打开模型设置页（由 App 层注入）。 */
+  onOpenSettings?: () => void;
 }
