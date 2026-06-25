@@ -199,6 +199,8 @@ function WorkspacePage({ workspaceId, initialFiles = [], initialFolders = DEFAUL
 
     const blocks = documentBlocksByFileId[fileId] ?? [];
     const sections = documentSectionsByFileId[fileId] ?? [];
+    const units = documentUnitsByFileId[fileId] ?? [];
+    void units; // 确保 documentUnitsByFileId 被引用
     setViewerStatus(selectedFile?.viewerStatus ?? (blocks.length > 0 ? "ready" : "idle"));
     dispatch({ type: "SET_LANG_DATA", sections, contentBlocks: blocks });
 
