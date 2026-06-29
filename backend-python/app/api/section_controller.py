@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.dependencies import get_section_service
-from app.schemas.section_schema import SectionContentUnit, SectionSummary, SectionTreeNodeResponse
+from app.schemas.section_schema import SectionContentResponse, SectionContentUnit, SectionSummary, SectionTreeNodeResponse
 from app.services.section_service import SectionService
 
 router = APIRouter(prefix="/sections", tags=["Sections"])
@@ -33,7 +33,13 @@ def get_section_content(
     service: Annotated[SectionService, Depends(get_section_service)],
 ):
     try:
-        units = service.get_section_content(section_id)
+        result = service.get_section_content(section_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return {"code": 200, "data": [SectionContentUnit.from_entity(unit) for unit in units]}
+    return {
+        "code": 200,
+        "data": SectionContentResponse(
+            anchor_unit_id=result["anchor_unit_id"],
+            units=[SectionContentUnit.from_entity(unit) for unit in result["units"]],
+        ),
+    }

@@ -35,7 +35,13 @@ def client(tmp_path):
     with SqlAlchemyUnitOfWork(session_factory) as uow:
         DocumentRepository(uow.session).save(document)
         DocumentUnitRepository(uow.session).save(
-            DocumentUnit(document_id=document.id, sequence_index=0, page_number=1, text_content="Page one")
+            DocumentUnit(
+                document_id=document.id,
+                sequence_index=0,
+                page_number=1,
+                text_content="第一章",
+                metadata_json={"source_type": "pdf", "headings": [{"title": "第一章", "level": 1}]},
+            )
         )
         uow.commit()
 
@@ -51,11 +57,14 @@ def test_build_tree_and_content_roundtrip(client) -> None:
 
     tree_response = test_client.get(f"/api/sections/documents/{document_id}/tree")
     assert tree_response.status_code == 200
-    assert tree_response.json()["data"][0]["title"] == "Page 1"
+    assert tree_response.json()["data"][0]["title"] == "第一章"
+    assert tree_response.json()["data"][0]["start_page"] == 1
+    assert tree_response.json()["data"][0]["end_page"] == 1
 
     content_response = test_client.get(f"/api/sections/{section_id}/content")
     assert content_response.status_code == 200
-    assert content_response.json()["data"][0]["text_content"] == "Page one"
+    assert content_response.json()["data"]["anchor_unit_id"]
+    assert content_response.json()["data"]["units"][0]["text_content"] == "第一章"
 
 
 def test_get_section_content_returns_404_for_missing_section(client) -> None:

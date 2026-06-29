@@ -46,6 +46,13 @@ class SectionRepository:
         )
         return [self._to_entity(model) for model in models]
 
+    def delete_by_document(self, document_id: str) -> None:
+        (
+            self.session.query(SectionModel)
+            .filter(SectionModel.document_id == document_id)
+            .delete(synchronize_session=False)
+        )
+
     def _to_entity(self, model: SectionModel) -> Section:
         return Section(
             id=model.id,

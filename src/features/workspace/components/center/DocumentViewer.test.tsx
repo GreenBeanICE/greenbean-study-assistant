@@ -90,6 +90,7 @@ const sampleFootnotes: FootnoteReference[] = [
 const defaultProps = {
   contentBlocks: sampleBlocks,
   selectedSectionId: null,
+  selectedAnchorUnitId: null,
   footnotes: sampleFootnotes,
   expandedFootnoteId: null,
   showSelectionMenu: false,
@@ -222,6 +223,35 @@ describe("DocumentViewer", () => {
   it("空章节内容块列表显示空", () => {
     render(<DocumentViewer {...defaultProps} contentBlocks={[]} selectedSectionId="ch1-1" />);
     expect(screen.queryByText("1.1 背景介绍")).toBeNull();
+  });
+
+  it("选择章节且没有解析块时显示该章节暂无解析内容", () => {
+    render(
+      <DocumentViewer
+        {...defaultProps}
+        contentBlocks={[]}
+        selectedSectionId="ch1-1"
+        viewerStatus="ready"
+        units={[{ id: "u1", sequence_index: 0, page_number: 1, text_content: "原文内容" }]}
+      />,
+    );
+
+    expect(screen.getByText("该章节暂无解析内容")).toBeDefined();
+    expect(screen.queryByText("原文内容")).toBeDefined();
+  });
+
+  it("选择章节且没有原文时显示未找到该小节内容", () => {
+    render(
+      <DocumentViewer
+        {...defaultProps}
+        contentBlocks={[]}
+        selectedSectionId="ch1-1"
+        viewerStatus="ready"
+        units={[]}
+      />,
+    );
+
+    expect(screen.getByText("未找到该小节内容")).toBeDefined();
   });
 
   it("contentEditable 行可编辑", () => {
@@ -754,6 +784,7 @@ describe("DocumentViewer", () => {
         showRawPanel={true}
         showParsedPanel={true}
         selectedSectionId={null}
+        selectedAnchorUnitId="unit-2"
         footnotes={[]}
         expandedFootnoteId={null}
         showSelectionMenu={false}
@@ -769,6 +800,32 @@ describe("DocumentViewer", () => {
     expect(screen.getByText("原文")).toBeDefined();
     expect(screen.getByText("解析")).toBeDefined();
     expect(screen.getByText("第一页内容")).toBeDefined(); // 原文
+    expect(screen.getByText("第二页内容").closest("[data-unit-id]")?.getAttribute("data-unit-id")).toBe("unit-2");
+  });
+
+  it("passes selectedAnchorUnitId to raw panel selection", () => {
+    render(
+      <DocumentViewer
+        contentBlocks={sampleBlocks}
+        units={mockUnits}
+        showRawPanel={true}
+        showParsedPanel={true}
+        selectedSectionId={null}
+        selectedAnchorUnitId="unit-2"
+        footnotes={[]}
+        expandedFootnoteId={null}
+        showSelectionMenu={false}
+        selectionMenuPos={null}
+        onUpdateLineText={vi.fn()}
+        onToggleFootnote={vi.fn()}
+        onShowSelectionMenu={vi.fn()}
+        onQuoteSelection={vi.fn()}
+        onToggleRawPanel={vi.fn()}
+        onToggleParsedPanel={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("第二页内容").closest("[data-unit-id]")?.getAttribute("data-unit-id")).toBe("unit-2");
   });
 
   it("hides raw panel when showRawPanel is false", () => {

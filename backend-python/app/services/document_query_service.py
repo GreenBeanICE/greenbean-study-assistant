@@ -27,3 +27,11 @@ class DocumentQueryService:
                 return None
             units = DocumentUnitRepository(uow.session).list_by_document(document_id)
             return {"document": document, "units": units}
+
+    def delete_document(self, document_id: str) -> bool:
+        from app.repositories.document_repository import DocumentRepository
+
+        with self.uow_factory() as uow:
+            deleted = DocumentRepository(uow.session).delete_by_id(document_id)
+            uow.commit()
+            return deleted

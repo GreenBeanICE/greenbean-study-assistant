@@ -8,13 +8,15 @@ const sampleSections: SectionNode[] = [
     id: "ch1",
     title: "第一章：引言",
     index: "1",
+    startPage: 1,
+    endPage: 3,
     expanded: true,
     children: [
-      { id: "ch1-1", title: "背景介绍", index: "1.1" },
-      { id: "ch1-2", title: "研究意义", index: "1.2" },
+      { id: "ch1-1", title: "背景介绍", index: "1.1", startPage: 2, endPage: 2 },
+      { id: "ch1-2", title: "研究意义", index: "1.2", startPage: 3, endPage: 3 },
     ],
   },
-  { id: "ch2", title: "第二章：理论基础", index: "2", expanded: false },
+  { id: "ch2", title: "第二章：理论基础", index: "2", expanded: false, startPage: 4, endPage: 6 },
   { id: "ch3", title: "没有索引的节点" },
 ];
 
@@ -43,6 +45,20 @@ describe("SectionTree", () => {
       />,
     );
     expect(screen.getByText("3 个章节")).toBeDefined();
+  });
+
+  it("显示结构节点的页码范围信息", () => {
+    render(
+      <SectionTree
+        sections={sampleSections}
+        selectedSectionId={null}
+        onSelect={() => {}}
+        onToggle={() => {}}
+      />,
+    );
+
+    expect(screen.getByText("1-3 页")).toBeDefined();
+    expect(screen.getByText("第 2 页")).toBeDefined();
   });
 
   it("展开的父章节显示子章节", () => {

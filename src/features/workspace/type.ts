@@ -91,6 +91,7 @@ export interface DocumentViewerProps {
   onQuoteSelection: () => void;
   // 新增：原文面板相关 props
   units?: DocumentUnit[];
+  selectedAnchorUnitId?: string | null;
   showRawPanel?: boolean;
   showParsedPanel?: boolean;
   onToggleRawPanel?: () => void;

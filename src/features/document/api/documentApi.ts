@@ -40,3 +40,8 @@ export async function listDocuments(
 ): Promise<DocumentSummary[]> {
   return request(`/documents?workspace_id=${encodeURIComponent(workspaceId)}`);
 }
+
+/** 删除文档及其关联数据（units、sections、chunks、embeddings） */
+export async function deleteDocument(id: string): Promise<void> {
+  return request(`/documents/${id}`, { method: "DELETE" });
+}

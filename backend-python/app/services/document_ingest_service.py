@@ -85,6 +85,8 @@ class DocumentIngestService:
         if title is None:
             title = os.path.splitext(filename)[0]
 
+        is_word_source = source_type == "word"
+
         document_record = DocumentRecord(
             workspace_id=workspace_id,
             title=title,
@@ -93,7 +95,7 @@ class DocumentIngestService:
             file_path=file_path,
             file_hash=file_hash,
             status=DocumentStatus.PARSED,
-            page_count=len(parsed_pages),
+            page_count=None if is_word_source else len(parsed_pages),
         )
 
         # ---- Step 3: 基于 PageIndex 构造 DocumentUnit 列表 ----

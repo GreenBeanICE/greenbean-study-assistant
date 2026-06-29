@@ -7,6 +7,7 @@
  */
 import { request } from "../../../lib/apiClient";
 import type { SectionNode } from "../../../types/section";
+import type { SectionContentPayload } from "../../../types/section";
 
 /** 后端返回的章节树节点结构 */
 interface SectionTreeNodeResponse {
@@ -14,28 +15,35 @@ interface SectionTreeNodeResponse {
   title: string;
   level: number;
   order_index: number;
+  start_page?: number | null;
+  end_page?: number | null;
   children: SectionTreeNodeResponse[];
 }
 
 /**
  * 将后端的 SectionTreeNodeResponse 递归转换为前端的 SectionNode。
- * - `order_index` 转为 `index` 字符串（如 "1.2"）
+ * - 使用同级索引生成 `index` 字符串（如 "1.2"）
  * - 默认 `expanded: true`
  */
 function toSectionNode(
   node: SectionTreeNodeResponse,
   parentIndex?: string,
+  siblingIndex?: number,
 ): SectionNode {
+  // 使用同级索引（从 1 开始）而不是 order_index
+  const localIndex = (siblingIndex ?? 0) + 1;
   const index = parentIndex
-    ? `${parentIndex}.${node.order_index + 1}`
-    : `${node.order_index + 1}`;
+    ? `${parentIndex}.${localIndex}`
+    : `${localIndex}`;
 
   return {
     id: node.id,
     title: node.title,
     index,
     expanded: true,
-    children: node.children?.map((child) => toSectionNode(child, index)),
+    startPage: node.start_page,
+    endPage: node.end_page,
+    children: node.children?.map((child, childIndex) => toSectionNode(child, index, childIndex)),
   };
 }
 
@@ -47,7 +55,7 @@ function toSectionNode(
 export async function buildSections(
   documentId: string,
 ): Promise<{ id: string; title: string; level: number }[]> {
-  return request(`/sections/documents/${documentId}/build`);
+  return request(`/sections/documents/${documentId}/build`, { method: "POST" });
 }
 
 /**
@@ -60,5 +68,12 @@ export async function getSectionTree(
   const nodes = await request<SectionTreeNodeResponse[]>(
     `/sections/documents/${documentId}/tree`,
   );
-  return nodes.map((node) => toSectionNode(node));
+  return nodes.map((node, index) => toSectionNode(node, undefined, index));
+}
+
+/** 获取指定章节关联的原文单元。 */
+export async function getSectionContent(
+  sectionId: string,
+): Promise<SectionContentPayload> {
+  return request<SectionContentPayload>(`/sections/${sectionId}/content`);
 }

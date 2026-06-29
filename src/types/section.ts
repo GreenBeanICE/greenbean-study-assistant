@@ -8,6 +8,10 @@ export interface SectionNode {
   index?: string;
   /** 是否展开（有子章节时） */
   expanded?: boolean;
+  /** 起始页码或 slide 编号 */
+  startPage?: number | null;
+  /** 结束页码或 slide 编号 */
+  endPage?: number | null;
 }
 
 /** 文档内容中的一段文本行 */
@@ -75,6 +79,11 @@ export interface FootnoteReference {
   sourceText: string;
   /** 来源描述（如："第3页，第2段"） */
   sourceDesc: string;
+}
+
+export interface SectionContentPayload {
+  anchor_unit_id: string | null;
+  units: import("./document").DocumentUnit[];
 }
 
 /** 文档选中内容（用于引用询问AI） */

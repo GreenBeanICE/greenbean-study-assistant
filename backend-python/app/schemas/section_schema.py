@@ -33,6 +33,8 @@ class SectionTreeNodeResponse(BaseModel):
     title: str
     level: int
     order_index: int
+    start_page: int | None = None
+    end_page: int | None = None
     children: list["SectionTreeNodeResponse"] = Field(default_factory=list)
 
     @classmethod
@@ -42,6 +44,8 @@ class SectionTreeNodeResponse(BaseModel):
             title=node.title,
             level=node.level,
             order_index=node.order_index,
+            start_page=node.start_page,
+            end_page=node.end_page,
             children=[cls.from_node(child) for child in node.children],
         )
 
@@ -60,3 +64,8 @@ class SectionContentUnit(BaseModel):
             page_number=unit.page_number,
             text_content=unit.text_content,
         )
+
+
+class SectionContentResponse(BaseModel):
+    anchor_unit_id: str | None = None
+    units: list[SectionContentUnit] = Field(default_factory=list)

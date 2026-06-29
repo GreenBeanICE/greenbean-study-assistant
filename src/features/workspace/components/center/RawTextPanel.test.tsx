@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import RawTextPanel from "./RawTextPanel";
 import type { DocumentUnit } from "../../../../types/document";
@@ -33,5 +33,20 @@ describe("RawTextPanel", () => {
     render(<RawTextPanel units={mockUnits} onUnitClick={onUnitClick} />);
     fireEvent.click(screen.getByText("第一页内容"));
     expect(onUnitClick).toHaveBeenCalledWith("u1");
+  });
+
+  it("scrolls selected unit into view when selectedUnitId changes", async () => {
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
+
+    const { rerender } = render(<RawTextPanel units={mockUnits} selectedUnitId={null} />);
+    rerender(<RawTextPanel units={mockUnits} selectedUnitId="u2" />);
+
+    await waitFor(() => {
+      expect(scrollIntoView).toHaveBeenCalled();
+    });
   });
 });

@@ -34,14 +34,14 @@ def test_word_parser_extract_paragraphs():
         result = parser.parse(b"fake docx binary stream")
         
         # 断言校验
-        assert len(result) == 1
-        assert result[0]["page_number"] == 1
-        assert "第一段文本" in result[0]["content"]
-        assert "第二段文本" in result[0]["content"]
+        assert len(result) == 2
+        assert result[0]["page_number"] is None
+        assert result[0]["content"] == "这是第一段文本"
+        assert result[1]["content"] == "这是第二段文本"
         assert result[0]["parser_name"] == "WordParser"
         assert result[0]["parser_version"] == "1.0.0"
         assert result[0]["metadata"]["source_type"] == "word"
-        assert result[0]["metadata"]["paragraphs_count"] == 2
+        assert result[0]["metadata"]["paragraphs_count"] == 1
         assert result[0]["metadata"]["tables_count"] == 0
 
 
@@ -89,6 +89,7 @@ def test_word_parser_extract_tables():
         assert result[0]["parser_name"] == "WordParser"
         assert result[0]["parser_version"] == "1.0.0"
         assert result[0]["metadata"]["tables_count"] == 1
+        assert result[0]["metadata"]["block_type"] == "table"
 
 
 @pytest.mark.us25
@@ -122,14 +123,51 @@ def test_word_parser_headings():
         result = parser.parse(b"fake docx binary stream")
         
         # 断言校验
-        headings = result[0]["metadata"]["headings"]
-        assert len(headings) == 2
-        assert headings[0]["level"] == 1
-        assert headings[0]["text"] == "第一章 引言"
-        assert headings[1]["level"] == 2
-        assert headings[1]["text"] == "1.1 研究背景"
+        assert len(result) == 3
+        assert result[0]["metadata"]["headings"] == [{"level": 1, "text": "第一章 引言"}]
+        assert result[1]["metadata"]["headings"] == [{"level": 2, "text": "1.1 研究背景"}]
+        assert result[2]["metadata"]["headings"] == []
         assert result[0]["parser_name"] == "WordParser"
         assert result[0]["parser_version"] == "1.0.0"
+
+
+@pytest.mark.us25
+def test_word_parser_splits_heading_paragraph_and_table_into_multiple_nodes():
+    parser = WordParser()
+
+    with patch("app.parsers.word_parser.Document") as mock_document:
+        mock_doc = MagicMock()
+        mock_document.return_value = mock_doc
+
+        mock_heading = MagicMock()
+        mock_heading.text = "第一章 引言"
+        mock_heading.style.name = "Heading 1"
+
+        mock_para = MagicMock()
+        mock_para.text = "这是正文内容"
+        mock_para.style.name = "Normal"
+
+        mock_cell_1 = MagicMock()
+        mock_cell_1.text = "姓名"
+        mock_cell_2 = MagicMock()
+        mock_cell_2.text = "张三"
+        mock_row = MagicMock()
+        mock_row.cells = [mock_cell_1, mock_cell_2]
+        mock_table = MagicMock()
+        mock_table.rows = [mock_row]
+
+        mock_doc.paragraphs = [mock_heading, mock_para]
+        mock_doc.tables = [mock_table]
+
+        result = parser.parse(b"fake docx binary stream")
+
+        assert len(result) == 3
+        assert result[0]["content"] == "第一章 引言"
+        assert result[0]["metadata"]["headings"] == [{"level": 1, "text": "第一章 引言"}]
+        assert result[1]["content"] == "这是正文内容"
+        assert result[1]["metadata"]["headings"] == []
+        assert "姓名 | 张三" in result[2]["content"]
+        assert result[2]["metadata"]["block_type"] == "table"
 
 
 @pytest.mark.us25
@@ -187,5 +225,5 @@ def test_word_parser_skip_empty_paragraph():
         
         # 断言校验
         assert len(result) == 1
-        assert "有效内容" in result[0]["content"]
+        assert result[0]["content"] == "有效内容"
         assert result[0]["metadata"]["paragraphs_count"] == 1

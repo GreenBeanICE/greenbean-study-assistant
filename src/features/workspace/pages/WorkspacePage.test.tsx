@@ -2,7 +2,13 @@ import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
 import { render, screen, fireEvent, cleanup, act, waitFor } from "@testing-library/react";
 import WorkspacePage, { workspaceReducer } from "./WorkspacePage";
-import { uploadDocument, getDocumentDetail } from "../../document/api/documentApi";
+import {
+  uploadDocument,
+  getDocumentDetail,
+  listDocuments,
+  deleteDocument,
+} from "../../document/api/documentApi";
+import { buildSections, getSectionContent, getSectionTree } from "../../section/api/sectionApi";
 import type { FileItem, Folder, WorkspaceState } from "../type";
 import type { ContentBlock, FootnoteReference, SectionNode } from "../../../types/section";
 
@@ -113,12 +119,22 @@ vi.mock("../../document/api/documentApi", () => ({
   uploadDocument: vi.fn(),
   getDocumentDetail: vi.fn(),
   listDocuments: vi.fn(),
+  deleteDocument: vi.fn(),
+}));
+
+vi.mock("../../section/api/sectionApi", () => ({
+  buildSections: vi.fn(),
+  getSectionTree: vi.fn(),
+  getSectionContent: vi.fn(),
 }));
 
 describe("WorkspacePage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     Element.prototype.scrollIntoView = vi.fn();
+    (buildSections as Mock).mockResolvedValue([]);
+    (getSectionTree as Mock).mockResolvedValue([]);
+    (getSectionContent as Mock).mockResolvedValue({ anchor_unit_id: null, units: [] });
   });
 
   afterEach(() => {
@@ -191,7 +207,7 @@ describe("WorkspacePage", () => {
   it("点击章节后中间区域显示对应的内容", () => {
     renderDemoWorkspace();
     fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
-    expect(screen.getByText("从左侧上传一份文档开始")).toBeDefined();
+    expect(screen.getByText("暂无解析内容")).toBeDefined();
     fireEvent.click(screen.getByText((c) => c.includes("1.1 背景介绍")));
     const elements = screen.getAllByText((c) => c.includes("1.1 背景介绍"));
     expect(elements.length).toBeGreaterThanOrEqual(1);
@@ -247,9 +263,89 @@ describe("WorkspacePage", () => {
     });
     expect(getDocumentDetail).toHaveBeenCalledWith("doc1");
 
-    // 解析完成后，中间文档区应展示每个解析出的内容块
-    expect(await screen.findByText("第 1 页", {}, { timeout: 2000 })).toBeDefined();
-    expect(screen.getAllByText("第 2 页").length).toBeGreaterThanOrEqual(1);
+    // 解析完成后，原文区展示 DocumentUnit，解析区保持空解析状态
+    expect(await screen.findByText("第一页内容", {}, { timeout: 2000 })).toBeDefined();
+    expect(screen.getAllByText("第二页内容").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("暂无解析内容")).toBeDefined();
+  });
+
+  it("选择章节后加载该章节原文且解析面板保持空解析状态", async () => {
+    (uploadDocument as Mock).mockResolvedValue({ id: "doc1" });
+    (getDocumentDetail as Mock).mockResolvedValue({
+      document: { id: "doc1" },
+      units: [
+        { id: "u1", sequence_index: 0, page_number: 1, text_content: "第一页全文" },
+        { id: "u2", sequence_index: 1, page_number: 2, text_content: "第二页全文" },
+      ],
+    });
+    (getSectionTree as Mock).mockResolvedValue([
+      { id: "s1", title: "第一节", index: "1", expanded: true, children: [] },
+      { id: "s2", title: "第二节", index: "2", expanded: true, children: [] },
+    ]);
+    (getSectionContent as Mock)
+      .mockResolvedValueOnce({ anchor_unit_id: "u1", units: [{ id: "u1", sequence_index: 0, page_number: 1, text_content: "第一节原文" }] })
+      .mockResolvedValueOnce({ anchor_unit_id: "u2", units: [{ id: "u2", sequence_index: 1, page_number: 2, text_content: "第二节原文" }] });
+
+    render(<WorkspacePage />);
+    await uploadPdf("lecture.pdf");
+
+    expect(await screen.findByText("第一节原文")).toBeDefined();
+    expect(screen.queryByText("第二节原文")).toBeNull();
+    expect(screen.getByText("该章节暂无解析内容")).toBeDefined();
+
+    fireEvent.click(screen.getByText((content) => content.includes("第二节")));
+
+    expect(await screen.findByText("第二节原文")).toBeDefined();
+    expect(screen.queryByText("第一节原文")).toBeNull();
+    expect(getSectionContent).toHaveBeenLastCalledWith("s2");
+  });
+
+  it("上传后默认加载结构树第一个节点的原文", async () => {
+    (uploadDocument as Mock).mockResolvedValue({ id: "doc-structure" });
+    (getDocumentDetail as Mock).mockResolvedValue({
+      document: { id: "doc-structure" },
+      units: [],
+    });
+    (getSectionTree as Mock).mockResolvedValue([
+      { id: "sec-1", title: "第一章", index: "1", expanded: true, startPage: 1, endPage: 2, children: [] },
+    ]);
+    (getSectionContent as Mock).mockResolvedValue({
+      anchor_unit_id: "u-1",
+      units: [{ id: "u-1", sequence_index: 0, page_number: 1, text_content: "第一章正文" }],
+    });
+
+    render(<WorkspacePage />);
+    await uploadPdf("structure.pdf");
+
+    await waitFor(() => {
+      expect(getSectionContent).toHaveBeenCalledWith("sec-1");
+    });
+    expect(await screen.findByText("第一章正文")).toBeDefined();
+  });
+
+  it("选择章节后使用 section 返回的 anchor unit 高亮原文", async () => {
+    (uploadDocument as Mock).mockResolvedValue({ id: "doc-anchor" });
+    (getDocumentDetail as Mock).mockResolvedValue({
+      document: { id: "doc-anchor" },
+      units: [
+        { id: "u1", sequence_index: 0, page_number: 1, text_content: "第一节原文" },
+        { id: "u2", sequence_index: 1, page_number: 2, text_content: "第二节原文" },
+      ],
+    });
+    (getSectionTree as Mock).mockResolvedValue([
+      { id: "s1", title: "第一节", index: "1", expanded: true, children: [] },
+      { id: "s2", title: "第二节", index: "2", expanded: true, children: [] },
+    ]);
+    (getSectionContent as Mock)
+      .mockResolvedValueOnce({ anchor_unit_id: "u1", units: [{ id: "u1", sequence_index: 0, page_number: 1, text_content: "第一节原文" }] })
+      .mockResolvedValueOnce({ anchor_unit_id: "u2", units: [{ id: "u2", sequence_index: 1, page_number: 2, text_content: "第二节原文" }] });
+
+    render(<WorkspacePage />);
+    await uploadPdf("anchor.pdf");
+    fireEvent.click(screen.getByText((content) => content.includes("第二节")));
+
+    const selectedUnit = await screen.findByText("第二节原文");
+    expect(selectedUnit.closest("[data-unit-id]")?.getAttribute("data-unit-id")).toBe("u2");
   });
 
   it("上传失败时显示可读的错误提示", async () => {
@@ -294,6 +390,76 @@ describe("WorkspacePage", () => {
     expect(screen.queryByText("B 的第一页")).toBeNull();
   });
 
+  it("上传成功后使用真实 documentId，恢复列表时不会重复显示同一文档", async () => {
+    (listDocuments as Mock).mockResolvedValue([
+      {
+        id: "doc-1",
+        workspace_id: "workspace_1",
+        title: "lecture",
+        original_filename: "lecture.pdf",
+        file_type: "pdf",
+        status: "parsed",
+        page_count: 1,
+        created_at: "2026-06-26T12:00:00Z",
+      },
+    ]);
+    (uploadDocument as Mock).mockResolvedValueOnce({ id: "doc-1" });
+    (getDocumentDetail as Mock).mockResolvedValueOnce({
+      document: { id: "doc-1", title: "doc-1" },
+      units: [{ id: "u1", sequence_index: 0, page_number: 1, text_content: "第一页内容" }],
+    });
+
+    render(<WorkspacePage />);
+    await uploadPdf("lecture.pdf");
+
+    fireEvent.click(screen.getByTitle("文件管理"));
+
+    await waitFor(() => {
+      const fileEntries = screen
+        .getAllByText("lecture.pdf")
+        .filter((node) => node.closest("button") !== null);
+      expect(fileEntries).toHaveLength(1);
+    });
+  });
+
+  it("删除已持久化文档后立即移除该 documentId 的所有本地记录", async () => {
+    (listDocuments as Mock).mockResolvedValue([
+      {
+        id: "doc-1",
+        workspace_id: "workspace_1",
+        title: "lecture",
+        original_filename: "lecture.pdf",
+        file_type: "pdf",
+        status: "parsed",
+        page_count: 1,
+        created_at: "2026-06-26T12:00:00Z",
+      },
+    ]);
+    (uploadDocument as Mock).mockResolvedValueOnce({ id: "doc-1" });
+    (getDocumentDetail as Mock).mockResolvedValueOnce({
+      document: { id: "doc-1", title: "doc-1" },
+      units: [{ id: "u1", sequence_index: 0, page_number: 1, text_content: "第一页内容" }],
+    });
+    (deleteDocument as Mock).mockResolvedValue(undefined);
+
+    render(<WorkspacePage />);
+    await uploadPdf("lecture.pdf");
+
+    fireEvent.click(screen.getByTitle("文件管理"));
+
+    const fileEntry = (await screen.findAllByText("lecture.pdf")).find(
+      (node) => node.closest("button") !== null,
+    );
+
+    fireEvent.contextMenu(fileEntry?.closest("button") as HTMLElement);
+    fireEvent.click(screen.getByText("删除"));
+
+    await waitFor(() => {
+      expect(screen.queryByText("lecture.pdf")).toBeNull();
+    });
+    expect(deleteDocument).toHaveBeenCalledWith("doc-1");
+  });
+
   it("上传失败后清空中央区域旧内容并显示错误提示", async () => {
     renderDemoWorkspace();
 
@@ -302,6 +468,7 @@ describe("WorkspacePage", () => {
     expect(screen.getByText("近年来，人工智能技术取得了飞速发展。")).toBeDefined();
 
     (uploadDocument as Mock).mockRejectedValue(new Error("网络错误"));
+    fireEvent.click(screen.getByTitle("文件管理"));
     await uploadPdf("broken.pdf");
 
     expect(await screen.findByText(/上传失败：网络错误/)).toBeDefined();

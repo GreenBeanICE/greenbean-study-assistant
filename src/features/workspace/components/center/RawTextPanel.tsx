@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { DocumentUnit } from "../../../../types/document";
 
 interface RawTextPanelProps {
@@ -7,6 +8,12 @@ interface RawTextPanelProps {
 }
 
 function RawTextPanel({ units, selectedUnitId, onUnitClick }: RawTextPanelProps) {
+  const selectedRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    selectedRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  }, [selectedUnitId]);
+
   if (units.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center px-4">
@@ -29,6 +36,7 @@ function RawTextPanel({ units, selectedUnitId, onUnitClick }: RawTextPanelProps)
         return (
           <div
             key={unit.id}
+            ref={isSelected ? selectedRef : null}
             data-unit-id={unit.id}
             onClick={() => onUnitClick?.(unit.id)}
             className={`mb-4 p-3 rounded-lg cursor-pointer transition-colors ${

@@ -74,7 +74,7 @@ export default function ProviderForm({ purpose, initial, onSubmit, onClose }: Pr
   const isEmbedding = purpose === "embedding";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <motion.div
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}

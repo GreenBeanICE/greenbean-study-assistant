@@ -127,3 +127,15 @@ def get_document_detail(
             units=[DocumentUnitSummary.from_entity(unit) for unit in detail["units"]],
         ),
     }
+
+
+@router.delete("/{document_id}")
+def delete_document(
+    document_id: str,
+    query_service: Annotated[DocumentQueryService, Depends(get_document_query_service)],
+):
+    """删除文档及其关联的 units、sections、chunks、embeddings 等。不存在时返回 404。"""
+    deleted = query_service.delete_document(document_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="文档不存在")
+    return {"code": 200, "message": "文档已删除"}

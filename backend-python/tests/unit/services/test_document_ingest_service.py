@@ -91,20 +91,25 @@ def test_ingest_word_document():
     with patch("app.parsers.parser_factory.ParserFactory.get_parser") as mock_get_parser:
         mock_parser = MagicMock()
         mock_parser.parse.return_value = [
-            _make_page(page_number=1, content="Word content", char_count=12, source_type="word",
-                       parser_name="WordParser", parser_version="1.0.0")
+            _make_page(page_number=None, content="第一章", char_count=3, source_type="word",
+                       parser_name="WordParser", parser_version="1.0.0", extra_meta={"headings": [{"title": "第一章", "level": 1}] }),
+            _make_page(page_number=None, content="Word content", char_count=12, source_type="word",
+                       parser_name="WordParser", parser_version="1.0.0", extra_meta={"headings": []})
         ]
         mock_get_parser.return_value = mock_parser
 
         result = service.ingest_document("notes.docx", b"fake docx content")
 
         assert result["filename"] == "notes.docx"
-        assert result["total_pages"] == 1
+        assert result["total_pages"] == 2
         assert result["page_index_preview"][0]["source_type"] == "word"
 
         # 验证 file_type 映射为 DOCX
         assert result["document_record"].file_type == DocumentFileType.DOCX
-        assert len(result["document_units"]) == 1
+        assert result["document_record"].page_count is None
+        assert len(result["document_units"]) == 2
+        assert result["document_units"][0].page_number is None
+        assert result["document_units"][1].start_char == 3
 
 
 @pytest.mark.us25
@@ -522,6 +527,61 @@ async def test_ingest_document_async_runs_embedding_after_chunk_pipeline():
 
     embedding_service.embed_chunks.assert_awaited_once_with([chunk])
     assert result["embeddings"] == ["embedding-a"]
+
+
+@pytest.mark.us25
+def test_ingest_document_preserves_structured_metadata():
+    """DocumentIngestService 应该保存 PDFParser 输出的结构化 metadata。"""
+    service = DocumentIngestService()
+
+    with patch("app.parsers.parser_factory.ParserFactory.get_parser") as mock_get_parser:
+        mock_parser = MagicMock()
+        mock_parser.parse.return_value = [
+            {
+                "page_number": 1,
+                "content": "1. Introduction\nContent page 1",
+                "char_count": 28,
+                "parser_name": "PDFParser",
+                "parser_version": "2.0.0",
+                "metadata": {
+                    "source_type": "pdf",
+                    "headings": [
+                        {"title": "1. Introduction", "level": 1, "confidence": 0.9, "source_block_id": "b-0", "numbering_pattern": "decimal"}
+                    ],
+                    "paragraphs_count": 2,
+                    "page_stats": {
+                        "page_width": 595.0,
+                        "page_height": 842.0,
+                        "primary_font_size": 10.5,
+                        "max_font_size": 18.0,
+                    },
+                },
+                "blocks": [
+                    {
+                        "id": "b-0",
+                        "text": "1. Introduction",
+                        "bbox": [72.0, 96.0, 300.0, 120.0],
+                        "font_size": 18.0,
+                        "font_name": "Helvetica-Bold",
+                        "is_bold": True,
+                    }
+                ],
+            }
+        ]
+        mock_get_parser.return_value = mock_parser
+
+        result = service.ingest_document("test.pdf", b"fake pdf")
+
+        unit = result["document_units"][0]
+        assert unit.metadata_json["source_type"] == "pdf"
+        assert "page_stats" in unit.metadata_json
+        assert len(unit.metadata_json["headings"]) == 1
+        assert unit.metadata_json["headings"][0]["title"] == "1. Introduction"
+        assert unit.metadata_json["headings"][0]["confidence"] == 0.9
+        assert "blocks" in unit.raw_content_json
+        assert len(unit.raw_content_json["blocks"]) == 1
+        assert unit.raw_content_json["blocks"][0]["text"] == "1. Introduction"
+        assert unit.parser_version == "2.0.0"
 
 
 @pytest.mark.us25

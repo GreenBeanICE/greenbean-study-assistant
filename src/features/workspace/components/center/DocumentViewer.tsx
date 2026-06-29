@@ -225,7 +225,7 @@ function BlockContent({ block, onViewFootnote, onLineHtmlChange }: {
 }
 
 function DocumentViewer({
-  contentBlocks, selectedSectionId, viewerStatus = "idle", pendingFileName, errorMessage, footnotes, expandedFootnoteId,
+  contentBlocks, selectedSectionId, selectedAnchorUnitId, viewerStatus = "idle", pendingFileName, errorMessage, footnotes, expandedFootnoteId,
   showSelectionMenu, selectionMenuPos,
   onUpdateLineText, onToggleFootnote,
   onShowSelectionMenu, onQuoteSelection,
@@ -268,10 +268,13 @@ function DocumentViewer({
   const filteredBlocks = selectedSectionId
     ? contentBlocks.filter((block) => block.sectionId === selectedSectionId)
     : [];
-  const effectiveViewerStatus = viewerStatus === "idle" && selectedSectionId && filteredBlocks.length > 0
+  const hasSelectedSection = Boolean(selectedSectionId);
+  const hasParsedBlocks = filteredBlocks.length > 0;
+  const hasRawUnits = (units?.length ?? 0) > 0;
+  const effectiveViewerStatus = viewerStatus === "idle" && hasSelectedSection && hasParsedBlocks
     ? "ready"
     : viewerStatus;
-  const showEmptyState = effectiveViewerStatus !== "ready" || !selectedSectionId;
+  const showEmptyState = effectiveViewerStatus !== "ready" || !hasSelectedSection || !hasParsedBlocks;
 
   // 监听选中变化，同步 hasSelection 状态用于工具栏按钮启用
   const [hasSelection, setHasSelection] = useState(false);
@@ -336,6 +339,27 @@ function DocumentViewer({
       };
     }
 
+    if (effectiveViewerStatus === "ready" && selectedSectionId && filteredBlocks.length === 0) {
+      if (!hasRawUnits) {
+        return {
+          title: "未找到该小节内容",
+          subtitle: "该结构节点当前没有可用原文",
+        };
+      }
+
+      return {
+        title: "该章节暂无解析内容",
+        subtitle: "原文已加载，解析结果需要单独生成",
+      };
+    }
+
+    if (effectiveViewerStatus === "ready" && filteredBlocks.length === 0) {
+      return {
+        title: "暂无解析内容",
+        subtitle: "原文已加载，解析结果需要单独生成",
+      };
+    }
+
     return {
       title: "从左侧上传一份文档开始",
       subtitle: "支持 PDF、Word、PPT、图片、TXT 和 Markdown",
@@ -383,7 +407,7 @@ function DocumentViewer({
         {showRawPanel && units && units.length > 0 && (
           <>
             <div className="w-1/2 overflow-hidden" ref={rawPanelRef} onScroll={handleRawScroll}>
-              <RawTextPanel units={units} selectedUnitId={units.find(u => u.sequence_index.toString() === selectedSectionId)?.id} />
+              <RawTextPanel units={units} selectedUnitId={selectedAnchorUnitId} />
             </div>
             <div className="w-px bg-black/5 flex-shrink-0" />
           </>

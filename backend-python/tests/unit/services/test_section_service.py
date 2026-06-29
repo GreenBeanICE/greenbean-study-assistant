@@ -50,6 +50,39 @@ def test_build_sections_returns_existing_sections_without_rebuilding(uow_factory
     assert sections[0].title == "Existing"
 
 
+def test_build_sections_rebuilds_legacy_page_nodes(uow_factory) -> None:
+    document = DocumentRecord(
+        workspace_id="ws-1",
+        title="Doc",
+        original_filename="doc.pdf",
+        file_type=DocumentFileType.PDF,
+        file_path="data/uploads/doc.pdf",
+    )
+    unit = DocumentUnit(
+        document_id=document.id,
+        sequence_index=0,
+        page_number=1,
+        text_content="第一章",
+        metadata_json={"source_type": "pdf", "headings": [{"title": "第一章", "level": 1}]},
+    )
+    legacy = Section(document_id=document.id, title="Page 1", level=1, order_index=0)
+
+    with uow_factory() as uow:
+        DocumentRepository(uow.session).save(document)
+        DocumentUnitRepository(uow.session).save(unit)
+        SectionRepository(uow.session).save(legacy)
+        SectionUnitLinkRepository(uow.session).save(
+            SectionUnitLink(section_id=legacy.id, document_unit_id=unit.id, order_index=0)
+        )
+        uow.commit()
+
+    service = SectionService(uow_factory=uow_factory)
+    sections = service.build_sections(document.id)
+
+    assert [section.title for section in sections] == ["第一章"]
+    assert sections[0].id != legacy.id
+
+
 def test_get_section_tree_returns_nested_nodes(uow_factory) -> None:
     document = DocumentRecord(
         workspace_id="ws-1",
@@ -104,7 +137,69 @@ def test_get_section_content_uses_link_order(uow_factory) -> None:
     service = SectionService(uow_factory=uow_factory)
     content = service.get_section_content(section.id)
 
-    assert [unit.id for unit in content] == [unit_b.id, unit_a.id]
+    assert content["anchor_unit_id"] == unit_b.id
+    assert [unit.id for unit in content["units"]] == [unit_b.id, unit_a.id]
+
+
+def test_get_section_content_prefers_section_links_over_page_range(uow_factory) -> None:
+    document = DocumentRecord(
+        workspace_id="ws-1",
+        title="Doc",
+        original_filename="doc.pdf",
+        file_type=DocumentFileType.PDF,
+        file_path="data/uploads/doc.pdf",
+    )
+    unit_a = DocumentUnit(document_id=document.id, sequence_index=0, page_number=1, text_content="A")
+    unit_b = DocumentUnit(document_id=document.id, sequence_index=1, page_number=2, text_content="B")
+    section = Section(document_id=document.id, title="第一章", level=1, order_index=0, start_page=1, end_page=2)
+
+    with uow_factory() as uow:
+        DocumentRepository(uow.session).save(document)
+        DocumentUnitRepository(uow.session).save(unit_a)
+        DocumentUnitRepository(uow.session).save(unit_b)
+        SectionRepository(uow.session).save(section)
+        SectionUnitLinkRepository(uow.session).save(
+            SectionUnitLink(section_id=section.id, document_unit_id=unit_b.id, order_index=0)
+        )
+        uow.commit()
+
+    service = SectionService(uow_factory=uow_factory)
+    content = service.get_section_content(section.id)
+
+    assert content["anchor_unit_id"] == unit_b.id
+    assert [unit.text_content for unit in content["units"]] == ["B"]
+
+
+def test_get_section_content_returns_anchor_unit_and_units(uow_factory) -> None:
+    document = DocumentRecord(
+        workspace_id="ws-1",
+        title="Doc",
+        original_filename="doc.pdf",
+        file_type=DocumentFileType.PDF,
+        file_path="data/uploads/doc.pdf",
+    )
+    unit_a = DocumentUnit(document_id=document.id, sequence_index=0, page_number=1, text_content="A")
+    unit_b = DocumentUnit(document_id=document.id, sequence_index=1, page_number=2, text_content="B")
+    section = Section(document_id=document.id, title="第一章", level=1, order_index=0)
+
+    with uow_factory() as uow:
+        DocumentRepository(uow.session).save(document)
+        DocumentUnitRepository(uow.session).save(unit_a)
+        DocumentUnitRepository(uow.session).save(unit_b)
+        SectionRepository(uow.session).save(section)
+        SectionUnitLinkRepository(uow.session).save(
+            SectionUnitLink(section_id=section.id, document_unit_id=unit_b.id, order_index=0)
+        )
+        SectionUnitLinkRepository(uow.session).save(
+            SectionUnitLink(section_id=section.id, document_unit_id=unit_a.id, order_index=1)
+        )
+        uow.commit()
+
+    service = SectionService(uow_factory=uow_factory)
+    content = service.get_section_content(section.id)
+
+    assert content["anchor_unit_id"] == unit_b.id
+    assert [unit.id for unit in content["units"]] == [unit_b.id, unit_a.id]
 
 
 def test_get_section_content_raises_for_missing_section(uow_factory) -> None:

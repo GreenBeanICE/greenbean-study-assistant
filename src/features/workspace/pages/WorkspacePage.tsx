@@ -7,12 +7,61 @@ import ChatPanel from "../components/right/ChatPanel";
 import ResizableHandle from "../components/shared/ResizableHandle";
 import type { FileItem, WorkspaceState, WorkspaceAction, WorkspacePageProps } from "../type";
 import { createFileId, DEFAULT_FOLDERS, formatFileSize, getFileType } from "../workspaceFiles";
-import type { SectionNode, ContentLine, ContentBlock } from "../../../types/section";
+import type { SectionNode, ContentLine, ContentBlock, SectionContentPayload } from "../../../types/section";
 import type { ChatMessage } from "../../../types/chat";
 import type { DocumentUnit } from "../../../types/document";
-import { uploadDocument, getDocumentDetail } from "../../document/api/documentApi";
-import { unitsToContentBlocks, UPLOADED_CONTENT_SECTION_ID } from "../../document/unitsToContentBlocks";
-import { buildSections, getSectionTree } from "../../section/api/sectionApi";
+import { uploadDocument, getDocumentDetail, listDocuments, deleteDocument } from "../../document/api/documentApi";
+import { buildSections, getSectionContent, getSectionTree } from "../../section/api/sectionApi";
+
+function getPersistedDocumentId(file: Pick<FileItem, "documentId">): string | null {
+  return file.documentId ?? null;
+}
+
+function dedupeFilesByPersistedDocument(files: FileItem[]): FileItem[] {
+  const seenPersistedDocumentIds = new Set<string>();
+
+  return files.filter((file) => {
+    const persistedDocumentId = getPersistedDocumentId(file);
+
+    if (!persistedDocumentId) {
+      return true;
+    }
+
+    if (seenPersistedDocumentIds.has(persistedDocumentId)) {
+      return false;
+    }
+
+    seenPersistedDocumentIds.add(persistedDocumentId);
+    return true;
+  });
+}
+
+function mergeRestoredFiles(currentFiles: FileItem[], restoredFiles: FileItem[]): FileItem[] {
+  const nextFiles = [...currentFiles];
+
+  for (const restoredFile of restoredFiles) {
+    const persistedDocumentId = getPersistedDocumentId(restoredFile);
+    const existingFileIndex = nextFiles.findIndex((file) => file.documentId === persistedDocumentId);
+
+    if (existingFileIndex >= 0) {
+      nextFiles[existingFileIndex] = {
+        ...nextFiles[existingFileIndex],
+        ...restoredFile,
+      };
+      continue;
+    }
+
+    nextFiles.push(restoredFile);
+  }
+
+  return dedupeFilesByPersistedDocument(nextFiles);
+}
+
+function removeFileStateByKey<T>(state: Record<string, T>, fileKey: string): Record<string, T> {
+  const nextState = { ...state };
+  delete nextState[fileKey];
+  return nextState;
+}
 
 export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction): WorkspaceState {
   switch (action.type) {
@@ -88,6 +137,8 @@ function WorkspacePage({ workspaceId, initialFiles = [], initialFolders = DEFAUL
   const [showRawPanel, setShowRawPanel] = useState(true);
   const [showParsedPanel, setShowParsedPanel] = useState(true);
   const [documentUnitsByFileId, setDocumentUnitsByFileId] = useState<Record<string, DocumentUnit[]>>({});
+  const [visibleUnitsByFileId, setVisibleUnitsByFileId] = useState<Record<string, DocumentUnit[]>>({});
+  const [selectedAnchorUnitIdByFileId, setSelectedAnchorUnitIdByFileId] = useState<Record<string, string | null>>({});
 
   const [state, dispatch] = useReducer(workspaceReducer, {
     sections: initialSections, selectedSectionId: null, contentBlocks: initialContentBlocks,
@@ -177,6 +228,80 @@ function WorkspacePage({ workspaceId, initialFiles = [], initialFolders = DEFAUL
     return () => window.removeEventListener("resize", handleResize);
   }, [state.rightCollapsed, state.leftCollapsed, state.leftPanelWidth]);
 
+  // 组件挂载时从后端恢复已有文档列表。
+  useEffect(() => {
+    void (async () => {
+      try {
+        const docs = await listDocuments(workspaceId ?? "workspace_1");
+        if (docs.length === 0) return;
+        const restoredFiles: FileItem[] = docs.map((doc) => ({
+          id: doc.id,
+          name: doc.original_filename,
+          type: getFileType(doc.original_filename),
+          category: "",
+          size: "",
+          date: doc.created_at.split("T")[0],
+          status: "parsed",
+          documentId: doc.id,
+          viewerStatus: "ready",
+        }));
+        setFiles((prev) => mergeRestoredFiles(prev, restoredFiles));
+      } catch {
+        // 后端不可用或无数据时静默处理
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const loadSectionContent = useCallback(async (fileId: string, sectionId: string): Promise<SectionContentPayload> => {
+    const content = await getSectionContent(sectionId);
+    setVisibleUnitsByFileId((prev) => ({ ...prev, [fileId]: content.units }));
+    setSelectedAnchorUnitIdByFileId((prev) => ({ ...prev, [fileId]: content.anchor_unit_id }));
+    setViewerStatus("ready");
+    return content;
+  }, []);
+
+  // 从后端异步加载一个已有文档的详情和章节树（用于重启后选择已存在文档）。
+  const loadExistingDocument = useCallback(async (fileId: string, documentId: string) => {
+    setViewerStatus("parsing");
+      try {
+        const detail = await getDocumentDetail(documentId);
+        setDocumentUnitsByFileId((prev) => ({ ...prev, [fileId]: detail.units }));
+        setVisibleUnitsByFileId((prev) => ({ ...prev, [fileId]: detail.units }));
+        setSelectedAnchorUnitIdByFileId((prev) => ({ ...prev, [fileId]: detail.units[0]?.id ?? null }));
+
+      let sections: SectionNode[] = [];
+      try {
+        await buildSections(documentId);
+        sections = await getSectionTree(documentId);
+      } catch {
+        // 章节树构建失败不影响文档解析结果展示
+      }
+
+      setDocumentSectionsByFileId((prev) => ({ ...prev, [fileId]: sections }));
+      setDocumentBlocksByFileId((prev) => ({ ...prev, [fileId]: [] }));
+
+      let initialSectionId: string | null = null;
+        if (sections.length > 0) {
+          initialSectionId = sections[0].id;
+          try {
+            const content = await getSectionContent(initialSectionId);
+            setVisibleUnitsByFileId((prev) => ({ ...prev, [fileId]: content.units }));
+            setSelectedAnchorUnitIdByFileId((prev) => ({ ...prev, [fileId]: content.anchor_unit_id }));
+          } catch {
+            // 章节原文加载失败时不阻塞展示
+          }
+      }
+
+      dispatch({ type: "SET_LANG_DATA", sections, contentBlocks: [] });
+      dispatch({ type: "SELECT_SECTION", sectionId: initialSectionId });
+      setViewerStatus(detail.units.length > 0 || sections.length > 0 ? "ready" : "empty");
+    } catch (err) {
+      setViewerStatus("error");
+      setUploadError(err instanceof Error ? err.message : "文档加载失败");
+    }
+  }, []);
+
   const applyFileContent = useCallback((fileId: string | null) => {
     if (!fileId) {
       dispatch({ type: "SET_LANG_DATA", sections: [], contentBlocks: [] });
@@ -197,18 +322,41 @@ function WorkspacePage({ workspaceId, initialFiles = [], initialFolders = DEFAUL
       return;
     }
 
-    const blocks = documentBlocksByFileId[fileId] ?? [];
-    const sections = documentSectionsByFileId[fileId] ?? [];
-    setViewerStatus(selectedFile?.viewerStatus ?? (blocks.length > 0 ? "ready" : "idle"));
-    dispatch({ type: "SET_LANG_DATA", sections, contentBlocks: blocks });
-
-    if (selectedFile?.viewerStatus === "ready" && blocks.length > 0) {
-      dispatch({ type: "SELECT_SECTION", sectionId: UPLOADED_CONTENT_SECTION_ID });
+    // 文档有 documentId 但本地缓存为空（重启后恢复的文件），从后端异步加载
+    const hasCache = Object.prototype.hasOwnProperty.call(documentUnitsByFileId, fileId)
+      || Object.prototype.hasOwnProperty.call(documentSectionsByFileId, fileId)
+      || Object.prototype.hasOwnProperty.call(documentBlocksByFileId, fileId);
+    if (selectedFile?.documentId && !hasCache) {
+      void loadExistingDocument(fileId, selectedFile.documentId);
       return;
     }
 
+    const blocks = documentBlocksByFileId[fileId] ?? [];
+    const sections = documentSectionsByFileId[fileId] ?? [];
+    const visibleUnits = visibleUnitsByFileId[fileId] ?? documentUnitsByFileId[fileId] ?? [];
+    setViewerStatus(selectedFile?.viewerStatus ?? "ready");
+    dispatch({ type: "SET_LANG_DATA", sections, contentBlocks: blocks });
+
+    if (sections.length > 0) {
+      const firstSectionId = sections[0].id;
+      dispatch({ type: "SELECT_SECTION", sectionId: firstSectionId });
+      loadSectionContent(fileId, firstSectionId).catch((err: unknown) => {
+        setVisibleUnitsByFileId((prev) => ({ ...prev, [fileId]: [] }));
+        setSelectedAnchorUnitIdByFileId((prev) => ({ ...prev, [fileId]: null }));
+        setUploadError(err instanceof Error ? err.message : "章节原文加载失败");
+      });
+      return;
+    }
+
+    if (visibleUnits.length > 0) {
+      setViewerStatus("ready");
+      setSelectedAnchorUnitIdByFileId((prev) => ({
+        ...prev,
+        [fileId]: prev[fileId] ?? visibleUnits[0]?.id ?? null,
+      }));
+    }
     dispatch({ type: "SELECT_SECTION", sectionId: null });
-  }, [documentBlocksByFileId, documentSectionsByFileId, files]);
+  }, [documentBlocksByFileId, documentSectionsByFileId, documentUnitsByFileId, files, loadExistingDocument, loadSectionContent, visibleUnitsByFileId]);
 
   const handleFileSelect = useCallback((fileId: string, fileName: string) => {
     setSelectedFileId(fileId);
@@ -245,7 +393,8 @@ function WorkspacePage({ workspaceId, initialFiles = [], initialFolders = DEFAUL
     try {
       const uploadResult = await uploadDocument(file, workspaceId ?? "workspace_1");
       const detail = await getDocumentDetail(uploadResult.id);
-      const blocks = unitsToContentBlocks(detail.units);
+      const blocks: ContentBlock[] = [];
+      const persistedFileId = uploadResult.id;
 
       // 构建并获取章节树
       let sections: SectionNode[] = [];
@@ -256,35 +405,54 @@ function WorkspacePage({ workspaceId, initialFiles = [], initialFolders = DEFAUL
         // 章节树构建失败不影响文档解析结果展示
       }
 
+      let visibleUnits = detail.units;
+      let selectedAnchorUnitId = detail.units[0]?.id ?? null;
+      let initialSectionId: string | null = null;
+      if (sections.length > 0) {
+        initialSectionId = sections[0].id;
+        try {
+          const content = await getSectionContent(initialSectionId);
+          visibleUnits = content.units;
+          selectedAnchorUnitId = content.anchor_unit_id;
+        } catch {
+          visibleUnits = [];
+          selectedAnchorUnitId = null;
+        }
+      }
+
       setDocumentBlocksByFileId((prev) => ({
-        ...prev,
-        [fileId]: blocks,
+        ...removeFileStateByKey(prev, fileId),
+        [persistedFileId]: blocks,
       }));
       setDocumentSectionsByFileId((prev) => ({
-        ...prev,
-        [fileId]: sections,
+        ...removeFileStateByKey(prev, fileId),
+        [persistedFileId]: sections,
       }));
       setDocumentUnitsByFileId((prev) => ({
+        ...removeFileStateByKey(prev, fileId),
+        [persistedFileId]: detail.units,
+      }));
+      setVisibleUnitsByFileId((prev) => ({
+        ...removeFileStateByKey(prev, fileId),
+        [persistedFileId]: visibleUnits,
+      }));
+      setSelectedAnchorUnitIdByFileId((prev) => ({
         ...prev,
-        [fileId]: detail.units,
+        [persistedFileId]: selectedAnchorUnitId,
       }));
       dispatch({ type: "SET_LANG_DATA", sections, contentBlocks: blocks });
-      // 自动选中内容区域，让 DocumentViewer 立即渲染解析结果
-      if (blocks.length > 0) {
-        dispatch({ type: "SELECT_SECTION", sectionId: UPLOADED_CONTENT_SECTION_ID });
-        setViewerStatus("ready");
-      } else {
-        dispatch({ type: "SELECT_SECTION", sectionId: null });
-        setViewerStatus("empty");
-      }
-      setFiles((prev) =>
+      dispatch({ type: "SELECT_SECTION", sectionId: initialSectionId });
+      setViewerStatus(detail.units.length > 0 || sections.length > 0 ? "ready" : "empty");
+      setSelectedFileId(persistedFileId);
+      setFiles((prev) => dedupeFilesByPersistedDocument(
         prev.map((f) => (f.id === fileId ? {
           ...f,
+          id: persistedFileId,
           status: "parsed",
-          documentId: uploadResult.id,
-          viewerStatus: blocks.length > 0 ? "ready" : "empty",
+          documentId: persistedFileId,
+          viewerStatus: detail.units.length > 0 || sections.length > 0 ? "ready" : "empty",
         } : f)),
-      );
+      ));
     } catch (err) {
       dispatch({ type: "SET_LANG_DATA", sections: [], contentBlocks: [] });
       dispatch({ type: "SELECT_SECTION", sectionId: null });
@@ -298,14 +466,40 @@ function WorkspacePage({ workspaceId, initialFiles = [], initialFolders = DEFAUL
     }
   }, [workspaceId]);
 
-  const handleDeleteFile = useCallback((fileId: string) => {
-    setFiles((prev) => prev.filter((file) => file.id !== fileId));
-    if (selectedFileId === fileId) {
+  const handleDeleteFile = useCallback(async (fileId: string) => {
+    const file = files.find((f) => f.id === fileId);
+    const persistedDocumentId = file?.documentId ?? null;
+
+    if (persistedDocumentId) {
+      try {
+        await deleteDocument(persistedDocumentId);
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : "文档删除失败");
+        return;
+      }
+    }
+
+    setFiles((prev) => prev.filter((f) => {
+      if (!persistedDocumentId) {
+        return f.id !== fileId;
+      }
+
+      return f.documentId !== persistedDocumentId;
+    }));
+
+    const stateKey = persistedDocumentId ?? fileId;
+    setDocumentBlocksByFileId((prev) => removeFileStateByKey(prev, stateKey));
+    setDocumentSectionsByFileId((prev) => removeFileStateByKey(prev, stateKey));
+    setDocumentUnitsByFileId((prev) => removeFileStateByKey(prev, stateKey));
+    setVisibleUnitsByFileId((prev) => removeFileStateByKey(prev, stateKey));
+
+    if (selectedFileId === fileId || selectedFileId === persistedDocumentId) {
       setSelectedFileId(null);
       setSelectedFileName("");
       setLeftMode("files");
+      applyFileContent(null);
     }
-  }, [selectedFileId]);
+  }, [applyFileContent, files, selectedFileId]);
 
   const handleRenameFile = useCallback((fileId: string, newName: string) => {
     setFiles((prev) => prev.map((file) => file.id === fileId ? { ...file, name: newName } : file));
@@ -326,11 +520,18 @@ function WorkspacePage({ workspaceId, initialFiles = [], initialFolders = DEFAUL
 
   const handleSectionSelect = useCallback((id: string) => {
     selectSection(id);
+    if (selectedFileId) {
+      loadSectionContent(selectedFileId, id).catch((err: unknown) => {
+        setVisibleUnitsByFileId((prev) => ({ ...prev, [selectedFileId]: [] }));
+        setSelectedAnchorUnitIdByFileId((prev) => ({ ...prev, [selectedFileId]: null }));
+        setUploadError(err instanceof Error ? err.message : "章节原文加载失败");
+      });
+    }
     setTimeout(() => {
       const el = document.getElementById(`block-${id}`);
       if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 50);
-  }, [selectSection]);
+  }, [loadSectionContent, selectSection, selectedFileId]);
 
   const showLeftPanel = leftMode !== null;
 
@@ -417,7 +618,8 @@ function WorkspacePage({ workspaceId, initialFiles = [], initialFolders = DEFAUL
             showSelectionMenu={state.showSelectionMenu} selectionMenuPos={state.selectionMenuPos}
             onUpdateLineText={updateLineText}
             onToggleFootnote={toggleFootnote} onShowSelectionMenu={showSelectionMenu} onQuoteSelection={quoteSelection}
-            units={selectedFileId ? documentUnitsByFileId[selectedFileId] : undefined}
+            units={selectedFileId ? (visibleUnitsByFileId[selectedFileId] ?? documentUnitsByFileId[selectedFileId]) : undefined}
+            selectedAnchorUnitId={selectedFileId ? (selectedAnchorUnitIdByFileId[selectedFileId] ?? null) : null}
             showRawPanel={showRawPanel}
             showParsedPanel={showParsedPanel}
             onToggleRawPanel={() => setShowRawPanel(!showRawPanel)}

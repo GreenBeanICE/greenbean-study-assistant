@@ -43,6 +43,65 @@ class DocumentRepository:
         )
         return [self._to_entity(model) for model in models]
 
+    def delete_by_id(self, document_id: str) -> bool:
+        from app.db.models import (
+            AnalysisResultModel,
+            ChunkModel,
+            DocumentUnitModel,
+            EmbeddingVectorModel,
+            SectionModel,
+            SectionUnitLinkModel,
+        )
+
+        model = self.session.get(DocumentRecordModel, document_id)
+        if model is None:
+            return False
+
+        unit_ids = [
+            row.id
+            for row in self.session.query(DocumentUnitModel.id)
+            .filter(DocumentUnitModel.document_id == document_id)
+            .all()
+        ]
+        section_ids = [
+            row.id
+            for row in self.session.query(SectionModel.id)
+            .filter(SectionModel.document_id == document_id)
+            .all()
+        ]
+
+        if unit_ids:
+            chunk_ids = [
+                row.id
+                for row in self.session.query(ChunkModel.id)
+                .filter(ChunkModel.document_unit_id.in_(unit_ids))
+                .all()
+            ]
+            if chunk_ids:
+                self.session.query(EmbeddingVectorModel).filter(
+                    EmbeddingVectorModel.chunk_id.in_(chunk_ids)
+                ).delete(synchronize_session=False)
+            self.session.query(ChunkModel).filter(
+                ChunkModel.document_unit_id.in_(unit_ids)
+            ).delete(synchronize_session=False)
+
+        if section_ids:
+            self.session.query(SectionUnitLinkModel).filter(
+                SectionUnitLinkModel.section_id.in_(section_ids)
+            ).delete(synchronize_session=False)
+        self.session.query(SectionModel).filter(
+            SectionModel.document_id == document_id
+        ).delete(synchronize_session=False)
+        self.session.query(AnalysisResultModel).filter(
+            AnalysisResultModel.document_id == document_id
+        ).delete(synchronize_session=False)
+        self.session.query(DocumentUnitModel).filter(
+            DocumentUnitModel.document_id == document_id
+        ).delete(synchronize_session=False)
+
+        self.session.delete(model)
+        return True
+
     def _to_entity(self, model: DocumentRecordModel) -> DocumentRecord:
         return DocumentRecord(
             id=model.id,

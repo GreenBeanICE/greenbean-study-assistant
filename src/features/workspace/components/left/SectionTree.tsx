@@ -2,6 +2,23 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { SectionTreeProps } from "../../type";
 import type { SectionNode } from "../../../../types/section";
 
+function formatSectionLocation(node: SectionNode): string | null {
+  if (node.startPage == null && node.endPage == null) {
+    return null;
+  }
+
+  if (
+    node.startPage != null
+    && node.endPage != null
+    && node.startPage !== node.endPage
+  ) {
+    return `${node.startPage}-${node.endPage} 页`;
+  }
+
+  const singlePage = node.startPage ?? node.endPage;
+  return singlePage != null ? `第 ${singlePage} 页` : null;
+}
+
 function TreeNode({ node, depth = 0, selectedSectionId, onSelect, onToggle }: {
   node: SectionNode; depth?: number; selectedSectionId: string | null;
   onSelect: (sectionId: string) => void; onToggle: (sectionId: string) => void;
@@ -9,6 +26,7 @@ function TreeNode({ node, depth = 0, selectedSectionId, onSelect, onToggle }: {
   const hasChildren = node.children && node.children.length > 0;
   const isSelected = selectedSectionId === node.id;
   const isExpanded = node.expanded ?? true;
+  const location = formatSectionLocation(node);
 
   return (
     <div>
@@ -22,7 +40,10 @@ function TreeNode({ node, depth = 0, selectedSectionId, onSelect, onToggle }: {
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
           </span>
         ) : <span className="flex-shrink-0 w-4" />}
-        <span className="font-medium truncate text-[13px]">{node.index ? `${node.index} ` : ""}{node.title}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-medium truncate text-[13px]">{node.index ? `${node.index} ` : ""}{node.title}</span>
+          {location ? <span className="block text-[11px] text-neutral-400 mt-0.5">{location}</span> : null}
+        </span>
       </button>
       <AnimatePresence>{hasChildren && isExpanded && (
         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">

@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 
+from app.db.models import SectionModel
 from app.db.models import SectionUnitLinkModel
 from app.entities import SectionUnitLink
 
@@ -34,3 +35,14 @@ class SectionUnitLinkRepository:
             )
             for model in models
         ]
+
+    def delete_by_document(self, document_id: str) -> None:
+        (
+            self.session.query(SectionUnitLinkModel)
+            .filter(
+                SectionUnitLinkModel.section_id.in_(
+                    self.session.query(SectionModel.id).filter(SectionModel.document_id == document_id)
+                )
+            )
+            .delete(synchronize_session=False)
+        )
