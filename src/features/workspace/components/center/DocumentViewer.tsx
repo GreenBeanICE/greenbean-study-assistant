@@ -230,6 +230,7 @@ function DocumentViewer({
   onUpdateLineText, onToggleFootnote,
   onShowSelectionMenu, onQuoteSelection,
   units, showRawPanel = true, showParsedPanel = true, onToggleRawPanel, onToggleParsedPanel,
+  analysisStatus = "idle", analysisErrorMessage = null, onGenerateAnalysis,
 }: DocumentViewerProps) {
   const rawPanelRef = useRef<HTMLDivElement>(null);
   const parsedPanelRef = useRef<HTMLDivElement>(null);
@@ -435,6 +436,21 @@ function DocumentViewer({
                 <p className="text-xs text-neutral-400 mt-1">
                   {emptyStateCopy.subtitle}
                 </p>
+                {selectedSectionId && hasRawUnits && onGenerateAnalysis && analysisStatus !== "ready" && (
+                  <div className="mt-4">
+                    <button
+                      type="button"
+                      onClick={onGenerateAnalysis}
+                      disabled={analysisStatus === "loading"}
+                      className="rounded-lg bg-blue-600 px-3 py-2 text-xs text-white disabled:opacity-60"
+                    >
+                      {analysisStatus === "loading" ? "生成中..." : "生成解析"}
+                    </button>
+                    {analysisStatus === "error" && analysisErrorMessage && (
+                      <p className="mt-2 text-xs text-rose-500">{analysisErrorMessage}</p>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="min-w-max" style={{ minWidth: "max-content" }}>

@@ -12,6 +12,8 @@ import type { ChatMessage } from "../../../types/chat";
 import type { DocumentUnit } from "../../../types/document";
 import { uploadDocument, getDocumentDetail, listDocuments, deleteDocument } from "../../document/api/documentApi";
 import { buildSections, getSectionContent, getSectionTree } from "../../section/api/sectionApi";
+import { generateSectionAnalysis, getSectionAnalysis } from "../../analysis/api/analysisApi";
+import { analysisToContentBlocks } from "../../analysis/analysisToContentBlocks";
 
 function getPersistedDocumentId(file: Pick<FileItem, "documentId">): string | null {
   return file.documentId ?? null;
@@ -96,6 +98,7 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
         }) as ContentLine[] };
       })};
     case "SET_LANG_DATA": return { ...state, sections: action.sections, contentBlocks: action.contentBlocks };
+    case "SET_CONTENT_BLOCKS": return { ...state, contentBlocks: action.contentBlocks };
     case "TOGGLE_FOOTNOTE": return { ...state, expandedFootnoteId: state.expandedFootnoteId === action.footnoteId ? null : action.footnoteId };
     case "SET_SELECTION": return { ...state, currentSelection: action.selection };
     case "SHOW_SELECTION_MENU": return { ...state, showSelectionMenu: action.show, selectionMenuPos: action.pos ?? null };
@@ -139,6 +142,10 @@ function WorkspacePage({ workspaceId, initialFiles = [], initialFolders = DEFAUL
   const [documentUnitsByFileId, setDocumentUnitsByFileId] = useState<Record<string, DocumentUnit[]>>({});
   const [visibleUnitsByFileId, setVisibleUnitsByFileId] = useState<Record<string, DocumentUnit[]>>({});
   const [selectedAnchorUnitIdByFileId, setSelectedAnchorUnitIdByFileId] = useState<Record<string, string | null>>({});
+  const [sectionAnalysisByFileId, setSectionAnalysisByFileId] = useState<Record<string, Record<string, ContentBlock[]>>>({});
+  const [sectionAnalysisStatusByFileId, setSectionAnalysisStatusByFileId] = useState<Record<string, Record<string, "idle" | "loading" | "ready" | "error">>>({});
+  const [sectionAnalysisErrorByFileId, setSectionAnalysisErrorByFileId] = useState<Record<string, Record<string, string | null>>>({});
+  const activeSectionAnalysisRequestRef = useRef(0);
 
   const [state, dispatch] = useReducer(workspaceReducer, {
     sections: initialSections, selectedSectionId: null, contentBlocks: initialContentBlocks,
@@ -253,13 +260,87 @@ function WorkspacePage({ workspaceId, initialFiles = [], initialFolders = DEFAUL
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const loadSectionAnalysis = useCallback(async (fileId: string, sectionId: string) => {
+    const cachedBlocks = sectionAnalysisByFileId[fileId]?.[sectionId];
+    if (cachedBlocks) {
+      setSectionAnalysisStatusByFileId((prev) => ({
+        ...prev,
+        [fileId]: { ...(prev[fileId] ?? {}), [sectionId]: "ready" },
+      }));
+      setSectionAnalysisErrorByFileId((prev) => ({
+        ...prev,
+        [fileId]: { ...(prev[fileId] ?? {}), [sectionId]: null },
+      }));
+      dispatch({ type: "SET_CONTENT_BLOCKS", contentBlocks: cachedBlocks });
+      return;
+    }
+
+    const requestId = activeSectionAnalysisRequestRef.current + 1;
+    activeSectionAnalysisRequestRef.current = requestId;
+    setSectionAnalysisErrorByFileId((prev) => ({
+      ...prev,
+      [fileId]: { ...(prev[fileId] ?? {}), [sectionId]: null },
+    }));
+    try {
+      const analysis = await getSectionAnalysis(sectionId);
+      if (activeSectionAnalysisRequestRef.current !== requestId) {
+        return;
+      }
+
+      if (analysis === null) {
+        setSectionAnalysisStatusByFileId((prev) => ({
+          ...prev,
+          [fileId]: { ...(prev[fileId] ?? {}), [sectionId]: "idle" },
+        }));
+        setSectionAnalysisErrorByFileId((prev) => ({
+          ...prev,
+          [fileId]: { ...(prev[fileId] ?? {}), [sectionId]: null },
+        }));
+        dispatch({ type: "SET_CONTENT_BLOCKS", contentBlocks: [] });
+        return;
+      }
+
+      const blocks = analysisToContentBlocks(analysis);
+      setSectionAnalysisByFileId((prev) => ({
+        ...prev,
+        [fileId]: { ...(prev[fileId] ?? {}), [sectionId]: blocks },
+      }));
+      setSectionAnalysisStatusByFileId((prev) => ({
+        ...prev,
+        [fileId]: { ...(prev[fileId] ?? {}), [sectionId]: "ready" },
+      }));
+      setSectionAnalysisErrorByFileId((prev) => ({
+        ...prev,
+        [fileId]: { ...(prev[fileId] ?? {}), [sectionId]: null },
+      }));
+      dispatch({ type: "SET_CONTENT_BLOCKS", contentBlocks: blocks });
+    } catch (err) {
+      if (activeSectionAnalysisRequestRef.current !== requestId) {
+        return;
+      }
+
+      const message = err instanceof Error ? err.message : "解析加载失败";
+      const isMissing = message.includes("404");
+      setSectionAnalysisStatusByFileId((prev) => ({
+        ...prev,
+        [fileId]: { ...(prev[fileId] ?? {}), [sectionId]: isMissing ? "idle" : "error" },
+      }));
+      setSectionAnalysisErrorByFileId((prev) => ({
+        ...prev,
+        [fileId]: { ...(prev[fileId] ?? {}), [sectionId]: isMissing ? null : message },
+      }));
+      dispatch({ type: "SET_CONTENT_BLOCKS", contentBlocks: [] });
+    }
+  }, [sectionAnalysisByFileId]);
+
   const loadSectionContent = useCallback(async (fileId: string, sectionId: string): Promise<SectionContentPayload> => {
     const content = await getSectionContent(sectionId);
     setVisibleUnitsByFileId((prev) => ({ ...prev, [fileId]: content.units }));
     setSelectedAnchorUnitIdByFileId((prev) => ({ ...prev, [fileId]: content.anchor_unit_id }));
     setViewerStatus("ready");
+    loadSectionAnalysis(fileId, sectionId);
     return content;
-  }, []);
+  }, [loadSectionAnalysis]);
 
   // 从后端异步加载一个已有文档的详情和章节树（用于重启后选择已存在文档）。
   const loadExistingDocument = useCallback(async (fileId: string, documentId: string) => {
@@ -492,6 +573,9 @@ function WorkspacePage({ workspaceId, initialFiles = [], initialFolders = DEFAUL
     setDocumentSectionsByFileId((prev) => removeFileStateByKey(prev, stateKey));
     setDocumentUnitsByFileId((prev) => removeFileStateByKey(prev, stateKey));
     setVisibleUnitsByFileId((prev) => removeFileStateByKey(prev, stateKey));
+    setSectionAnalysisByFileId((prev) => removeFileStateByKey(prev, stateKey));
+    setSectionAnalysisStatusByFileId((prev) => removeFileStateByKey(prev, stateKey));
+    setSectionAnalysisErrorByFileId((prev) => removeFileStateByKey(prev, stateKey));
 
     if (selectedFileId === fileId || selectedFileId === persistedDocumentId) {
       setSelectedFileId(null);
@@ -532,6 +616,55 @@ function WorkspacePage({ workspaceId, initialFiles = [], initialFolders = DEFAUL
       if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 50);
   }, [loadSectionContent, selectSection, selectedFileId]);
+
+  const handleGenerateAnalysis = useCallback(async () => {
+    const fileId = selectedFileId;
+    const sectionId = state.selectedSectionId;
+    if (!fileId || !sectionId) return;
+
+    const requestId = activeSectionAnalysisRequestRef.current + 1;
+    activeSectionAnalysisRequestRef.current = requestId;
+
+    setSectionAnalysisStatusByFileId((prev) => ({
+      ...prev,
+      [fileId]: { ...(prev[fileId] ?? {}), [sectionId]: "loading" },
+    }));
+    setSectionAnalysisErrorByFileId((prev) => ({
+      ...prev,
+      [fileId]: { ...(prev[fileId] ?? {}), [sectionId]: null },
+    }));
+    try {
+      const analysis = await generateSectionAnalysis(sectionId);
+      if (activeSectionAnalysisRequestRef.current !== requestId) {
+        return;
+      }
+
+      const blocks = analysisToContentBlocks(analysis);
+      setSectionAnalysisByFileId((prev) => ({
+        ...prev,
+        [fileId]: { ...(prev[fileId] ?? {}), [sectionId]: blocks },
+      }));
+      setSectionAnalysisStatusByFileId((prev) => ({
+        ...prev,
+        [fileId]: { ...(prev[fileId] ?? {}), [sectionId]: "ready" },
+      }));
+      dispatch({ type: "SET_CONTENT_BLOCKS", contentBlocks: blocks });
+    } catch (err) {
+      if (activeSectionAnalysisRequestRef.current !== requestId) {
+        return;
+      }
+
+      const message = err instanceof Error ? err.message : "生成解析失败";
+      setSectionAnalysisStatusByFileId((prev) => ({
+        ...prev,
+        [fileId]: { ...(prev[fileId] ?? {}), [sectionId]: "error" },
+      }));
+      setSectionAnalysisErrorByFileId((prev) => ({
+        ...prev,
+        [fileId]: { ...(prev[fileId] ?? {}), [sectionId]: message },
+      }));
+    }
+  }, [selectedFileId, state.selectedSectionId]);
 
   const showLeftPanel = leftMode !== null;
 
@@ -623,7 +756,18 @@ function WorkspacePage({ workspaceId, initialFiles = [], initialFolders = DEFAUL
             showRawPanel={showRawPanel}
             showParsedPanel={showParsedPanel}
             onToggleRawPanel={() => setShowRawPanel(!showRawPanel)}
-            onToggleParsedPanel={() => setShowParsedPanel(!showParsedPanel)} />
+            onToggleParsedPanel={() => setShowParsedPanel(!showParsedPanel)}
+            analysisStatus={
+              selectedFileId && state.selectedSectionId
+                ? (sectionAnalysisStatusByFileId[selectedFileId]?.[state.selectedSectionId] ?? "idle")
+                : "idle"
+            }
+            analysisErrorMessage={
+              selectedFileId && state.selectedSectionId
+                ? (sectionAnalysisErrorByFileId[selectedFileId]?.[state.selectedSectionId] ?? null)
+                : null
+            }
+            onGenerateAnalysis={handleGenerateAnalysis} />
         </main>
 
         <ResizableHandle onResize={setRightW} position="right" onDoubleClick={toggleRightPanel} />

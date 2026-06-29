@@ -282,3 +282,47 @@ def test_document_repository_list_by_workspace_stable_order_with_same_timestamp(
     ids = [doc.id for doc in results]
     assert ids == sorted(ids)
 
+
+def test_analysis_result_repository_get_by_section_id(session_factory):
+    document = DocumentRecord(
+        workspace_id="workspace_1",
+        title="Course",
+        original_filename="course.pdf",
+        file_type=DocumentFileType.PDF,
+        file_path="data/uploads/course.pdf",
+        page_count=1,
+    )
+    section = Section(
+        document_id=document.id,
+        title="目标章节",
+        level=1,
+        order_index=0,
+    )
+    saved = AnalysisResult(
+        document_id=document.id,
+        section_id=section.id,
+        analysis_type=AnalysisType.SECTION,
+        language="zh",
+        content_markdown="## 中文总结\n\n摘要",
+        content_json={
+            "summary": "摘要",
+            "key_concepts": [],
+            "terms": [],
+            "highlights": [],
+            "source_refs": [],
+        },
+    )
+
+    with session_factory() as session:
+        DocumentRepository(session).save(document)
+        SectionRepository(session).save(section)
+        AnalysisResultRepository(session).save(saved)
+        session.commit()
+
+    with session_factory() as session:
+        loaded = AnalysisResultRepository(session).get_by_section_id(section.id)
+
+    assert loaded is not None
+    assert loaded.section_id == section.id
+    assert loaded.content_json["summary"] == "摘要"
+

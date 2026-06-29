@@ -32,6 +32,19 @@ class AnalysisResultRepository:
         model = self.session.get(AnalysisResultModel, result_id)
         if model is None:
             return None
+        return self._to_entity(model)
+
+    def get_by_section_id(self, section_id: str) -> AnalysisResult | None:
+        model = (
+            self.session.query(AnalysisResultModel)
+            .filter(AnalysisResultModel.section_id == section_id)
+            .one_or_none()
+        )
+        if model is None:
+            return None
+        return self._to_entity(model)
+
+    def _to_entity(self, model: AnalysisResultModel) -> AnalysisResult:
         return AnalysisResult(
             id=model.id,
             document_id=model.document_id,

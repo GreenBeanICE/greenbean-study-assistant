@@ -66,6 +66,7 @@ export type WorkspaceAction =
   | { type: "SET_LEFT_WIDTH"; width: number }
   | { type: "SET_RIGHT_WIDTH"; width: number }
   | { type: "SET_LANG_DATA"; sections: SectionNode[]; contentBlocks: ContentBlock[] }
+  | { type: "SET_CONTENT_BLOCKS"; contentBlocks: ContentBlock[] }
   | { type: "SET_DOC_TITLE"; title: string };
 
 export interface SectionTreeProps {
@@ -96,6 +97,10 @@ export interface DocumentViewerProps {
   showParsedPanel?: boolean;
   onToggleRawPanel?: () => void;
   onToggleParsedPanel?: () => void;
+  // 解析生成相关 props
+  analysisStatus?: "idle" | "loading" | "ready" | "error";
+  analysisErrorMessage?: string | null;
+  onGenerateAnalysis?: () => void;
 }
 
 export interface ChatPanelProps {

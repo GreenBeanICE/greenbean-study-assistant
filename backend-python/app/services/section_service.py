@@ -126,3 +126,9 @@ class SectionService:
                 "anchor_unit_id": filtered_units[0].id if filtered_units else None,
                 "units": filtered_units,
             }
+
+    def get_section_by_id(self, section_id: str):
+        from app.repositories.section_repository import SectionRepository
+
+        with self.uow_factory() as uow:
+            return SectionRepository(uow.session).get_by_id(section_id)

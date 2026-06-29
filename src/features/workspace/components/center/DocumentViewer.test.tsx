@@ -924,4 +924,73 @@ describe("DocumentViewer", () => {
     // 解析面板内容不应显示（空状态文案）
     expect(screen.queryByText("从左侧上传一份文档开始")).toBeNull();
   });
+
+  it("选择章节且无解析时显示生成解析按钮", () => {
+    render(
+      <DocumentViewer
+        {...defaultProps}
+        contentBlocks={[]}
+        selectedSectionId="sec-1"
+        viewerStatus="ready"
+        units={[{ id: "u1", sequence_index: 0, page_number: 1, text_content: "原文内容" }]}
+        analysisStatus="idle"
+        onGenerateAnalysis={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "生成解析" })).toBeDefined();
+  });
+
+  it("点击生成解析按钮会触发 onGenerateAnalysis", () => {
+    const onGenerateAnalysis = vi.fn();
+
+    render(
+      <DocumentViewer
+        {...defaultProps}
+        contentBlocks={[]}
+        selectedSectionId="sec-1"
+        viewerStatus="ready"
+        units={[{ id: "u1", sequence_index: 0, page_number: 1, text_content: "原文内容" }]}
+        analysisStatus="idle"
+        onGenerateAnalysis={onGenerateAnalysis}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "生成解析" }));
+
+    expect(onGenerateAnalysis).toHaveBeenCalledTimes(1);
+  });
+
+  it("生成解析加载中显示生成中状态", () => {
+    render(
+      <DocumentViewer
+        {...defaultProps}
+        contentBlocks={[]}
+        selectedSectionId="sec-1"
+        viewerStatus="ready"
+        units={[{ id: "u1", sequence_index: 0, page_number: 1, text_content: "原文内容" }]}
+        analysisStatus="loading"
+        onGenerateAnalysis={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "生成中..." })).toBeDefined();
+  });
+
+  it("生成解析失败时显示错误提示", () => {
+    render(
+      <DocumentViewer
+        {...defaultProps}
+        contentBlocks={[]}
+        selectedSectionId="sec-1"
+        viewerStatus="ready"
+        units={[{ id: "u1", sequence_index: 0, page_number: 1, text_content: "原文内容" }]}
+        analysisStatus="error"
+        analysisErrorMessage="生成解析失败"
+        onGenerateAnalysis={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("生成解析失败")).toBeDefined();
+  });
 });

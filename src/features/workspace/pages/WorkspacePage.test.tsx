@@ -9,6 +9,7 @@ import {
   deleteDocument,
 } from "../../document/api/documentApi";
 import { buildSections, getSectionContent, getSectionTree } from "../../section/api/sectionApi";
+import { getSectionAnalysis, generateSectionAnalysis } from "../../analysis/api/analysisApi";
 import type { FileItem, Folder, WorkspaceState } from "../type";
 import type { ContentBlock, FootnoteReference, SectionNode } from "../../../types/section";
 
@@ -128,6 +129,11 @@ vi.mock("../../section/api/sectionApi", () => ({
   getSectionContent: vi.fn(),
 }));
 
+vi.mock("../../analysis/api/analysisApi", () => ({
+  getSectionAnalysis: vi.fn(),
+  generateSectionAnalysis: vi.fn(),
+}));
+
 describe("WorkspacePage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -135,6 +141,8 @@ describe("WorkspacePage", () => {
     (buildSections as Mock).mockResolvedValue([]);
     (getSectionTree as Mock).mockResolvedValue([]);
     (getSectionContent as Mock).mockResolvedValue({ anchor_unit_id: null, units: [] });
+    (getSectionAnalysis as Mock).mockResolvedValue(null);
+    (generateSectionAnalysis as Mock).mockReset();
   });
 
   afterEach(() => {
@@ -1066,6 +1074,107 @@ describe("WorkspacePage", () => {
     // 验证原文/解析按钮仍然存在（units 被缓存并传递）
     expect(screen.getByText("原文")).toBeDefined();
     expect(screen.getByText("解析")).toBeDefined();
+  });
+
+  it("章节没有解析时可点击生成，并在成功后展示解析内容", async () => {
+    (uploadDocument as Mock).mockResolvedValue({ id: "doc-1" });
+    (getDocumentDetail as Mock).mockResolvedValue({
+      document: { id: "doc-1", title: "doc-1" },
+      units: [{ id: "u1", sequence_index: 0, page_number: 1, text_content: "第一页原文" }],
+    });
+    (buildSections as Mock).mockResolvedValue([]);
+    (getSectionTree as Mock).mockResolvedValue([
+      { id: "sec-1", title: "第一节", index: "1", expanded: true, children: [] },
+    ]);
+    (getSectionContent as Mock).mockResolvedValue({
+      anchor_unit_id: "u1",
+      units: [{ id: "u1", sequence_index: 0, page_number: 1, text_content: "第一页原文" }],
+    });
+    (getSectionAnalysis as Mock).mockResolvedValueOnce(null);
+    (generateSectionAnalysis as Mock).mockResolvedValueOnce({
+      id: "analysis-1",
+      document_id: "doc-1",
+      section_id: "sec-1",
+      analysis_type: "section",
+      language: "zh",
+      content_markdown: "## 中文总结\n\n这是摘要",
+      content_json: {
+        summary: "这是摘要",
+        key_concepts: ["概念 A"],
+        terms: [],
+        highlights: ["重点 A"],
+        source_refs: [{ page: 1, title: "第一节" }],
+      },
+      source_refs: [{ page: 1, title: "第一节" }],
+      created_at: "2026-06-29T12:00:00Z",
+      updated_at: "2026-06-29T12:00:00Z",
+    });
+
+    render(<WorkspacePage />);
+    await uploadPdf("lecture.pdf");
+
+    fireEvent.click(await screen.findByRole("button", { name: "生成解析" }));
+
+    await waitFor(() => {
+      expect(generateSectionAnalysis).toHaveBeenCalledWith("sec-1");
+    });
+    expect(await screen.findByText("这是摘要")).toBeDefined();
+    expect(screen.getByText("概念 A")).toBeDefined();
+  });
+
+  it("生成成功后忽略较早返回的空解析响应", async () => {
+    let resolveGetSectionAnalysis: ((value: null) => void) | null = null;
+    (uploadDocument as Mock).mockResolvedValue({ id: "doc-1" });
+    (getDocumentDetail as Mock).mockResolvedValue({
+      document: { id: "doc-1", title: "doc-1" },
+      units: [{ id: "u1", sequence_index: 0, page_number: 1, text_content: "第一页原文" }],
+    });
+    (buildSections as Mock).mockResolvedValue([]);
+    (getSectionTree as Mock).mockResolvedValue([
+      { id: "sec-1", title: "第一节", index: "1", expanded: true, children: [] },
+    ]);
+    (getSectionContent as Mock).mockResolvedValue({
+      anchor_unit_id: "u1",
+      units: [{ id: "u1", sequence_index: 0, page_number: 1, text_content: "第一页原文" }],
+    });
+    (getSectionAnalysis as Mock).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveGetSectionAnalysis = resolve;
+        }),
+    );
+    (generateSectionAnalysis as Mock).mockResolvedValueOnce({
+      id: "analysis-1",
+      document_id: "doc-1",
+      section_id: "sec-1",
+      analysis_type: "section",
+      language: "zh",
+      content_markdown: "## 中文总结\n\n这是摘要",
+      content_json: {
+        summary: "这是摘要",
+        key_concepts: ["概念 A"],
+        terms: [],
+        highlights: ["重点 A"],
+        source_refs: [{ page: 1, title: "第一节" }],
+      },
+      source_refs: [{ page: 1, title: "第一节" }],
+      created_at: "2026-06-29T12:00:00Z",
+      updated_at: "2026-06-29T12:00:00Z",
+    });
+
+    render(<WorkspacePage />);
+    await uploadPdf("lecture.pdf");
+
+    fireEvent.click(await screen.findByRole("button", { name: "生成解析" }));
+
+    expect(await screen.findByText("这是摘要")).toBeDefined();
+
+    await act(async () => {
+      resolveGetSectionAnalysis?.(null);
+    });
+
+    expect(screen.getByText("这是摘要")).toBeDefined();
+    expect(screen.queryByRole("button", { name: "生成解析" })).toBeNull();
   });
 });
 

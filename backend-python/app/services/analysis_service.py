@@ -5,6 +5,12 @@ from app.entities.analysis_result import AnalysisResult
 from app.enums.analysis_type import AnalysisType
 
 
+class SectionAnalysisNotFoundError(ValueError):
+    def __init__(self, section_id: str) -> None:
+        super().__init__(f"Section not found: {section_id}")
+        self.section_id = section_id
+
+
 # 这是一个工具函数，把 Agent 吐出来的 JSON 变成漂亮的 Markdown 排版
 def build_markdown_from_json(analysis_data: dict) -> str:
     """
@@ -58,3 +64,101 @@ async def process_and_save_analysis(
     # await db.save(result_entity)
 
     return result_entity
+
+
+class AnalysisService:
+    """章节解析服务，负责加载章节原文、构建上下文、调用解析 Agent。
+
+    第一版仅基于当前章节的 DocumentUnit 原文生成解析，不混入 chat 或已有解析内容。
+    """
+
+    def __init__(
+        self,
+        *,
+        section_service,
+        analysis_agent: AnalysisAgent | None = None,
+        uow_factory=None,
+    ) -> None:
+        self.section_service = section_service
+        self.analysis_agent = analysis_agent or AnalysisAgent()
+        self.uow_factory = uow_factory
+
+    def get_section_analysis(self, section_id: str):
+        section = self.section_service.get_section_by_id(section_id)
+        if section is None:
+            raise SectionAnalysisNotFoundError(section_id)
+
+        if self.uow_factory is None:
+            return None
+
+        from app.repositories.analysis_result_repository import AnalysisResultRepository
+
+        with self.uow_factory() as uow:
+            return AnalysisResultRepository(uow.session).get_by_section_id(section_id)
+
+    async def generate_section_analysis(
+        self,
+        section_id: str,
+        *,
+        language: str = "zh",
+        force_regenerate: bool = False,
+    ) -> AnalysisResult:
+        section = self.section_service.get_section_by_id(section_id)
+        if section is None:
+            raise SectionAnalysisNotFoundError(section_id)
+
+        existing = None
+        if not force_regenerate:
+            existing = self.get_section_analysis(section_id)
+            if existing is not None:
+                return existing
+        elif self.uow_factory is not None:
+            from app.repositories.analysis_result_repository import AnalysisResultRepository
+
+            with self.uow_factory() as uow:
+                existing = AnalysisResultRepository(uow.session).get_by_section_id(section_id)
+
+        content = self.section_service.get_section_content(section_id)
+        units = [unit for unit in content["units"] if unit.text_content.strip()]
+        if not units:
+            raise ValueError("资料依据不足：该章节当前没有可用于生成解析的原文")
+
+        document_context = self._build_section_context(section.title, units)
+        analysis_data = await self.analysis_agent.generate_analysis(document_context)
+        markdown_text = build_markdown_from_json(analysis_data)
+        result_kwargs = {
+            "document_id": section.document_id,
+            "section_id": section.id,
+            "analysis_type": AnalysisType.SECTION,
+            "language": language,
+            "content_markdown": markdown_text,
+            "content_json": analysis_data,
+            "prompt_version": "section-v1",
+        }
+        if existing is not None:
+            result_kwargs["id"] = existing.id
+            result_kwargs["created_at"] = existing.created_at
+
+        result = AnalysisResult(**result_kwargs)
+
+        if self.uow_factory is None:
+            return result
+
+        from app.repositories.analysis_result_repository import AnalysisResultRepository
+
+        with self.uow_factory() as uow:
+            saved = AnalysisResultRepository(uow.session).save(result)
+            uow.commit()
+            return saved
+
+    @staticmethod
+    def _build_section_context(section_title: str, units) -> str:
+        lines: list[str] = [f"章节标题: {section_title}"]
+        for unit in units:
+            page_desc = (
+                f"第 {unit.page_number} 页"
+                if unit.page_number is not None
+                else f"单元 {unit.sequence_index + 1}"
+            )
+            lines.append(f"[{page_desc}]\n{unit.text_content}")
+        return "\n\n".join(lines)

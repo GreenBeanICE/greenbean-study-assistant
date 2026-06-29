@@ -63,3 +63,54 @@ class AnalysisOutput(BaseModel):
     source_refs: list[SourceRef] = Field(
         default_factory=list, description="Source references"
     )
+
+
+class SectionAnalysisGenerateRequest(BaseModel):
+    language: str = Field(default="zh", description="分析结果输出语言。")
+    force_regenerate: bool = Field(
+        default=False, description="是否强制重新生成解析。"
+    )
+
+
+class SectionAnalysisResponse(BaseModel):
+    id: str = Field(..., description="分析结果 ID。")
+    document_id: str = Field(..., description="被分析的文档 ID。")
+    section_id: str = Field(..., description="小节 ID。")
+    analysis_type: AnalysisType = Field(..., description="分析范围。")
+    language: str = Field(..., description="分析结果语言。")
+    content_markdown: str = Field(..., description="用于展示的 Markdown 内容。")
+    content_json: dict | None = Field(
+        default=None, description="供程序读取的结构化分析内容。"
+    )
+    source_refs: list[SourceRef] = Field(
+        default_factory=list, description="来源引用列表。"
+    )
+    model_name: str | None = Field(default=None, description="生成结果使用的 AI 模型。")
+    prompt_version: str | None = Field(default=None, description="提示词模板版本。")
+    created_at: datetime = Field(..., description="创建时间。")
+    updated_at: datetime = Field(..., description="最后更新时间。")
+
+    @classmethod
+    def from_entity(cls, result: "AnalysisResult") -> "SectionAnalysisResponse":
+        refs: list[SourceRef] = []
+        if result.content_json and isinstance(
+            result.content_json.get("source_refs"), list
+        ):
+            refs = [
+                SourceRef.model_validate(item)
+                for item in result.content_json["source_refs"]
+            ]
+        return cls(
+            id=result.id,
+            document_id=result.document_id,
+            section_id=result.section_id or "",
+            analysis_type=result.analysis_type,
+            language=result.language,
+            content_markdown=result.content_markdown,
+            content_json=result.content_json,
+            source_refs=refs,
+            model_name=result.model_name,
+            prompt_version=result.prompt_version,
+            created_at=result.created_at,
+            updated_at=result.updated_at,
+        )

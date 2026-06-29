@@ -5,7 +5,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
-from app.api import document_controller, provider_controller, section_controller
+from app.api import analysis_controller, document_controller, provider_controller, section_controller
 from app.api.dependencies import set_session_factory
 from app.config.settings import PROVIDER_CONFIGS_PATH
 from app.db.connection import create_app_session_factory
@@ -66,3 +66,4 @@ app = FastAPI(title="Greenbean Study Assistant API", lifespan=lifespan)
 app.include_router(document_controller.router, prefix="/api")
 app.include_router(section_controller.router, prefix="/api")
 app.include_router(provider_controller.router, prefix="/api")
+app.include_router(analysis_controller.router, prefix="/api")
