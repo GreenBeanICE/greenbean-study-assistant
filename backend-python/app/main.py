@@ -4,7 +4,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api import document_controller
+from app.api import analysis_controller, document_controller
+from app.db.connection import initialize_runtime_database
 from app.providers.embedding_registry import EmbeddingProviderRegistry
 from app.providers.embedding_setup import initialize_embedding_provider
 
@@ -13,6 +14,9 @@ from app.providers.embedding_setup import initialize_embedding_provider
 async def lifespan(fastapi_app: FastAPI) -> AsyncIterator[None]:
     """应用生命周期：启动时装配 Embedding Provider，关闭时清理进程内状态。"""
 
+    database_result = initialize_runtime_database()
+    fastapi_app.state.database_path = str(database_result.database_path)
+    fastapi_app.state.database_persistence_ready = database_result.persistence_ready
     setup_result = initialize_embedding_provider()
     fastapi_app.state.embedding_available = setup_result.available
     fastapi_app.state.embedding_error = setup_result.error
@@ -26,5 +30,6 @@ app = FastAPI(title="Greenbean Study Assistant API", lifespan=lifespan)
 
 # 注册文档上传解析的路由
 app.include_router(document_controller.router, prefix="/api")
+app.include_router(analysis_controller.router, prefix="/api")
 
 # ... 你的其他 main.py 配置（如 CORS、其他路由等）

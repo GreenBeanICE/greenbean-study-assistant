@@ -16,9 +16,13 @@ def create_database_engine(
     *,
     sqlite_vec_loader: SQLiteVecLoader,
 ) -> Engine:
-    engine = create_engine(
-        URL.create("sqlite+pysqlite", database=str(Path(database_path))),
-    )
+    database_source = str(database_path)
+    if "://" in database_source:
+        engine = create_engine(database_source)
+    else:
+        engine = create_engine(
+            URL.create("sqlite+pysqlite", database=str(Path(database_path))),
+        )
 
     @event.listens_for(engine, "connect")
     def initialize_connection(

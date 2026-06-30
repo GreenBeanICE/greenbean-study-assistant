@@ -32,6 +32,7 @@ export interface WorkspaceState {
   leftPanelWidth: number;
   rightPanelWidth: number;
   documentTitle: string;
+  analysisError: string | null;
 }
 
 export type WorkspaceAction =
@@ -47,6 +48,8 @@ export type WorkspaceAction =
   | { type: "CLEAR_QUOTE" }
   | { type: "SHOW_SOURCES"; citations: SourceCitation[] }
   | { type: "SHOW_CHAT" }
+  | { type: "SET_SECTION_ANALYSIS"; sectionId: string; contentBlock: ContentBlock; sourcePages: SourcePage[] }
+  | { type: "SET_ANALYSIS_ERROR"; message: string | null }
   | { type: "SET_CHAT_INPUT"; text: string }
   | { type: "SEND_CHAT_MESSAGE"; message: ChatMessage }
   | { type: "SET_LOADING"; loading: boolean }

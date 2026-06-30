@@ -122,3 +122,30 @@ class SectionAnalysisOutput(BaseModel):
                     + ", ".join(uncited_sentence_ids)
                 )
         return self
+
+
+class AgenticSearchOutput(BaseModel):
+    query: str | None = Field(default=None, description="User search question")
+    section_id: str | None = Field(default=None, description="Optional section ID")
+    status: Literal["draft", "completed"] = Field(..., description="Answer status")
+    sentences: list[SectionAnalysisSentence] = Field(
+        default_factory=list,
+        description="Sentence-level answer output",
+    )
+    source_pages: list[SourcePage] = Field(
+        default_factory=list,
+        description="Text-version PDF source pages",
+    )
+
+    @model_validator(mode="after")
+    def validate_completed_sentences_have_citations(self) -> "AgenticSearchOutput":
+        if self.status == "completed":
+            uncited_sentence_ids = [
+                sentence.id for sentence in self.sentences if not sentence.citations
+            ]
+            if uncited_sentence_ids:
+                raise ValueError(
+                    "completed agentic answer requires citations for every sentence: "
+                    + ", ".join(uncited_sentence_ids)
+                )
+        return self

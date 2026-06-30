@@ -6,6 +6,7 @@ import DocumentViewer from "../components/center/DocumentViewer";
 import ChatPanel from "../components/right/ChatPanel";
 import SourcePanel from "../components/right/SourcePanel";
 import ResizableHandle from "../components/shared/ResizableHandle";
+import { analyzeSection, SectionAnalysisApiError } from "../api/analysisApi";
 import type { WorkspaceState, WorkspaceAction, WorkspacePageProps, TextFormatAction } from "../type";
 import type { SectionNode, ContentBlock, ContentLine, FootnoteReference, SourceCitation, SourcePage } from "../../../types/section";
 import type { ChatMessage } from "../../../types/chat";
@@ -157,6 +158,17 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
         selectionMenuPos: null,
       };
     case "SHOW_CHAT": return { ...state, rightPanelMode: "chat", rightCollapsed: false };
+    case "SET_SECTION_ANALYSIS":
+      return {
+        ...state,
+        analysisError: null,
+        contentBlocks: [
+          ...state.contentBlocks.filter((block) => block.sectionId !== action.sectionId),
+          action.contentBlock,
+        ],
+        sourcePages: action.sourcePages,
+      };
+    case "SET_ANALYSIS_ERROR": return { ...state, analysisError: action.message };
     case "SET_CHAT_INPUT": return { ...state, chatInput: action.text };
     case "SEND_CHAT_MESSAGE": {
       const userMsg: ChatMessage = { id: `msg-${Date.now()}`, role: "user", content: state.quotedText ? `[引用] ${state.quotedText}\n\n${state.chatInput}` : state.chatInput, createdAt: new Date().toISOString() };
@@ -194,6 +206,7 @@ function WorkspacePage(_props: WorkspacePageProps) {
     sourcePages: getLocalizedSourcePages(), activeSourceCitations: [], tokenUsage: 0,
     leftCollapsed: false, rightCollapsed: false,
     leftPanelWidth: 256, rightPanelWidth: 302, documentTitle: "cours-analyse-s1.pdf",
+    analysisError: null,
   });
 
   rightWidthRef.current = state.rightPanelWidth;
@@ -288,6 +301,24 @@ function WorkspacePage(_props: WorkspacePageProps) {
 
   const handleSectionSelect = useCallback((id: string) => {
     d(id);
+    analyzeSection(id)
+      .then((analysis) => {
+        dispatch({
+          type: "SET_SECTION_ANALYSIS",
+          sectionId: id,
+          contentBlock: analysis.contentBlock,
+          sourcePages: analysis.sourcePages,
+        } as any);
+      })
+      .catch((error: unknown) => {
+        if (
+          error instanceof SectionAnalysisApiError &&
+          error.code === "AI_PROVIDER_NOT_CONFIGURED"
+        ) {
+          dispatch({ type: "SET_ANALYSIS_ERROR", message: "尚未配置 AI 模型服务" } as any);
+        }
+        // 其他错误保留本地 demo 内容。
+      });
     setTimeout(() => {
       const el = document.getElementById(`block-${id}`);
       if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -364,6 +395,11 @@ function WorkspacePage(_props: WorkspacePageProps) {
         {showLeftPanel && <ResizableHandle onResize={setLeftW} position="left" />}
 
         <main className="flex-1 min-w-0 min-h-0">
+          {state.analysisError && (
+            <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800 shadow-sm">
+              {state.analysisError}
+            </div>
+          )}
           <DocumentViewer contentBlocks={state.contentBlocks} selectedSectionId={state.selectedSectionId}
             footnotes={state.footnotes} expandedFootnoteId={state.expandedFootnoteId}
             currentSelection={state.currentSelection} showSelectionMenu={state.showSelectionMenu} selectionMenuPos={state.selectionMenuPos}

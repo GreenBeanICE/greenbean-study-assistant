@@ -86,3 +86,149 @@ async def test_process_and_save_analysis(MockAgent):
     assert result.document_id == "doc-1"
     assert result.section_id == "sec-1"
     assert result.analysis_type.value == "section"
+
+
+class FakeSectionContextBuilder:
+    def build_for_section(self, section_id: str):
+        from app.rag.context_builder import SectionContext, SectionContextUnit
+
+        assert section_id == "sec-1"
+        return SectionContext(
+            section_id="sec-1",
+            document_id="doc-1",
+            title="1.1 背景介绍",
+            start_page=1,
+            end_page=1,
+            units=[
+                SectionContextUnit(
+                    document_unit_id="unit-1",
+                    sequence_index=0,
+                    page_number=1,
+                    text_content="近年来，人工智能技术取得了飞速发展。",
+                    metadata_json=None,
+                )
+            ],
+            context_text="近年来，人工智能技术取得了飞速发展。",
+        )
+
+
+class FakeSectionAnalysisAgent:
+    def __init__(self, output: dict):
+        self.output = output
+        self.calls: list[dict] = []
+
+    async def generate_section_analysis(
+        self,
+        *,
+        section_context,
+        language: str,
+        model_name: str | None,
+        prompt_version: str,
+    ) -> dict:
+        self.calls.append(
+            {
+                "section_context": section_context,
+                "language": language,
+                "model_name": model_name,
+                "prompt_version": prompt_version,
+            }
+        )
+        return self.output
+
+
+class FakeAnalysisResultRepository:
+    def __init__(self):
+        self.saved = []
+
+    def save(self, result):
+        self.saved.append(result)
+        return result
+
+
+def valid_section_analysis_output() -> dict:
+    return {
+        "section_id": "sec-1",
+        "section_title": "1.1 背景介绍",
+        "status": "completed",
+        "sentences": [
+            {
+                "id": "s1",
+                "text": "人工智能正在改变教育资料的学习方式。",
+                "citations": [
+                    {
+                        "id": "c1",
+                        "page": 1,
+                        "document_unit_id": "unit-1",
+                        "chunk_id": "chunk-1",
+                        "source_text": "人工智能技术取得了飞速发展",
+                        "start_char": 3,
+                        "end_char": 17,
+                    }
+                ],
+            }
+        ],
+        "source_pages": [
+            {
+                "page": 1,
+                "document_unit_id": "unit-1",
+                "text": "近年来，人工智能技术取得了飞速发展。",
+            }
+        ],
+    }
+
+
+@pytest.mark.asyncio
+async def test_section_analysis_service_returns_traceable_analysis_result():
+    from app.enums.analysis_type import AnalysisType
+    from app.services.analysis_service import SectionAnalysisService
+
+    agent = FakeSectionAnalysisAgent(valid_section_analysis_output())
+    repository = FakeAnalysisResultRepository()
+    service = SectionAnalysisService(
+        context_builder=FakeSectionContextBuilder(),
+        analysis_agent=agent,
+        analysis_result_repository=repository,
+    )
+
+    result = await service.analyze_section(
+        section_id="sec-1",
+        language="zh",
+        model_name="gemini-embedding-compatible-chat",
+        prompt_version="section-analysis-v1",
+    )
+
+    assert result.document_id == "doc-1"
+    assert result.section_id == "sec-1"
+    assert result.analysis_type == AnalysisType.SECTION
+    assert result.language == "zh"
+    assert result.prompt_version == "section-analysis-v1"
+    assert result.content_json["status"] == "completed"
+    assert result.content_json["sentences"][0]["citations"][0]["document_unit_id"] == "unit-1"
+    assert result.content_json["source_pages"][0]["text"] == "近年来，人工智能技术取得了飞速发展。"
+    assert "人工智能正在改变教育资料的学习方式。" in result.content_markdown
+    assert repository.saved == [result]
+    assert agent.calls[0]["section_context"].section_id == "sec-1"
+
+
+@pytest.mark.asyncio
+async def test_section_analysis_service_rejects_completed_sentence_without_citation():
+    from app.services.analysis_service import SectionAnalysisService
+
+    invalid_output = valid_section_analysis_output()
+    invalid_output["sentences"][0]["citations"] = []
+    repository = FakeAnalysisResultRepository()
+    service = SectionAnalysisService(
+        context_builder=FakeSectionContextBuilder(),
+        analysis_agent=FakeSectionAnalysisAgent(invalid_output),
+        analysis_result_repository=repository,
+    )
+
+    with pytest.raises(ValueError, match="completed section analysis requires citations"):
+        await service.analyze_section(
+            section_id="sec-1",
+            language="zh",
+            model_name=None,
+            prompt_version="section-analysis-v1",
+        )
+
+    assert repository.saved == []

@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, cleanup, act } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, act, waitFor } from "@testing-library/react";
 import WorkspacePage, { workspaceReducer } from "./WorkspacePage";
 import type { WorkspaceState } from "../type";
 
@@ -12,7 +12,7 @@ function createTestState(): WorkspaceState {
     selectionMenuPos: null, quotedText: null, rightPanelMode: "chat",
     sourcePages: [], activeSourceCitations: [], tokenUsage: 0,
     leftCollapsed: false, rightCollapsed: false, leftPanelWidth: 256,
-    rightPanelWidth: 302, documentTitle: "test.pdf",
+    rightPanelWidth: 302, documentTitle: "test.pdf", analysisError: null,
   };
 }
 
@@ -48,6 +48,7 @@ describe("WorkspacePage", () => {
 
   afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
   });
 
   it("初始显示「我的文档」标题和文件夹树", () => {
@@ -113,6 +114,26 @@ describe("WorkspacePage", () => {
     fireEvent.click(screen.getByText((c) => c.includes("1.1 背景介绍")));
     const elements = screen.getAllByText((c) => c.includes("1.1 背景介绍"));
     expect(elements.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("AI provider 未配置时显示明确错误提示", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({
+        detail: {
+          code: "AI_PROVIDER_NOT_CONFIGURED",
+          message: "尚未配置 AI 模型服务",
+        },
+      }),
+    }));
+    render(<WorkspacePage />);
+    fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
+    fireEvent.click(screen.getByText((c) => c.includes("1.1 背景介绍")));
+
+    await waitFor(() => {
+      expect(screen.getByText("尚未配置 AI 模型服务")).toBeDefined();
+    });
   });
 
   it("左侧工具栏有文件管理和AI按钮", () => {
@@ -689,6 +710,61 @@ describe("WorkspacePage", () => {
     expect(screen.getByText("文字版 PDF 来源")).toBeDefined();
     expect(screen.getByText("第 1 页")).toBeDefined();
     expect(screen.getByText("近年来，人工智能技术取得了飞速发展")).toBeDefined();
+    expect(document.querySelectorAll("[data-source-highlight='true']").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("选择章节后消费后端句子级 citations/source_pages 并支持显示来源", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        code: 200,
+        message: "小节分析完成",
+        data: {
+          section_id: "ch1-1",
+          content_json: {
+            section_id: "ch1-1",
+            section_title: "1.1 背景介绍",
+            status: "completed",
+            sentences: [
+              {
+                id: "api-s1",
+                text: "后端返回的解析句子可以追溯到原文。",
+                citations: [
+                  {
+                    id: "api-c1",
+                    page: 3,
+                    document_unit_id: "api-unit-1",
+                    chunk_id: "api-chunk-1",
+                    source_text: "真实后端来源文本",
+                    start_char: 0,
+                    end_char: 8,
+                  },
+                ],
+              },
+            ],
+            source_pages: [
+              {
+                page: 3,
+                document_unit_id: "api-unit-1",
+                text: "真实后端来源文本用于高亮。",
+              },
+            ],
+          },
+        },
+      }),
+    }));
+
+    render(<WorkspacePage />);
+    fireEvent.click(screen.getByText("cours-analyse-s1.pdf"));
+    fireEvent.click(screen.getByText((content) => content.includes("1.1 背景介绍")));
+
+    const sentence = await screen.findByText("后端返回的解析句子可以追溯到原文。");
+    fireEvent.contextMenu(sentence);
+    fireEvent.click(screen.getByText("显示来源"));
+
+    expect(await screen.findByText("文字版 PDF 来源")).toBeDefined();
+    expect(screen.getByText("第 3 页")).toBeDefined();
+    expect(screen.getByText(/真实后端来源文本/)).toBeDefined();
     expect(document.querySelectorAll("[data-source-highlight='true']").length).toBeGreaterThanOrEqual(1);
   });
 });

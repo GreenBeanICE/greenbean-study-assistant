@@ -4,6 +4,8 @@ from pathlib import Path
 import sqlite3
 from typing import Callable
 
+from app.config.settings import get_default_database_path
+
 
 SQLiteVecLoader = Callable[[sqlite3.Connection], None]
 
@@ -34,17 +36,22 @@ def load_sqlite_vec_extension(connection: sqlite3.Connection) -> None:
 
 def initialize_database(
     *,
-    data_dir: str | Path = Path("data"),
+    data_dir: str | Path | None = None,
     database_name: str = "greenbean-study-assistant.sqlite3",
+    database_path: str | Path | None = None,
     sqlite_vec_loader: SQLiteVecLoader = load_sqlite_vec_extension,
     embedding_dimension: int,
 ) -> DatabaseInitializationResult:
-    data_path = Path(data_dir)
-    data_path.mkdir(parents=True, exist_ok=True)
-    database_path = data_path / database_name
+    if database_path is None:
+        data_path = Path(data_dir) if data_dir is not None else get_default_database_path().parent
+        data_path.mkdir(parents=True, exist_ok=True)
+        resolved_database_path = data_path / database_name
+    else:
+        resolved_database_path = Path(database_path)
+        resolved_database_path.parent.mkdir(parents=True, exist_ok=True)
 
     try:
-        with closing(sqlite3.connect(database_path)) as connection:
+        with closing(sqlite3.connect(resolved_database_path)) as connection:
             connection.execute("PRAGMA foreign_keys = ON")
             sqlite_vec_loader(connection)
             sqlite_vec_version = _check_sqlite_vec(connection)
@@ -56,7 +63,7 @@ def initialize_database(
         raise SQLiteVecInitializationError(f"sqlite-vec initialization failed: {exc}") from exc
 
     return DatabaseInitializationResult(
-        database_path=database_path,
+        database_path=resolved_database_path,
         persistence_ready=True,
         sqlite_vec_version=sqlite_vec_version,
     )
