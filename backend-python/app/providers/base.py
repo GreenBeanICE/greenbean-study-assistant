@@ -6,6 +6,10 @@ class ChatResult:
         self.content = content
 
 
+class ProviderConfigurationError(RuntimeError):
+    """AI Provider 配置无法安全加载或解析。"""
+
+
 class AIProvider(ABC):
 
     @abstractmethod

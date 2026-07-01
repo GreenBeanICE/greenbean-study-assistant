@@ -1,7 +1,22 @@
 from app.db.unit_of_work import SqlAlchemyUnitOfWork
+from app.db.orm import SessionFactory
 from app.entities.provider_config import ProviderConfig
 from app.providers.registry import ProviderRegistry
 from app.repositories.provider_config_repository import ProviderConfigRepository
+
+
+def activate_persisted_provider(
+    session_factory: SessionFactory,
+) -> ProviderConfig | None:
+    """从 provider_configs 读取 active provider 并激活进程内 Registry。"""
+
+    with session_factory() as session:
+        config = ProviderConfigRepository(session).get_active()
+    if config is None:
+        ProviderRegistry.clear()
+        return None
+    ProviderRegistry.activate(config)
+    return config
 
 
 class ProviderService:

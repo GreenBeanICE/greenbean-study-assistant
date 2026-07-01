@@ -7,9 +7,16 @@ import ChatPanel from "../components/right/ChatPanel";
 import SourcePanel from "../components/right/SourcePanel";
 import ResizableHandle from "../components/shared/ResizableHandle";
 import { analyzeSection, SectionAnalysisApiError } from "../api/analysisApi";
+import {
+  confirmOutlineCandidate,
+  uploadDocument,
+  type OutlineCandidate,
+  type UploadedDocument,
+} from "../../document/api/documentApi";
 import type { WorkspaceState, WorkspaceAction, WorkspacePageProps, TextFormatAction } from "../type";
 import type { SectionNode, ContentBlock, ContentLine, FootnoteReference, SourceCitation, SourcePage } from "../../../types/section";
 import type { ChatMessage } from "../../../types/chat";
+import type { FileItem, FileType } from "../components/left/FileManager";
 
 function getLocalizedSections(): SectionNode[] {
   return [
@@ -158,6 +165,7 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
         selectionMenuPos: null,
       };
     case "SHOW_CHAT": return { ...state, rightPanelMode: "chat", rightCollapsed: false };
+    case "SET_SECTIONS": return { ...state, sections: action.sections, selectedSectionId: null };
     case "SET_SECTION_ANALYSIS":
       return {
         ...state,
@@ -189,6 +197,74 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
   }
 }
 
+function candidateTitle(candidate: OutlineCandidate): string {
+  return candidate.source === "pdf_outline" ? "PDF 自带目录候选" : "AI 生成大纲候选";
+}
+
+function candidateButtonLabel(candidate: OutlineCandidate): string {
+  return `使用 ${candidateTitle(candidate)}`;
+}
+
+function OutlineCandidatePanel({
+  upload,
+  onConfirm,
+}: {
+  upload: UploadedDocument | null;
+  onConfirm: (candidate: OutlineCandidate) => void;
+}) {
+  if (!upload) return null;
+  return (
+    <div className="border-b border-black/5 px-3 py-2">
+      <div className="mb-2 text-[11px] font-medium text-neutral-500">
+        {upload.filename} · {upload.pageCount} 页
+      </div>
+      <div className="space-y-2">
+        {upload.outlineCandidates.map((candidate) => (
+          <section key={candidate.id} className="rounded-lg border border-black/10 bg-white/70 p-2">
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <h3 className="text-[12px] font-semibold text-neutral-700">
+                {candidateTitle(candidate)}
+              </h3>
+              <span className="text-[10px] text-neutral-400">{candidate.status}</span>
+            </div>
+            {candidate.status === "available" ? (
+              <>
+                <ul className="mb-2 max-h-20 overflow-y-auto text-[11px] text-neutral-600">
+                  {candidate.sections.slice(0, 4).map((section) => (
+                    <li key={section.tempId} className="truncate">
+                      {section.title}
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  aria-label={candidateButtonLabel(candidate)}
+                  onClick={() => onConfirm(candidate)}
+                  className="h-7 rounded-md bg-neutral-900 px-2 text-[11px] font-medium text-white"
+                >
+                  使用
+                </button>
+              </>
+            ) : (
+              <p className="text-[11px] leading-5 text-neutral-500">{candidate.reason}</p>
+            )}
+          </section>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function fileTypeFromName(filename: string): FileType {
+  const ext = filename.split(".").pop()?.toLowerCase();
+  if (ext === "pdf") return "PDF";
+  if (ext === "docx") return "DOC";
+  if (ext === "pptx") return "PPT";
+  if (["png", "jpg", "jpeg", "webp"].includes(ext ?? "")) return "IMG";
+  if (ext === "md") return "MD";
+  return "TXT";
+}
+
 function WorkspacePage(_props: WorkspacePageProps) {
   const rightDragRef = useRef(false);
   const rightWidthRef = useRef(302);
@@ -197,6 +273,7 @@ function WorkspacePage(_props: WorkspacePageProps) {
   const [leftMode, setLeftMode] = useState<"files" | "sections" | null>("files");
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [selectedFileName, setSelectedFileName] = useState<string>("");
+  const [latestUpload, setLatestUpload] = useState<UploadedDocument | null>(null);
 
   const [state, dispatch] = useReducer(workspaceReducer, {
     sections: getLocalizedSections(), selectedSectionId: null, contentBlocks: getLocalizedContent(),
@@ -294,6 +371,34 @@ function WorkspacePage(_props: WorkspacePageProps) {
     setLeftMode("sections");
   }, []);
 
+  const handleUploadFile = useCallback(async (file: File): Promise<FileItem> => {
+    const upload = await uploadDocument(file);
+    setLatestUpload(upload);
+    setSelectedFileId(upload.documentId);
+    setSelectedFileName(upload.filename);
+    setLeftMode("sections");
+    return {
+      id: upload.documentId,
+      name: upload.filename,
+      type: fileTypeFromName(upload.filename),
+      category: "",
+      size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
+      date: new Date().toISOString().split("T")[0],
+      status: "parsed",
+    };
+  }, []);
+
+  const handleConfirmCandidate = useCallback((candidate: OutlineCandidate) => {
+    if (!latestUpload) return;
+    confirmOutlineCandidate(latestUpload.documentId, candidate)
+      .then((result) => {
+        dispatch({ type: "SET_SECTIONS", sections: result.sections } as any);
+      })
+      .catch(() => {
+        dispatch({ type: "SET_ANALYSIS_ERROR", message: "大纲确认失败" } as any);
+      });
+  }, [latestUpload]);
+
   const handleBackToFiles = useCallback(() => {
     setLeftMode("files");
     setSelectedFileId(null);
@@ -376,14 +481,19 @@ function WorkspacePage(_props: WorkspacePageProps) {
                   {leftMode === "files" && (
                     <motion.div key="files-panel" initial={{ x: -state.leftPanelWidth }} animate={{ x: 0 }} exit={{ x: -state.leftPanelWidth }}
                       transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }} className="absolute inset-0 bg-white/70">
-                      <FileManager onFileSelectWithName={handleFileSelect} />
+                      <FileManager onFileSelectWithName={handleFileSelect} onUploadFile={handleUploadFile} />
                     </motion.div>
                   )}
                   {leftMode === "sections" && selectedFileId && (
                     <motion.div key="sections-panel" initial={{ x: state.leftPanelWidth }} animate={{ x: 0 }} exit={{ x: state.leftPanelWidth }}
                       transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }} className="absolute inset-0 bg-white/70">
-                      <SectionTree sections={state.sections} selectedSectionId={state.selectedSectionId}
-                        onSelect={handleSectionSelect} onToggle={togg} onBack={handleBackToFiles} title={selectedFileName} />
+                      <div className="flex h-full flex-col">
+                        <OutlineCandidatePanel upload={latestUpload} onConfirm={handleConfirmCandidate} />
+                        <div className="min-h-0 flex-1">
+                          <SectionTree sections={state.sections} selectedSectionId={state.selectedSectionId}
+                            onSelect={handleSectionSelect} onToggle={togg} onBack={handleBackToFiles} title={selectedFileName} />
+                        </div>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>

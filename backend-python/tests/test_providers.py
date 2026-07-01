@@ -5,7 +5,8 @@ import pytest
 from app.api.provider_controller import ProviderController
 from app.entities.provider_config import ProviderConfig
 from app.enums.api_mode import ApiMode
-from app.providers.base import ChatResult
+from app.providers.base import ChatResult, ProviderConfigurationError
+from app.providers.chat_provider_secrets import chat_api_key_secret_ref
 from app.providers.openai_compat_provider import OpenAICompatibleProvider
 from app.providers.registry import ProviderNotFoundError, ProviderRegistry
 from app.repositories.provider_config_repository import ProviderConfigRepository
@@ -106,6 +107,90 @@ class TestOpenAICompatibleProvider:
         assert kwargs["temperature"] == 0.5
         assert kwargs["max_tokens"] == 100
         assert kwargs["response_format"] == {"type": "json_object"}
+
+    @patch("app.providers.openai_compat_provider.AsyncOpenAI")
+    def test_initializes_with_secret_ref(self, MockAsyncOpenAI, tmp_path, monkeypatch):
+        import json
+        from app.providers import chat_provider_secrets
+
+        secrets_path = tmp_path / "chat_providers.json"
+        secrets_path.write_text(
+            json.dumps(
+                {
+                    "active": "secret-provider",
+                    "providers": {
+                        "secret-provider": {
+                            "api_mode": "openai-compat",
+                            "api_key": "real-secret-key",
+                            "api_host": "https://api.test.com/v1",
+                            "model_id": "test-model",
+                            "display_name": "Secret Provider",
+                        }
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(
+            chat_provider_secrets,
+            "DEFAULT_CHAT_PROVIDERS_SECRETS_PATH",
+            secrets_path,
+        )
+
+        OpenAICompatibleProvider(
+            ProviderConfig(
+                name="secret-provider",
+                api_mode=ApiMode.OPENAI_COMPAT,
+                api_key=chat_api_key_secret_ref("secret-provider"),
+                api_host="https://api.test.com/v1",
+                model_id="test-model",
+                display_name="Secret Provider",
+            )
+        )
+
+        assert MockAsyncOpenAI.call_args.kwargs["api_key"] == "real-secret-key"
+
+    def test_secret_ref_parse_failure_does_not_leak_key(self, tmp_path, monkeypatch):
+        import json
+        from app.providers import chat_provider_secrets
+
+        secrets_path = tmp_path / "chat_providers.json"
+        secrets_path.write_text(
+            json.dumps(
+                {
+                    "active": "secret-provider",
+                    "providers": {
+                        "secret-provider": {
+                            "api_mode": "openai-compat",
+                            "api_key": "real-secret-key",
+                            "api_host": "https://api.test.com/v1",
+                            "model_id": "test-model",
+                            "display_name": "Secret Provider",
+                        }
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(
+            chat_provider_secrets,
+            "DEFAULT_CHAT_PROVIDERS_SECRETS_PATH",
+            secrets_path,
+        )
+
+        with pytest.raises(ProviderConfigurationError) as exc_info:
+            OpenAICompatibleProvider(
+                ProviderConfig(
+                    name="missing-provider",
+                    api_mode=ApiMode.OPENAI_COMPAT,
+                    api_key=chat_api_key_secret_ref("missing-provider"),
+                    api_host="https://api.test.com/v1",
+                    model_id="test-model",
+                    display_name="Missing Provider",
+                )
+            )
+
+        assert "real-secret-key" not in str(exc_info.value)
 
 
 # ── Service ──────────────────────────────────────────────────────────

@@ -2,11 +2,14 @@
 文档摄取服务，用于协调上传、解析、切分和入库流程。
 """
 import os
+from hashlib import sha256
 
 from app.entities import DocumentRecord, DocumentUnit
 from app.enums.document_file_type import DocumentFileType
 from app.enums.document_status import DocumentStatus
 from app.parsers.parser_factory import ParserFactory
+from app.parsers.pdf_parser import PDFParser
+from app.rag.page_index_builder import PageIndexBuilder
 
 # ---- Phase 3 依赖（暂未实现，待 ChunkService/EmbeddingService 就绪后取消注释） ----
 # from app.services.chunk_service import ChunkService
@@ -39,6 +42,20 @@ class DocumentIngestService:
         # ---- Phase 3 依赖（待 ChunkService / EmbeddingService 就绪后取消注释） ----
         # self.chunk_service = ChunkService()
         # self.embedding_service = EmbeddingService()
+
+    def commit(self) -> None:
+        session = self._session()
+        if session is not None:
+            session.commit()
+
+    def rollback(self) -> None:
+        session = self._session()
+        if session is not None:
+            session.rollback()
+
+    def _session(self):
+        repository = self.document_repository or self.document_unit_repository
+        return getattr(repository, "session", None)
 
     def ingest_document(
         self,
@@ -80,6 +97,7 @@ class DocumentIngestService:
         # 推导文档标题
         if title is None:
             title = os.path.splitext(filename)[0]
+        resolved_file_hash = file_hash or sha256(file_content).hexdigest()
 
         document_record = DocumentRecord(
             workspace_id=workspace_id,
@@ -87,13 +105,13 @@ class DocumentIngestService:
             original_filename=filename,
             file_type=file_type,
             file_path=file_path,
-            file_hash=file_hash,
+            file_hash=resolved_file_hash,
             status=DocumentStatus.PARSED,
             page_count=len(parsed_pages),
         )
 
-        # ---- Phase 2: DB 团队交付 DocumentRepository 后取消注释 ----
-        # self.document_repository.save(document_record)
+        if self.document_repository is not None:
+            self.document_repository.save(document_record)
 
         # ---- Step 3: 基于 PageIndex 构造 DocumentUnit 列表 ----
         document_units: list[DocumentUnit] = []
@@ -121,8 +139,8 @@ class DocumentIngestService:
             document_units.append(unit)
             cumulative_offset += content_len
 
-            # ---- Phase 2: DB 团队交付 DocumentUnitRepository 后取消注释 ----
-            # self.document_unit_repository.save(unit)
+            if self.document_unit_repository is not None:
+                self.document_unit_repository.save(unit)
 
         # ---- Step 4 & 5: （Phase 3 占位，ChunkService / EmbeddingService 就绪后启用） ----
         # chunks = self.chunk_service.split_pages_into_chunks(parsed_pages)
@@ -139,11 +157,27 @@ class DocumentIngestService:
                 preview_item["source_type"] = p["metadata"].get("source_type", "unknown")
             page_index_preview.append(preview_item)
 
+        page_index = PageIndexBuilder().build_from_document_units(
+            document_id=document_record.id,
+            document_units=document_units,
+        )
+        pdf_outline = (
+            parser.extract_outline(file_content)
+            if isinstance(parser, PDFParser)
+            else []
+        )
+
         return {
+            "document_id": document_record.id,
             "filename": filename,
+            "page_count": len(parsed_pages),
             "total_pages": len(parsed_pages),
             "status": "parsed_successfully",
+            "processing_status": "parsed",
+            "file_hash": resolved_file_hash,
             "page_index_preview": page_index_preview,
+            "page_index": page_index,
+            "pdf_outline": pdf_outline,
             "document_record": document_record,
             "document_units": document_units,
         }

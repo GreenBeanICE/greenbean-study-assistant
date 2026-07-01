@@ -49,6 +49,7 @@ export type WorkspaceAction =
   | { type: "SHOW_SOURCES"; citations: SourceCitation[] }
   | { type: "SHOW_CHAT" }
   | { type: "SET_SECTION_ANALYSIS"; sectionId: string; contentBlock: ContentBlock; sourcePages: SourcePage[] }
+  | { type: "SET_SECTIONS"; sections: SectionNode[] }
   | { type: "SET_ANALYSIS_ERROR"; message: string | null }
   | { type: "SET_CHAT_INPUT"; text: string }
   | { type: "SEND_CHAT_MESSAGE"; message: ChatMessage }

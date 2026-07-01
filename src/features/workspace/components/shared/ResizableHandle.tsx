@@ -57,6 +57,7 @@ function ResizableHandle({
       ref={handleRef}
       onMouseDown={handleMouseDown}
       onDoubleClick={onDoubleClick}
+      aria-label={position === "left" ? "调整左侧面板宽度" : "调整右侧面板宽度"}
       className="w-1 flex-shrink-0 cursor-col-resize hover:bg-blue-500/20 active:bg-blue-500/40 transition-colors duration-150"
     />
   );

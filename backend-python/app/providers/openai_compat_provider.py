@@ -2,13 +2,14 @@ from openai import AsyncOpenAI
 
 from app.entities.provider_config import ProviderConfig
 from app.providers.base import AIProvider, ChatResult
+from app.providers.chat_provider_secrets import resolve_chat_api_key
 
 
 class OpenAICompatibleProvider(AIProvider):
     def __init__(self, config: ProviderConfig) -> None:
         self.config = config
         self._client = AsyncOpenAI(
-            api_key=config.api_key,
+            api_key=resolve_chat_api_key(config.api_key),
             base_url=config.api_host.rstrip("/"),
         )
 

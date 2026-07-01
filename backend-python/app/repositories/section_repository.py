@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.models import SectionModel
@@ -35,6 +36,21 @@ class SectionRepository:
         model = self.session.get(SectionModel, section_id)
         if model is None:
             return None
+        return self._to_entity(model)
+
+    def list_by_document(self, document_id: str) -> list[Section]:
+        rows = (
+            self.session.execute(
+                select(SectionModel)
+                .where(SectionModel.document_id == document_id)
+                .order_by(SectionModel.order_index, SectionModel.created_at)
+            )
+            .scalars()
+            .all()
+        )
+        return [self._to_entity(model) for model in rows]
+
+    def _to_entity(self, model: SectionModel) -> Section:
         return Section(
             id=model.id,
             document_id=model.document_id,

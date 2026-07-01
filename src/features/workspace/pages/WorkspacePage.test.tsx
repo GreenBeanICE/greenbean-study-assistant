@@ -767,6 +767,94 @@ describe("WorkspacePage", () => {
     expect(screen.getByText(/真实后端来源文本/)).toBeDefined();
     expect(document.querySelectorAll("[data-source-highlight='true']").length).toBeGreaterThanOrEqual(1);
   });
+
+  it("上传 PDF 后展示两套候选大纲，确认后显示正式章节树", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          code: 200,
+          data: {
+            document_id: "doc-uploaded",
+            filename: "uploaded.pdf",
+            page_count: 2,
+            status: "parsed",
+            page_index: { document_id: "doc-uploaded", page_count: 2, pages: [] },
+            outline_candidates: [
+              {
+                id: "pdf_outline",
+                source: "pdf_outline",
+                status: "available",
+                sections: [
+                  {
+                    temp_id: "pdf-1",
+                    title: "PDF 目录章节",
+                    level: 1,
+                    parent_temp_id: null,
+                    start_page: 1,
+                    end_page: 2,
+                    order_index: 0,
+                  },
+                ],
+              },
+              {
+                id: "llm_outline",
+                source: "llm_outline",
+                status: "unavailable",
+                reason: "尚未配置 AI 模型服务",
+                sections: [],
+              },
+            ],
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          code: 200,
+          data: {
+            sections: [
+              {
+                id: "sec-uploaded-1",
+                title: "PDF 目录章节",
+                level: 1,
+                order_index: 0,
+                parent_section_id: null,
+              },
+            ],
+            section_unit_links_status: "metadata_fallback",
+            chunk_status: "created",
+            embedding_status: "unavailable",
+          },
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<WorkspacePage />);
+    const uploadLabel = screen.getByTitle("上传新文件");
+    const fileInput = uploadLabel.querySelector("input[type='file']") as HTMLInputElement;
+    const file = new File(["pdf"], "uploaded.pdf", { type: "application/pdf" });
+    Object.defineProperty(fileInput, "files", { value: [file] });
+    fireEvent.change(fileInput);
+
+    expect(await screen.findByText("PDF 自带目录候选")).toBeDefined();
+    expect(screen.getByText("AI 生成大纲候选")).toBeDefined();
+    expect(screen.getByText("PDF 目录章节")).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: "使用 PDF 自带目录候选" }));
+
+    expect(await screen.findByText((content) => content.includes("PDF 目录章节"))).toBeDefined();
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "/api/documents/upload",
+      expect.objectContaining({ method: "POST", body: expect.any(FormData) }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "/api/documents/doc-uploaded/outline/confirm",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
 });
 
 describe("workspaceReducer", () => {

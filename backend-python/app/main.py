@@ -5,9 +5,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.api import analysis_controller, document_controller
-from app.db.connection import initialize_runtime_database
+from app.db.connection import get_runtime_session_factory, initialize_runtime_database
+from app.providers.base import ProviderConfigurationError
 from app.providers.embedding_registry import EmbeddingProviderRegistry
 from app.providers.embedding_setup import initialize_embedding_provider
+from app.providers.registry import ProviderRegistry
+from app.services.provider_service import activate_persisted_provider
 
 
 @asynccontextmanager
@@ -21,9 +24,18 @@ async def lifespan(fastapi_app: FastAPI) -> AsyncIterator[None]:
     fastapi_app.state.embedding_available = setup_result.available
     fastapi_app.state.embedding_error = setup_result.error
     try:
+        chat_config = activate_persisted_provider(get_runtime_session_factory())
+        fastapi_app.state.chat_provider_available = chat_config is not None
+        fastapi_app.state.chat_provider_error = None
+    except (ProviderConfigurationError, ValueError):
+        ProviderRegistry.clear()
+        fastapi_app.state.chat_provider_available = False
+        fastapi_app.state.chat_provider_error = "AI Provider 配置不可用"
+    try:
         yield
     finally:
         EmbeddingProviderRegistry.clear()
+        ProviderRegistry.clear()
 
 
 app = FastAPI(title="Greenbean Study Assistant API", lifespan=lifespan)

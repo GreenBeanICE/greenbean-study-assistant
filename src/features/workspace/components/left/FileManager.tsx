@@ -2,7 +2,7 @@
  * 文件管理面板 — 文件夹树结构，支持上传、右键重命名/删除/移动
  */
 
-import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -35,6 +35,7 @@ export interface FileManagerProps {
   onFileSelect?: (fileId: string) => void;
   /** 选中文件后的回调，返回文件名 */
   onFileSelectWithName?: (fileId: string, fileName: string) => void;
+  onUploadFile?: (file: File) => Promise<FileItem | void>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -90,6 +91,7 @@ export default function FileManager({
   selectedFileId,
   onFileSelect,
   onFileSelectWithName,
+  onUploadFile,
 }: FileManagerProps) {
   const [lang, _setLang] = useState("zh");
 
@@ -145,9 +147,17 @@ export default function FileManager({
   }, [allFiles]);
 
   /** 上传文件 */
-  const handleUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (onUploadFile) {
+        const uploadedFile = await onUploadFile(file);
+        if (uploadedFile) {
+          setInternalFiles((prev) => [uploadedFile, ...prev]);
+        }
+        (e.target as HTMLInputElement).value = "";
+        return;
+      }
       const newFile: FileItem = {
         id: uid(),
         name: file.name,
@@ -160,7 +170,7 @@ export default function FileManager({
       setInternalFiles((prev) => [newFile, ...prev]);
     }
     (e.target as HTMLInputElement).value = "";
-  }, []);
+  }, [onUploadFile]);
 
   /** 右键打开菜单 */
   const handleContextMenu = useCallback((e: React.MouseEvent, fileId: string) => {

@@ -7,7 +7,7 @@ import sqlite3
 from app.entities.analysis_result import AnalysisResult
 from app.enums.analysis_type import AnalysisType
 from app.main import app
-from app.providers.base import ChatResult
+from app.providers.base import ChatResult, ProviderConfigurationError
 from app.providers.registry import ProviderNotFoundError
 from app.rag.context_builder import SectionNotFoundError, SectionPageRangeMissingError
 
@@ -152,6 +152,21 @@ def test_analyze_section_returns_400_when_page_range_missing(client):
 def test_analyze_section_returns_503_when_provider_not_configured(client):
     fake_service = FakeSectionAnalysisService(
         error=ProviderNotFoundError("当前没有激活的 provider，请先配置并激活。")
+    )
+    override_analysis_service(fake_service)
+
+    response = client.post("/api/analysis/sections/sec-1", json={"language": "zh"})
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == {
+        "code": "AI_PROVIDER_NOT_CONFIGURED",
+        "message": "尚未配置 AI 模型服务",
+    }
+
+
+def test_analyze_section_returns_503_when_provider_secret_invalid(client):
+    fake_service = FakeSectionAnalysisService(
+        error=ProviderConfigurationError("Chat provider secret 引用格式无效")
     )
     override_analysis_service(fake_service)
 

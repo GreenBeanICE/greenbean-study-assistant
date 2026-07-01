@@ -8,6 +8,11 @@ from sqlalchemy.orm import Session
 
 from app.db.connection import get_db_session
 from app.entities.analysis_result import AnalysisResult
+from app.providers.base import ProviderConfigurationError
+from app.providers.embedding_registry import (
+    EmbeddingProviderNotFoundError,
+    EmbeddingProviderRegistry,
+)
 from app.providers.registry import ProviderNotFoundError
 from app.rag.context_builder import (
     SectionContextBuilder,
@@ -65,14 +70,20 @@ def get_section_analysis_service(
 def get_agentic_search_service(
     session: Annotated[Session, Depends(get_db_session)],
 ) -> AgenticSearchService:
-    embedding_dimension = 768
+    try:
+        embedding_provider = EmbeddingProviderRegistry.get_active()
+        embedding_dimension = embedding_provider.get_model_info().dimension
+    except EmbeddingProviderNotFoundError:
+        embedding_provider = None
+        embedding_dimension = 768
     section_context_builder = SectionContextBuilder(
         section_repository=SectionRepository(session),
         document_unit_repository=DocumentUnitRepository(session),
     )
     return AgenticSearchService(
         embedding_service=EmbeddingService(
-            EmbeddingRepository(session, embedding_dimension=embedding_dimension)
+            EmbeddingRepository(session, embedding_dimension=embedding_dimension),
+            provider=embedding_provider,
         ),
         retriever=Retriever(
             vector_index=SQLiteVecRetriever(
@@ -101,7 +112,15 @@ async def analyze_section(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except SectionPageRangeMissingError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except ProviderNotFoundError as exc:
+    except (ProviderNotFoundError, ProviderConfigurationError) as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "AI_PROVIDER_NOT_CONFIGURED",
+                "message": "尚未配置 AI 模型服务",
+            },
+        ) from exc
+    except (EmbeddingProviderNotFoundError, ProviderNotFoundError, ProviderConfigurationError) as exc:
         raise HTTPException(
             status_code=503,
             detail={
